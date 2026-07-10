@@ -1,0 +1,64 @@
+# === Secretos y entorno (NUNCA subir) ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+credentials.yml
+service-account*.json
+
+# === Sistema operativo ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# === Editores / IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Claude Code (config personal, no compartir) ===
+.claude/settings.local.json
+
+# === Logs y temporales ===
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# === Node.js (si aplica) ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+/dist/
+/build/
+/coverage/
+/.next/
+/.turbo/
+
+# === Python (si aplica) ===
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Nota: extiende este archivo cuando se defina el stack tecnológico (ver docs/02_arquitectura.md).
