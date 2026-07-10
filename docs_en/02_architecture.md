@@ -1,39 +1,195 @@
 # System architecture
 
+> **Status of this document.** This is a specification, not a description of anything built. Nothing here is implemented yet. It structures how Spazio is intended to work end to end and records where platform-level choices are still open.
+>
+> **How to read the labels used throughout:**
+>
+> - **VERIFIED** — stated in the PRD (`Spazio_PRD_v0.7.md`) or the pilot (`Spazio_One_Week_iOS_Pilot.md`). Cited where useful.
+> - **PRD default/example** — a value the PRD gives only as an example or default (e.g. commission "for example 10%"). It is not a final decision and must be confirmed by humans.
+> - **Draft / Proposed** — a reasonable structuring by the author to organize the specification. Not decided.
+> - **TBD / PENDING** — reserved for human decision. PRD §12 ("Human definitions") lists these; each maps to an ADR in `/docs_en/decisions`.
+
+---
+
 ## Overview
 
-Brief description of how the system works.
+This is a logical, technology-neutral description of how Spazio works end to end. It follows the basic flow in PRD §8 and the invariants in PRD §4. It names no concrete technology; the platform stack is an open decision (see [Technology stack](#technology-stack)).
+
+The core promise is that the AI never invents furniture: every rendered item must correspond to a real, purchasable SKU already loaded into the marketplace (PRD §1, BR-6, BR-14; FR-016).
+
+End-to-end logical flow:
+
+1. **Enter as account or guest.** The user starts a session either with an account or as a guest. Guest checkout requires validated email, phone, and shipping information (PRD §8.1, FR-001/FR-004, BR-26). *(Accounts and guest checkout are VERIFIED in the PRD but excluded from the pilot; see the pilot note below.)*
+2. **Localization.** The system determines the user's location, the applicable suppliers, and the delivery zone (PRD §8.2, FR-012/FR-013, BR-11).
+3. **Inputs.** The user selects a predefined style or writes a free-text description, enters approximate room dimensions and a budget range (minimum and maximum), and uploads or captures one or more room photos (PRD §8.3–8.6, FR-005/FR-007/FR-008/FR-009/FR-011).
+4. **Photo quality check.** The system validates photo usability and requests a retake for unusable photos (PRD §8.8, FR-024, BR-15).
+5. **Matching against real inventory.** The system matches real, currently available catalog SKUs to the style, dimensions, budget, and locality. It renders only in-stock ready-made or validly made-to-order products, excludes catalog entries with incomplete required data, keeps total cost within budget plus the agreed tolerance, and never fabricates products (FR-014/FR-016/FR-018/FR-019/FR-021, BR-2/BR-4/BR-6/BR-9/BR-11/BR-14).
+6. **Render.** The system generates a photorealistic image compositing the matched SKUs into the room photo, scaled realistically using the approximate dimensions (PRD §8.9, FR-015/FR-017, BR-7).
+7. **Human review (pilot invariant).** An operator reviews and approves each render before it is shown to the user (pilot "The human's role"; FR-027).
+8. **Product tags.** Every rendered product is tagged with name, price, supplier, warranty, and listing link; the user can tap a tag to see details (PRD §8.10, FR-028/FR-029).
+9. **Auto cart.** The cart is auto-populated with every product shown in the render. The cart is a suggestion and must be explicitly confirmed before payment; the user can review, remove, or swap items (PRD §8.11–8.12, FR-031/FR-032/FR-033/FR-034/FR-035, BR-31).
+10. **Stock hold.** Adding an item to the cart holds stock for the configured duration; expired holds return stock to availability (PRD §8.14, FR-039/FR-040, BR-22/BR-23). *(PRD default 15 minutes — see [ADR-011](#important-decisions-open).)*
+11. **Checkout with one payment.** The user checks out with a single in-app payment covering products from one or more suppliers (PRD §8.15, FR-042, BR-25).
+12. **One purchase order per supplier.** Checkout generates one purchase order per supplier from the single order (PRD §8.16, FR-044, BR-25).
+13. **Revalidate price and stock.** Price and availability are revalidated at checkout before payment is captured (PRD §8.17, FR-041, BR-24).
+14. **Estimates and warranty before checkout.** Supplier-sourced production/delivery estimates and warranty terms are shown before checkout (PRD §8.18, FR-036/FR-038, BR-17/BR-18).
+15. **Order tracking.** The user tracks status per purchase order (PRD §8.19, FR-047). *(In the pilot, the operator forwards each confirmed order to the supplier manually; FR-061.)*
+
+**Pilot vs. full product (VERIFIED).** The one-week pilot deliberately narrows this flow: native iOS only, one city and one delivery zone (Bogotá), one currency (COP), a small manually curated catalog, human review before every render, and manual order handoff. It excludes accounts/guest checkout, automated split payments, automated one-PO-per-supplier settlement, automated supplier ingestion, keep-or-replace segmentation, targeted edits, render limits, and full tracking (pilot "Pilot scope" and "Scope Cuts & Triggers"). The architecture below covers the full product; module and rule entries note where the pilot applies.
+
+---
 
 ## Technology stack
 
-- Frontend:
-- Backend:
-- Database:
-- Authentication:
-- Hosting:
-- Repository:
+**None of the platform stack is decided.** PRD §12 reserves the technology stack for humans. Each line below is pending and references the governing decision record.
 
-## General diagram
+| Layer | Choice | Decision |
+|---|---|---|
+| Frontend | `[PENDING — see ADR-001]` | [ADR-001 — Technology stack](#important-decisions-open) |
+| Backend | `[PENDING — see ADR-001]` | ADR-001 |
+| Database | `[PENDING — see ADR-001]` | ADR-001 |
+| Authentication | `[PENDING — see ADR-001]` | ADR-001 |
+| Hosting | `[PENDING — see ADR-001]` | ADR-001 |
+| Repository | `[PENDING — see ADR-001]` | ADR-001 |
 
-User → Frontend → Backend/API → Database
+The rendering/AI pipeline is a separate open decision: `[PENDING — see ADR-002]`.
+
+> **Note on the repository.** The version-control *workflow* is already defined in `CLAUDE.md` (a `main` + `develop` model with pull requests). The hosting/tooling that implements it remains part of ADR-001 and is not asserted here as a chosen product.
+
+### PRD-confirmed constraints (not chosen products)
+
+These are requirements the stack must satisfy. They constrain the eventual choice; they are **not** technology selections.
+
+- **Pilot platform.** The pilot targets a **native iOS** app (pilot "Included": "Native iOS app only"). This is a pilot scope constraint, not a decision that iOS is the platform for the full product.
+- **Payment gateway capabilities.** Payment processing must be **PCI-compliant**, and the gateway must support **marketplace-style split settlement**, **multi-supplier payouts**, **multi-currency processing**, **guest checkout**, and **automatic Spazio commission retention** (PRD §7 "Security and payments"; NFR-009/NFR-010/NFR-011/NFR-012). Which gateway, and the split-settlement and merchant-of-record models, are open (ADR-003, ADR-004).
+- **Privacy defaults.** User photos and generated renders are private by default (BR-33, NFR-007).
+- **Authentication.** Authentication must protect account and order data (NFR-008).
+- **Internationalization.** The architecture must support multiple countries and currencies, with taxes, payment methods, and legal requirements configurable per market (PRD §7; NFR-017/NFR-018).
+
+---
+
+## Logical context diagram
+
+Technology-neutral. Boxes are logical responsibilities, not deployment units or products.
+
+```text
+                         ┌──────────────────────────────┐
+        Homeowner /      │        Client app            │   (pilot: native iOS)
+        renter (account  │  inputs, render view,        │
+        or guest)  ──────▶  tags, cart, checkout        │
+                         └───────────────┬──────────────┘
+                                         │
+                                         ▼
+                         ┌──────────────────────────────┐
+                         │        Backend services        │
+                         │  ┌──────────────────────────┐ │
+                         │  │ Accounts & guest          │ │
+                         │  │ Localization & delivery   │ │
+                         │  │ Product matching          │ │
+                         │  │ Rendering pipeline ───────┼─┼──▶ AI rendering provider
+                         │  │ Style taxonomy            │ │      [TBD — ADR-002]
+                         │  │ Cart & stock holds        │ │
+                         │  │ Checkout & payments ──────┼─┼──▶ PCI-compliant gateway
+                         │  │ Orders & purchase orders  │ │      [TBD — ADR-003/004]
+                         │  │ Catalog & ingestion       │ │
+                         │  └──────────────────────────┘ │
+                         └───────┬───────────────┬───────┘
+                                 │               │
+                    ┌────────────▼──┐     ┌──────▼─────────────┐
+                    │ Data stores    │     │ Operator console   │◀── Operator
+                    │ (catalog,      │     │ catalog curation,  │    (Spazio staff)
+                    │  projects,     │     │ render review,     │
+                    │  orders, …)    │     │ manual order       │
+                    │  [TBD ADR-001] │     │ handoff (pilot)    │
+                    └────────────────┘     └────────────────────┘
+                                                   ▲
+                                                   │ catalog data
+                                          ┌────────┴─────────┐
+                                          │   Supplier        │
+                                          │ (ingestion: TBD   │
+                                          │  channels ADR-006)│
+                                          └───────────────────┘
+```
+
+---
 
 ## Main modules
 
-| Module | Responsibility |
-|---|---|
-| Authentication | Handling of login, logout and session |
-| Users | User administration |
-| Records | Main CRUD of the system |
-| Configuration | General parameters |
+Logical modules and their responsibilities. Feature and requirement IDs point back to the registry. Some features span more than one module; the cross-references note where. Module boundaries are **Draft / Proposed** organization of PRD-confirmed responsibilities.
+
+| Module | Responsibility | Primary features / requirements |
+|---|---|---|
+| **Accounts & guest** | Create accounts, authenticate, manage basic profile and preferences, and support guest sessions with validated email, phone, and shipping info. *(Excluded from the pilot.)* | FEAT-001; FR-001, FR-002, FR-003, FR-004 (BR-26) |
+| **Catalog & supplier ingestion** | Hold real, purchasable SKUs with required attributes (photos, dimensions, price, colors, materials, stock, category, style, lead time, warranty); classify products as in-stock ready-made or made-to-order; synchronize supplier data (real time for ready-made stock); expose ingestion channels for suppliers. Operator curation lives in the Operator console. *(Pilot: catalog is small and manually curated; automated ingestion excluded.)* | FEAT-015; FR-055, FR-057, FR-058, FR-060 (BR-1–BR-5, BR-32); ADR-006, ADR-012, ADR-014 |
+| **Style taxonomy** | Maintain the shared classification that maps products and user style choices to a common vocabulary; map each product to it. Feeds both style selection and matching. | FEAT-003 (style side); FR-007, FR-059 (BR-16); ADR-005 |
+| **Rendering pipeline** | Accept room photo(s), dimensions, style, and budget; run photo-quality validation; generate the photorealistic render compositing matched SKUs at realistic scale; produce product tags; enforce render-time and inference-cost controls and (post-pilot) daily render metering and targeted edits. | FEAT-002, FEAT-005 (render side), FEAT-007 (tagging), FEAT-013/FEAT-014 (post-pilot); FR-005, FR-006, FR-011, FR-015, FR-016, FR-017, FR-018, FR-024, FR-028, FR-029 (BR-2, BR-6, BR-7, BR-14, BR-15); ADR-002, ADR-013 |
+| **Product matching** | Match real, currently available SKUs to style, dimensions, budget, and locality; keep total cost within budget plus tolerance; disclose unmet budgets and offer the closest alternative; suggest similar products or mark items unavailable when no strong match exists. | FEAT-005 (matching side); FR-014, FR-019, FR-021, FR-022, FR-023 (BR-2, BR-9, BR-10, BR-13); ADR-008 |
+| **Cart & stock holds** | Auto-populate the cart from the render; let the user review, remove, or swap items; require explicit confirmation before payment; place and expire time-boxed stock holds; surface per-item estimates and warranty for display. | FEAT-008, FEAT-009 (display); FR-030–FR-035, FR-036, FR-038, FR-039, FR-040 (BR-17, BR-18, BR-22, BR-23, BR-31); ADR-011 |
+| **Checkout & payments** | Take a single in-app payment across suppliers; revalidate price and availability before capture; support guest checkout; drive split settlement, multi-supplier payouts, multi-currency, and automatic commission retention through the PCI-compliant gateway. | FEAT-010; FR-004, FR-041, FR-042, FR-043, FR-045 (BR-24, BR-28); ADR-003, ADR-004, ADR-007 |
+| **Orders & purchase orders** | Generate one purchase order per supplier from the confirmed order; provide per-PO status and tracking. *(Pilot: the operator forwards each confirmed order to the supplier manually.)* | FEAT-011; FR-044, FR-047, FR-061 (BR-25) |
+| **Localization & delivery zones** | Resolve the user's location to applicable suppliers and delivery zone; restrict rendering to products deliverable to the locality; display prices in local currency; offer delivery fallback (nearby regions, alternative shipping, or pickup) when local delivery is unavailable; hold per-market configuration (currency, taxes, payment methods, legal). | FEAT-004; FR-012, FR-013, FR-020, FR-046, FR-053 (BR-11, BR-12, BR-27); ADR-015, ADR-018 |
+| **Operator console** | Let Spazio staff curate and approve catalog entries, map products to the style taxonomy, review and approve each render before it is shown, and (in the pilot) forward confirmed orders to suppliers manually. | FEAT-006, FEAT-015 (curation); FR-027, FR-056, FR-059, FR-061 |
+
+> **Not yet assigned a dedicated module:** keep-or-replace segmentation (FEAT-012; FR-025/FR-026), render metering and monetization (FEAT-013; FR-048–FR-050, FR-054), and targeted render refinement (FEAT-014; FR-051/FR-052) are post-pilot. They are noted above inside the Rendering pipeline and are called out here so nothing is dropped.
+
+---
 
 ## Architecture rules
 
-- Separate frontend, backend and database.
+### General rules (retained)
+
+- Separate frontend, backend, and database concerns.
 - Do not mix business logic with visual components.
 - Do not write direct database queries from the frontend.
-- Every new feature must have minimal tests.
-- Every relevant change must be associated with an issue or feature document.
+- Every new feature must have minimal tests (`TC-` in `08_test_plan.md`).
+- Every relevant change must be tied to an Issue and a requirement/feature document (see `CLAUDE.md` and `11_implementation_flow.md`).
 
-## Important decisions
+### Spazio invariants (VERIFIED, from the PRD/pilot)
 
-See the `/decisions` folder.
+These are hard rules the system must not violate.
+
+1. **Render only real, in-stock SKUs.** Every rendered item must map to a real, purchasable SKU; ready-made items are never rendered when unavailable (FR-016/FR-018, BR-4/BR-6).
+2. **Never fabricate products.** The system must never invent or render a product that is not in the catalog (FR-016, BR-14; pilot "The AI's role").
+3. **Exclude incomplete catalog entries** from rendering eligibility (FR-019, BR-2).
+4. **Render only deliverable products.** Only products deliverable to the user's locality may be rendered (FR-020, BR-11).
+5. **Scale to dimensions.** Approximate room dimensions must be used to scale rendered products realistically (FR-017, BR-7).
+6. **Stay within budget + tolerance.** Total rendered product cost must stay within budget plus the agreed tolerance (FR-021, BR-9). *(Tolerance is a PRD example of 10% — TBD, ADR-008.)*
+7. **Kept items are excluded from cart and budget.** Items marked to keep remain in the render but are excluded from the cart and from the budget calculation (FR-026, BR-8). *(Keep-or-replace is post-pilot.)*
+8. **Cart is a suggestion.** The cart must be explicitly confirmed by the user before payment (FR-035, BR-31; pilot "The human's role").
+9. **Revalidate price and stock at checkout** before payment is captured (FR-041, BR-24).
+10. **One payment, one PO per supplier.** Checkout produces a single user payment and one purchase order per supplier (FR-042/FR-044, BR-25).
+11. **Renders and photos are private by default** (NFR-007, BR-33).
+12. **Sponsored placement is a tie-breaker only.** It may break ties among similarly relevant products and must never override relevance, quality, budget, locality, or availability (FR-054, BR-29/BR-30).
+13. **Human-in-the-loop (pilot).** An operator reviews and approves each render before the user sees it, and forwards each confirmed order manually (FR-027/FR-061; pilot "The human's role").
+
+---
+
+## Important decisions (open)
+
+All of the following are **Proposed** (open) and reserved for human decision per PRD §12. Full records live in `/docs_en/decisions/`. Values the PRD gives only as examples or defaults are marked as such; they are not final.
+
+| ADR | Decision | Area | PRD status of any stated value |
+|---|---|---|---|
+| ADR-001 | Technology stack | Architecture | No value stated; fully open. |
+| ADR-002 | Rendering / AI pipeline | AI & Rendering | No value stated; fully open. |
+| ADR-003 | Payment gateway & split-settlement model | Payments | Capabilities constrained (see above); product open. |
+| ADR-004 | Merchant-of-record model | Payments & Legal | Open. |
+| ADR-005 | Style taxonomy | Catalog & AI | Open (BR-16 requires a shared taxonomy; values TBD). |
+| ADR-006 | Supplier catalog ingestion channels | Catalog & Integration | PRD lists integration, Excel, API, FTP as candidates (FR-023); which are supported is TBD. |
+| ADR-007 | Commission percentage & marketplace fee model | Monetization | PRD example "for example 10%" — default/example, TBD. |
+| ADR-008 | Budget tolerance | Product rules | PRD example "such as 10%" — default/example, TBD. |
+| ADR-009 | Daily free-render limit | Cost control & Product | PRD default "defaulting to five" — default, TBD. |
+| ADR-010 | Render-package pricing | Monetization | Open. |
+| ADR-011 | Cart-hold duration | Product rules | PRD default "15 minutes" — default, TBD. |
+| ADR-012 | Catalog synchronization frequency | Catalog & Integration | PRD: "regularly, or real time for ready-made stock" (BR-32); exact cadence TBD. |
+| ADR-013 | Render-time target | Performance | PRD target "approximately 2–5 minutes" — target, TBD. |
+| ADR-014 | Minimum catalog completeness | Catalog | Open. |
+| ADR-015 | Initial launch markets | Go-to-market | Open (pilot uses Bogotá, but full-product markets are TBD). |
+| ADR-016 | Supplier partners & onboarding terms | Partnerships | Open. |
+| ADR-017 | Sponsored-placement plan & pricing | Monetization | Open. |
+| ADR-018 | Taxes & multi-market compliance | Legal & Finance | Open. |
+| ADR-019 | Data privacy & consumer protection | Legal & Security | Open. |
+| ADR-020 | Warranty & dispute-resolution rules | Legal & Operations | Open. |
+| ADR-021 | Brand identity & visual design system | Design | Open. |
+
+See the `/docs_en/decisions` folder for the individual ADR records.
