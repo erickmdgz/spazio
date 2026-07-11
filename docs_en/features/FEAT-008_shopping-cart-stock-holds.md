@@ -42,7 +42,7 @@ This feature covers PRD §8 steps 11, 12, and 14:
 
 1. (PRD §8 step 11) The system **auto-populates the cart** with every product shown in the render (FR-031); each line shows at least price and supplier (pilot).
 2. (PRD §8 step 12) The user **reviews** the cart (FR-032) and may **remove** items (FR-033); in the full product they may also **add** a tagged product (FR-030) or **swap** an item for an alternative (FR-034).
-3. (PRD §8 step 14, full product) Adding an item **places a stock hold** for the configured duration (FR-039); an **expired hold releases** the stock back to availability (FR-040). **Duration:** the PRD states **"15 minutes" as a default (BR-22), which is TBD** (see ADR-011).
+3. (PRD §8 step 14, full product) Adding an item **places a stock hold** for the configured duration (FR-039); an **expired hold releases** the stock back to availability (FR-040). **Duration:** the PRD states **"15 minutes" as a default (BR-22)**; decided (pilot): **NO stock hold in the pilot** — holds and the 15-minute default apply only post-pilot (see ADR-011).
 4. Before payment, the user must **explicitly confirm** the cart (FR-035 / PRD BR-31). The flow then continues to checkout (PRD §8 step 15, FEAT-010).
 
 Per-item price and estimated delivery/production time shown alongside the cart are provided by FEAT-009 (FR-036, pilot-included).
@@ -68,23 +68,23 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - FR-035 (PRD BR-31: the cart is a suggestion and must be explicitly confirmed before payment)
 - FR-031 (PRD FR-08: the cart is auto-populated with every rendered product)
-- FR-039 (PRD BR-22: adding an item holds stock for the configured duration — **PRD default "15 minutes" is TBD**, see ADR-011)
+- FR-039 (PRD BR-22: adding an item holds stock for the configured duration — **PRD default "15 minutes"; decided (pilot): NO stock hold in the pilot, the 15-minute default applies only post-pilot**, see ADR-011)
 - FR-040 (PRD BR-23: expired holds return stock to availability)
 - Related: price/stock **revalidation at checkout** (PRD BR-24) is specified in FEAT-010/FR-041.
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. The pilot stack is decided (Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001); specific product/tool choices are left to implementation.*
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): a **cart screen** pre-filled from the render, each line showing price and supplier (pilot); **remove** control (FR-033); an explicit **confirm** action before checkout (FR-035). Broader stack **[PENDING — see ADR-001]**.
+- On iOS (pilot, VERIFIED): a **cart screen** pre-filled from the render, each line showing price and supplier (pilot); **remove** control (FR-033); an explicit **confirm** action before checkout (FR-035). Broader stack **decided (pilot): Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001** (specific product/tool choices left to implementation).
 - Full product adds **add** (FR-030) and **swap** (FR-034) controls, and a **hold countdown** indicator (FR-039).
 
 ### Backend
 
 - **Cart service** (DRAFT / PROPOSED): build a `Cart` from a render's `RenderItem`s (FR-031); support review/remove/add/swap; capture item price at add time.
-- **Stock-hold service** (full product, DRAFT / PROPOSED): place a `StockHold` on add for the **configured duration** and release it on expiry (FR-039/FR-040). Hold-duration value is **[PENDING — see ADR-011]**; requires coordination with catalog availability (FEAT-015) and checkout revalidation (FEAT-010).
+- **Stock-hold service** (full product, DRAFT / PROPOSED): place a `StockHold` on add for the **configured duration** and release it on expiry (FR-039/FR-040). Hold-duration value is **decided (pilot): NO stock hold in the pilot; the 15-minute default applies only when holds are built post-pilot — see ADR-011**; requires coordination with catalog availability (FEAT-015) and checkout revalidation (FEAT-010).
 - Enforce **explicit confirmation** before allowing payment (FR-035).
 
 ### Database
@@ -92,14 +92,14 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 - Entities involved (canonical registry; fields **DRAFT / PROPOSED** until modeled in `07_data_model.md`):
   - `Cart` — the auto-populated, user-confirmable suggestion derived from a render.
   - `CartItem` — a single product entry with quantity and captured price.
-  - `StockHold` — a time-boxed reservation for a cart item (**PRD default 15 minutes, TBD**), released on expiry.
+  - `StockHold` — a time-boxed reservation for a cart item (**PRD default 15 minutes; decided (pilot): NO stock hold in the pilot — post-pilot only, see ADR-011**), released on expiry.
 - Field-level schema is **TBD**.
 
 ### Security
 
 - A cart belongs to its user; only the owner may review/modify/confirm it (NFR-008).
 - Confirmation must be an explicit, auditable user action (FR-035).
-- Stock holds must not allow overselling; concurrency handling is **DRAFT / PROPOSED** pending the hold-duration decision (ADR-011) and revalidation design (FEAT-010).
+- Stock holds must not allow overselling; concurrency handling is **DRAFT / PROPOSED** (full product; per ADR-011 there is NO stock hold in the pilot, so this applies only post-pilot) and depends on the revalidation design (FEAT-010).
 
 ## 9. Required tests
 

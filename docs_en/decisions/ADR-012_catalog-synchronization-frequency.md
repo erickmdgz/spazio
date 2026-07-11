@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,9 @@ Pilot context: the pilot's catalog is manually curated with real, in-stock items
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopted for the pilot: manual / on-demand refresh by the operator. No automated sync in the pilot.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -54,4 +56,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

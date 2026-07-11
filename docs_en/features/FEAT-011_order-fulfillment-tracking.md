@@ -32,7 +32,7 @@ Functional:
 Non-functional:
 
 - NFR-008 — Authentication protects account and order data (tracking and order records are reachable only by their owner and authorized operators)
-- NFR-010 — Gateway supports marketplace-style split settlement and multi-supplier payouts (the automated successor to the pilot's manual forwarding; NFR-010 explicitly names FR-061 as the pilot substitute — model **TBD**, ADR-003 / ADR-004)
+- NFR-010 — Gateway supports marketplace-style split settlement and multi-supplier payouts (the automated successor to the pilot's manual forwarding; NFR-010 explicitly names FR-061 as the pilot substitute — **Decided (pilot): no split settlement; a single capture with the operator paying suppliers manually (split-settlement model revisit before scale) — ADR-003 / ADR-004**)
 - NFR-006 — Track render-to-purchase conversion from day one (a completed, forwarded order is the terminal state of the purchase this metric measures)
 
 ## 5. Expected flow
@@ -57,31 +57,31 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - FR-061 (pilot operating rule: in the pilot the operator forwards the confirmed order **manually** because no automated split payment or supplier integration is built in week one. This is a **pilot bridge for FR-043 / FR-044**, not a numbered PRD business rule — VERIFIED, pilot.)
 - FR-047 (from PRD FR-12 and PRD §3 "Must have" — *basic order tracking*; PRD §8 step 19. Per-purchase-order granularity follows PRD BR-25's one-PO-per-supplier model.)
-- Related human-reserved decisions: the **payment gateway & split-settlement model** (ADR-003) and **merchant-of-record model** (ADR-004) are **PENDING** (PRD §12). They govern the automated fulfillment path that eventually replaces FR-061; do not treat any gateway / settlement / MoR choice as decided.
+- Related decisions: the **payment gateway & split-settlement model** (ADR-003) and **merchant-of-record model** (ADR-004) are **Decided (pilot): a single PCI-compliant hosted checkout collects ONE payment in COP with NO split settlement, and the Spazio operating entity collects that payment and pays suppliers manually (split-settlement / gateway-provider selection and the MoR tax/legal model revisit before scale) — ADR-003 / ADR-004**. They govern the automated fulfillment path that eventually replaces FR-061.
 
 ## 8. Proposed technical design
 
-*High-level only. Technology, payment gateway, split-settlement, and merchant-of-record choices are reserved for humans (PRD §12) and marked PENDING; do not select or assume any of them here.*
+*High-level only. Technology (ADR-001), payment gateway & split-settlement (ADR-003), and merchant-of-record (ADR-004) are **Decided (pilot)**: a native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage; a single hosted checkout collecting one COP payment with no split settlement; and the Spazio operating entity collecting that payment and paying suppliers manually (split-settlement / provider selection and the MoR tax/legal model revisit before scale). Do not introduce any other stack, gateway, or settlement model here.*
 
 ### Frontend
 
-- **Operator surface (pilot, DRAFT / PROPOSED — internal tool/console):** a list of confirmed, paid orders with a **forward-to-supplier** action that marks the order `forwarded` (FR-061). Operator tooling technology is **[PENDING — see ADR-001]**.
-- **User surface (full product, out of pilot):** an **order-tracking view** showing per-purchase-order status and tracking info (FR-047), including a `no-tracking-yet` state when no tracking data exists. Client stack is **[PENDING — see ADR-001]**.
+- **Operator surface (pilot, DRAFT / PROPOSED — internal tool/console):** a list of confirmed, paid orders with a **forward-to-supplier** action that marks the order `forwarded` (FR-061). Operator tooling technology is **Decided (pilot): built on the ADR-001 stack (one managed backend service); the specific operator-tool choice is left to implementation — see ADR-001**.
+- **User surface (full product, out of pilot):** an **order-tracking view** showing per-purchase-order status and tracking info (FR-047), including a `no-tracking-yet` state when no tracking data exists. Client stack is **Decided (pilot): native iOS (SwiftUI) — see ADR-001**.
 
 ### Backend
 
-- **Manual forwarding (pilot):** record the operator's forwarding action against the paid order / purchase order and transition it to `forwarded` (FR-061). The *transmission channel* to the supplier is manual/out-of-band in the pilot (no automated supplier integration — pilot); any future automated handoff depends on **[PENDING — see ADR-003 / ADR-004]**.
+- **Manual forwarding (pilot):** record the operator's forwarding action against the paid order / purchase order and transition it to `forwarded` (FR-061). The *transmission channel* to the supplier is manual/out-of-band in the pilot (no automated supplier integration — pilot); any future automated handoff is **out of the pilot: no split settlement — the operator forwards manually and the operating entity pays suppliers (revisit before scale) — see ADR-003 / ADR-004**.
 - **Status & tracking (full product):** expose the current status and tracking information per purchase order (FR-047); return a `no-tracking-yet` status when tracking data is absent. A purchase-order **status lifecycle** (DRAFT / PROPOSED) would drive both the operator forwarding transition and the user-facing tracking view; the exact state set is **TBD**.
 
 ### Database
 
-- Entities involved (canonical registry in `07_data_model.md`; fields **DRAFT / PROPOSED** until confirmed with the stack — `ADR-001`):
+- Entities involved (canonical registry in `07_data_model.md`; fields **DRAFT / PROPOSED**, to be finalized during implementation on the decided stack — `ADR-001`):
   - `Order` — the confirmed, paid purchase the operator forwards (`status` values e.g. `pending` / `confirmed` / `in_fulfillment` / `completed` / `cancelled` are **DRAFT / PROPOSED**).
   - `PurchaseOrder` — one per supplier, forwarded to the supplier for fulfillment. Draft fields relevant here: `status` (proposed lifecycle `created` / `sent_to_supplier` / `accepted` / `in_production` / `shipped` / `delivered` / `cancelled`), and the pilot forwarding fields `forwarded_by` → `Operator` and `forwarded_at` (all **DRAFT / PROPOSED**, pilot; FR-061).
   - `OrderTracking` — status and tracking updates per purchase order (FR-047 / PRD FR-12); draft fields `status`, `tracking_number`, `carrier`, `status_updated_at`, `notes` (all **DRAFT / PROPOSED**). *Full tracking is out of pilot.*
   - `Operator` — the staff member who forwards the purchase order in the pilot.
   - `Supplier` — the recipient of the forwarded order.
-- Field-level schema is **TBD** and depends on the technology decision (ADR-001).
+- Field-level schema is **TBD** and follows the decided stack (ADR-001).
 
 ### Security
 

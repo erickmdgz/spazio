@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,7 @@ The `budget tolerance` is both the numeric allowance and the rule for how it is 
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopt a 10% budget tolerance (the PRD BR-9 stated default). Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -52,4 +52,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

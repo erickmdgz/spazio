@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -17,7 +17,9 @@ Pilot context: the pilot manually loads approximately **30–60 clean SKUs** wit
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopted for the pilot: a SKU is renderable only if ALL PRD BR-1 fields are present (photos, dimensions, price, colors, materials, stock, category, style attributes, production/delivery lead time, warranty). The operator enforces this on load.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -51,4 +53,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

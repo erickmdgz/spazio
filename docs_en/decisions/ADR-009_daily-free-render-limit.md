@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,7 @@ This ADR should decide the default limit value and the metering model; the rende
 
 ## Decision
 
-PENDING - to be decided by the team.
+NO daily free-render limit in the pilot (every render is operator-reviewed anyway). The PRD default of five/day applies only when metering is built post-pilot. Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -52,4 +52,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

@@ -65,18 +65,18 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. Technology choices are human decisions (PRD §12), now decided for the pilot — see ADR-001.*
 
 ### Frontend
 
-- **Client platform:** native **iOS** for the pilot (VERIFIED — pilot "Included": "Native iOS app only"). The broader technology stack is **[PENDING — see ADR-001]**.
+- **Client platform:** native **iOS** for the pilot (VERIFIED — pilot "Included": "Native iOS app only"). The broader technology stack is **decided for the pilot: a native iOS (SwiftUI) app + one managed backend service + a managed Postgres database + object storage, single environment/region — see ADR-001**.
 - Screens/components (DRAFT / PROPOSED): a **photo-upload** step (device photo-library picker) for FR-005; an **approximate-dimensions** input step for FR-011 (e.g., simple numeric fields or a guided estimate) designed for minimal steps (NFR-013). In-app **camera capture** UI (FR-006) is a full-product addition, out of pilot.
 - On rejected photos (full product), surface a clear **retake** prompt (FR-024).
 
 ### Backend
 
-- A service to **receive and store** the uploaded room photo as a private `RoomPhoto` and to persist the dimension inputs on the user's `Project` (DRAFT / PROPOSED entities — see below). Storage/back-end technology **[PENDING — see ADR-001]**.
-- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline and is **[PENDING — see ADR-002]**. Not built in the pilot.
+- A service to **receive and store** the uploaded room photo as a private `RoomPhoto` and to persist the dimension inputs on the user's `Project` (DRAFT / PROPOSED entities — see below). Storage/back-end technology **decided for the pilot: one managed backend service with a managed Postgres database and object storage for photos/renders — see ADR-001**.
+- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline, which is **decided for the pilot as a hosted generative image API (image-to-image / inpainting) with mandatory operator QA — see ADR-002**. Not built in the pilot.
 
 ### Database
 
@@ -88,7 +88,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Security
 
 - **Room photos are private by default** (NFR-007 / PRD BR-33): access restricted to the owning user and authorized operators.
-- Account/order data protected by authentication (NFR-008). *Open question — the pilot's user-identity / checkout model is unresolved: accounts (FEAT-001) are out of the pilot per `05_backlog.md` and NFR-008, the pilot excludes guest checkout, and the pilot spec does not state how a pilot user is identified. This must be decided by the team; do not assume pilot users act under an account.*
+- Account/order data protected by authentication (NFR-008). *Decided (pilot): minimal contact capture at checkout (email + phone + shipping), no accounts — see ADR-022. Consistent with accounts (FEAT-001) being out of the pilot per `05_backlog.md` and NFR-008 and the pilot excluding full guest checkout; pilot users are not assumed to act under an account.*
 - Input validation on dimensions (accept only sane approximate values) — criteria to be written into FR-011.
 
 ## 9. Required tests

@@ -4,7 +4,7 @@ This document catalogs the quality attributes the system must satisfy. Each non-
 
 These are **specifications, not implementations**. Nothing here is built yet.
 
-> **Source of truth:** PRD v0.7 §7 (Non-Functional Requirements), plus the pilot milestone (`Spazio_One_Week_iOS_Pilot.md`). Numeric values that the PRD reserves for humans are cited as PRD-stated targets/examples to be confirmed, not as final decisions (see `12. AI Role and Human Definitions` in the PRD and the `ADR-` decisions).
+> **Source of truth:** PRD v0.7 §7 (Non-Functional Requirements), plus the pilot milestone (`Spazio_One_Week_iOS_Pilot.md`). Numeric values that the PRD reserves for humans are cited as PRD-stated targets/examples; their concrete **pilot values are Decided in the linked `ADR-` decisions** (Accepted for the one-week iOS pilot; see `12. AI Role and Human Definitions` in the PRD), with a revisit-before-scale caveat where noted.
 
 ## Status legend
 
@@ -49,13 +49,13 @@ Each NFR is tagged so the reader can tell what is settled from what is not:
 
 ## NFR-001 - Single-room render time
 
-**Category:** Performance · **Priority:** High · **Status:** VERIFIED (a target must exist); numeric SLA **TBD** (ADR-013)
+**Category:** Performance · **Priority:** High · **Status:** VERIFIED (a target must exist); **Decided (pilot): ~2–5 min soft target, no hard SLA (ADR-013)**
 
 The system shall complete a typical single-room render within the confirmed render-time target, measured end to end from the moment the render request is accepted to the moment the render is available to the user.
 
-- **PRD-stated target/example (to be confirmed by humans):** approximately **2–5 minutes** for a typical single-room render (PRD §7, Performance). The concrete render-time target is reserved for humans — see ADR-013.
+- **PRD-stated target/example, adopted for the pilot:** approximately **2–5 minutes** for a typical single-room render (PRD §7, Performance). **Decided (pilot): ~2–5 minutes is a soft target with no hard SLA — see ADR-013.**
 - **Measure:** p50 and p95 end-to-end render latency against the confirmed target.
-- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). Human review adds operator time (FR-027) in the pilot; whether that time is inside or outside this target is **TBD**.
+- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). Human review adds operator time (FR-027) in the pilot; **operator-review time is additional to (outside) the soft target — Decided (pilot), see ADR-013.**
 
 ## NFR-002 - Targeted edits faster than full renders
 
@@ -86,7 +86,7 @@ The system shall enforce a global inference-cost threshold that bounds aggregate
 The system shall degrade gracefully — via queueing or slower rendering — when cost thresholds are exceeded, rather than failing requests outright.
 
 - **Measure:** when the NFR-003 threshold is exceeded, new render requests are queued or served at reduced speed and no request is dropped without a user-visible state.
-- **Trace:** PRD §7 (Cost control). Related cost-control levers: the configurable daily free-render limit (FR-048, PRD §7) — its default of five renders/user/day is a **PRD-stated default to be confirmed** (ADR-009).
+- **Trace:** PRD §7 (Cost control). Related cost-control levers: the configurable daily free-render limit (FR-048, PRD §7) — the PRD default of five renders/user/day applies only when metering is built post-pilot; **Decided (pilot): NO daily free-render limit (ADR-009).**
 
 ## NFR-005 - Track cost per render
 
@@ -110,7 +110,7 @@ The system shall track render-to-purchase conversion from day one of operation.
 
 ## Security & payments
 
-> The **payment gateway**, **split-settlement model**, and **merchant-of-record model** are reserved for humans (PRD §12; ADR-003, ADR-004). NFR-009 through NFR-012 state the capabilities the chosen gateway must provide; they do not select a provider.
+> For the **pilot**, payments run through a single **PCI-compliant hosted checkout that collects one payment in COP**, with **no split settlement** (the operator pays suppliers manually) and the **Spazio operating entity as merchant of record** — **Decided (pilot): ADR-003, ADR-004; the specific gateway/provider and the split-settlement model are revisited before scale.** NFR-009 through NFR-012 state the capabilities the gateway must provide.
 
 ## NFR-007 - Photos and renders private by default
 
@@ -119,7 +119,7 @@ The system shall track render-to-purchase conversion from day one of operation.
 The system shall keep user room photos and generated renders private by default.
 
 - **Measure:** an uploaded/captured photo or a generated render is not accessible to any party other than its owner (and the operators required to review it, FR-027) unless the owner explicitly shares it; sharing is not a pilot feature.
-- **Trace:** PRD §7 (Security and payments) and BR-33; entities `RoomPhoto`, `Render`. Broader data-privacy rules are human-reserved (ADR-019).
+- **Trace:** PRD §7 (Security and payments) and BR-33; entities `RoomPhoto`, `Render`. Broader data-privacy rules follow the minimal-data pilot approach — **Decided (pilot): private by default, minimum data (email, phone, shipping), short privacy notice + consent at first use, aligned with Colombia Ley 1581; legal review before scale (ADR-019).**
 
 ## NFR-008 - Authentication protects account and order data
 
@@ -132,21 +132,21 @@ The system shall protect account and order data behind authentication, so accoun
 
 ## NFR-009 - PCI-compliant payment processing
 
-**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (requirement); gateway **TBD** (ADR-003)
+**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (requirement); **Decided (pilot): single PCI-compliant hosted checkout; specific gateway/provider revisit before scale (ADR-003)**
 
 The system shall process payments through a PCI-compliant path.
 
 - **Measure:** payment processing is handled by a PCI DSS-compliant gateway. **PROPOSED / DRAFT:** Spazio does not store raw card data itself (it delegates to the gateway) — to be confirmed with the chosen provider and legal review.
-- **Trace:** PRD §7, PRD §10 (Dependencies: PCI-compliant payment gateway); FR-042 (single in-app payment), FEAT-010. The specific gateway is **TBD** (ADR-003).
+- **Trace:** PRD §7, PRD §10 (Dependencies: PCI-compliant payment gateway); FR-042 (single in-app payment), FEAT-010. **Decided (pilot): the pilot uses a PCI-compliant hosted checkout; the specific gateway/provider is deferred to scale (ADR-003).**
 
 ## NFR-010 - Split settlement and multi-supplier payouts
 
-**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (capability required); model **TBD** (ADR-003, ADR-004)
+**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (capability required); **Decided (pilot): NO split settlement — operator pays suppliers manually; revisit before scale (ADR-003, ADR-004)**
 
 The payment gateway shall support marketplace-style split settlement and payouts to multiple suppliers from a single user payment.
 
 - **Measure:** one user payment (FR-042) can be settled across the suppliers of the order, producing one purchase order per supplier (FR-044, BR-25).
-- **Trace:** PRD §7, PRD §10 (risk: split settlement may not be available in every country); FR-043, FR-044, FEAT-010. In the **one-week pilot**, automated split payment is excluded — the operator forwards each confirmed order manually (FR-061, pilot). The split-settlement and merchant-of-record models are **TBD** (ADR-003, ADR-004).
+- **Trace:** PRD §7, PRD §10 (risk: split settlement may not be available in every country); FR-043, FR-044, FEAT-010. In the **one-week pilot**, automated split payment is excluded — the operator forwards each confirmed order manually (FR-061, pilot). **Decided (pilot): NO automated split settlement — the operator pays suppliers manually and the Spazio operating entity is the merchant of record; the split-settlement and merchant-of-record models are revisited before scale (ADR-003, ADR-004).**
 
 ## NFR-011 - Multi-currency processing
 
@@ -155,16 +155,16 @@ The payment gateway shall support marketplace-style split settlement and payouts
 The payment gateway shall support processing payments in multiple currencies.
 
 - **Measure:** an order can be priced and paid in the user's local currency (BR-27, FR-046); the gateway settles that currency.
-- **Trace:** PRD §7; FR-046 (display prices in local currency), FEAT-004/FEAT-010. The **pilot is single-currency (COP)** in Bogotá; multi-currency is a full-product requirement. Initial markets and their currencies are **TBD** (ADR-015).
+- **Trace:** PRD §7; FR-046 (display prices in local currency), FEAT-004/FEAT-010. The **pilot is single-currency (COP)** in Bogotá; multi-currency is a full-product requirement. **Decided (pilot): Bogotá, Colombia — COP only (ADR-015).**
 
 ## NFR-012 - Guest checkout and automatic commission retention
 
-**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (capability required); commission % **TBD** (ADR-007)
+**Category:** Security & payments · **Priority:** High · **Status:** VERIFIED (capability required); **Decided (pilot): 10% commission (ADR-007)**
 
 The payment gateway shall support guest checkout and automatic retention of the Spazio marketplace commission on each completed purchase.
 
 - **Measure:** a purchase can complete without a persistent account (with validated email, phone, and shipping info, FR-004 / BR-26), and the marketplace commission is retained automatically on every completed purchase (FR-045, BR-28).
-- **Trace:** PRD §7, PRD §9 (Monetization); FR-004, FR-045, FEAT-010. The commission percentage is a **PRD-stated example only** ("for example 10%", PRD §9) and is reserved for humans — see ADR-007. Guest checkout is **excluded from the one-week pilot**.
+- **Trace:** PRD §7, PRD §9 (Monetization); FR-004, FR-045, FEAT-010. The commission percentage is a PRD-stated example ("for example 10%", PRD §9); **Decided (pilot): 10% of product price, reconciled manually — see ADR-007.** Guest checkout is **excluded from the one-week pilot**.
 
 ---
 
@@ -208,7 +208,7 @@ The system shall make price, delivery estimate, and warranty terms visible befor
 The system shall let supplier onboarding scale by region.
 
 - **Measure:** suppliers and their catalogs can be added per region without re-architecting; onboarding one region does not block or degrade others.
-- **Trace:** PRD §7 (Scalability and internationalization); FEAT-015 (supplier catalog management), FR-055–FR-060. In the **pilot**, the catalog is small and manually curated by operators (FR-056, FR-061) for one city (Bogotá); self-service ingestion is excluded. Supplier partners and onboarding terms are **TBD** (ADR-016).
+- **Trace:** PRD §7 (Scalability and internationalization); FEAT-015 (supplier catalog management), FR-055–FR-060. In the **pilot**, the catalog is small and manually curated by operators (FR-056, FR-061) for one city (Bogotá); self-service ingestion is excluded. **Decided (pilot): hand-pick 2–4 Bogotá suppliers with a one-page written agreement (commission, lead times, warranty), handled manually (ADR-016).**
 
 ## NFR-017 - Architecture supports multiple countries and currencies
 
@@ -217,19 +217,19 @@ The system shall let supplier onboarding scale by region.
 The system architecture shall support multiple countries and currencies.
 
 - **Measure:** the architecture can serve more than one market and currency; adding a market does not require redesign (launch remains phased — PRD §11 Assumptions).
-- **Trace:** PRD §7, PRD §11; FEAT-004 (localization & delivery coverage), entity `Market`, FR-046. The **pilot targets a single market/currency** (Bogotá, COP); initial markets are **TBD** (ADR-015).
+- **Trace:** PRD §7, PRD §11; FEAT-004 (localization & delivery coverage), entity `Market`, FR-046. The **pilot targets a single market/currency** (Bogotá, COP); **Decided (pilot): single market — Bogotá, COP (ADR-015).**
 
 ## NFR-018 - Per-market taxes, payment methods, and legal config
 
-**Category:** Scalability & internationalization · **Priority:** High · **Status:** VERIFIED (must be configurable); values **TBD** (ADR-015, ADR-018)
+**Category:** Scalability & internationalization · **Priority:** High · **Status:** VERIFIED (must be configurable); **Decided (pilot): single market (Colombia/Bogotá, COP), taxes & invoicing handled manually with no tax engine; revisit before scale (ADR-015, ADR-018)**
 
 The system shall make taxes, payment methods, and legal requirements configurable per market.
 
 - **Measure:** taxes, available payment methods, and legal/compliance settings are resolved per `Market` configuration rather than hard-coded.
-- **Trace:** PRD §7, PRD §10 (risk: multi-country complexity — taxes, payment rails, consumer protection, local legal requirements); entity `Market`. The concrete taxes, payment methods, and legal/compliance rules per market are reserved for humans and are **TBD** (ADR-018 for taxes & compliance, ADR-019 for data privacy & consumer protection, ADR-020 for warranty & dispute resolution; markets per ADR-015).
+- **Trace:** PRD §7, PRD §10 (risk: multi-country complexity — taxes, payment rails, consumer protection, local legal requirements); entity `Market`. For the pilot these are handled for a **single market (Colombia)** — **Decided (pilot): taxes & invoicing handled manually with no tax engine (ADR-018); data privacy & consumer protection use the minimal-data, consent-at-first-use approach aligned with Ley 1581 (ADR-019); warranty & disputes handled manually with warranty display out of the pilot (ADR-020); market per ADR-015. Revisit before scale (confirm with an accountant/legal).**
 
 ---
 
 ## Traceability note
 
-Every NFR above is derived from PRD v0.7 §7 and the pilot milestone. Where the PRD gives a number or model that §12 reserves for humans (render-time target, inference-cost threshold, payment gateway, split-settlement and merchant-of-record models, commission percentage, initial markets, taxes and legal/compliance), the value is marked **TBD / PENDING** and linked to the relevant `ADR-`. None of these requirements is implemented; they define acceptance targets for future work and must each map to test cases in `08_test_plan.md` as features are built.
+Every NFR above is derived from PRD v0.7 §7 and the pilot milestone. Where the PRD gives a number or model that §12 reserves for humans (render-time target, payment gateway, split-settlement and merchant-of-record models, commission percentage, initial markets, taxes and legal/compliance), the concrete **pilot value is Decided and linked to the relevant `ADR-`** (Accepted for the one-week iOS pilot; split settlement, gateway/provider, taxes, privacy and warranty carry an explicit revisit-before-scale caveat). The inference-cost threshold remains an operator-configurable setting (NFR-003, still TBD). None of these requirements is implemented; they define acceptance targets for future work and must each map to test cases in `08_test_plan.md` as features are built.

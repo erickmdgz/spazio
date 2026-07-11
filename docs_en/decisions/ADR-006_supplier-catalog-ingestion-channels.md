@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ Pilot context: the pilot uses a **small, manually curated catalog** and **exclud
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopted for the pilot: the operator manually loads a spreadsheet (CSV/Excel) of 30-60 curated SKUs. No API/FTP/self-service ingestion in the pilot.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -57,4 +59,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

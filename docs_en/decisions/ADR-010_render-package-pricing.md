@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,7 @@ This ADR should decide whether to offer paid packages at all, and if so the pack
 
 ## Decision
 
-PENDING - to be decided by the team.
+Not offered in the pilot (deferred). No paid render packages. Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -52,4 +52,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

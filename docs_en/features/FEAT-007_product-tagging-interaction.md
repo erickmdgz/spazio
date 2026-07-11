@@ -57,11 +57,11 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. The technology stack was decided for the pilot (a human decision, PRD §12) — see ADR-001 (native iOS + one managed backend + managed Postgres + object storage; single environment/region; no multi-platform); product/tool specifics are left to implementation.*
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): an **interactive render view** with tappable tag hotspots overlaid on each shown product; tapping opens a **product detail** view showing name, price, supplier, warranty, and listing link (FR-028/FR-029). Broader stack **[PENDING — see ADR-001]**.
+- On iOS (pilot, VERIFIED): an **interactive render view** with tappable tag hotspots overlaid on each shown product; tapping opens a **product detail** view showing name, price, supplier, warranty, and listing link (FR-028/FR-029). Broader stack **decided for the pilot — see ADR-001 (native iOS + one managed backend + managed Postgres + object storage; single environment/region; no multi-platform)**.
 - Prices shown in the user's local currency (pilot: **COP**, VERIFIED; general rule FR-046 in FEAT-004).
 
 ### Backend

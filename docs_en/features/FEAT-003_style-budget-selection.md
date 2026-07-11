@@ -57,29 +57,29 @@ If you detect a new criterion during implementation, first add it to the FR (wit
 
 Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not rewritten here. Reference:
 
-- FR-007 / FR-008 (PRD BR-16: products must be mapped to a shared **style taxonomy** — the taxonomy's contents are **TBD**, see ADR-005; the selected style must resolve against it in FEAT-005)
-- FR-009 (the budget range feeds the budget-tolerance rule enforced downstream — PRD BR-9, **tolerance "such as 10%" is a PRD example, TBD**, see ADR-008 and FEAT-005/FR-021)
+- FR-007 / FR-008 (PRD BR-16: products must be mapped to a shared **style taxonomy** — Decided (pilot): **one or two predefined visual styles + free-text description; no taxonomy engine**, see ADR-005; the selected style must resolve against it in FEAT-005)
+- FR-009 (the budget range feeds the budget-tolerance rule enforced downstream — PRD BR-9, **tolerance 10% adopted for the pilot**, see ADR-008 and FEAT-005/FR-021)
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. Technology choices are reserved for humans (PRD §12); for the pilot they are Decided in the ADRs (see ADR-001).*
 
 ### Frontend
 
-- **Client platform:** native **iOS** for the pilot (VERIFIED). Broader stack **[PENDING — see ADR-001]**.
+- **Client platform:** native **iOS** for the pilot (VERIFIED). Broader stack **Decided (pilot): one small managed backend service + a managed relational (Postgres) DB + object storage for photos/renders; single environment/region; no multi-platform — see ADR-001**.
 - Screens/components (DRAFT / PROPOSED): a **visual style picker** showing the predefined styles (PRD §5 wants style selection to be visual), designed for minimal steps (NFR-013); an **optional free-text field** for the style description (FR-008); a **budget range** control capturing minimum and maximum (FR-009). Pilot shows **one or two** predefined styles (VERIFIED, pilot).
 - Budget must remain visible throughout later steps (PRD §5) — a persistent budget indicator is a DRAFT / PROPOSED UI treatment.
 
 ### Backend
 
-- Persist the user's style choice, style description, and budget range on the `Project`. Resolve the selected style/description against the shared **style taxonomy** for downstream matching — taxonomy definition is **[PENDING — see ADR-005]**.
-- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **[PENDING — see ADR-002]**.
+- Persist the user's style choice, style description, and budget range on the `Project`. Resolve the selected style/description against the shared **style taxonomy** for downstream matching — taxonomy definition is **Decided (pilot): one or two predefined visual styles + free-text description; no taxonomy engine — see ADR-005**.
+- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **Decided (pilot): a hosted generative image API (image-to-image / inpainting) with mandatory operator QA; no custom-trained model — see ADR-002**.
 
 ### Database
 
 - Entities involved (canonical registry; concrete fields **DRAFT / PROPOSED** until modeled in `07_data_model.md`):
   - `Style` — a predefined visual style a user can select, mapped to product style attributes.
-  - `StyleTaxonomy` — the shared classification mapping products and user style choices to a common vocabulary (BR-16); **values TBD** (ADR-005).
+  - `StyleTaxonomy` — the shared classification mapping products and user style choices to a common vocabulary (BR-16); **Decided (pilot): one or two predefined visual styles + free-text description; no taxonomy engine** (ADR-005).
   - `Project` — stores the chosen style, free-text description(s), and budget min/max for the session.
 - Field-level schema is **TBD**.
 

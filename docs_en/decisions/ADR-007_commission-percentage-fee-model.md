@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ This ADR must decide both the **fee model** (how commission is structured) and t
 
 ## Decision
 
-PENDING - to be decided by the team.
+Decided (pilot): 10% (PRD §9 stated default) of product price. In the pilot, commission is reconciled MANUALLY (no billing code) (see ADR-007).
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -53,4 +55,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

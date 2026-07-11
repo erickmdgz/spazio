@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,9 @@ Pilot context: the pilot collects real users' room photos in Bogotá (Valentina 
 
 ## Decision
 
-PENDING - to be decided by the team.
+Photos and renders are private by default (PRD BR-33); collect the minimum data (email, phone, shipping); a short privacy notice + consent at first use.
+
+Scope: one-week iOS pilot. Align with Colombia Ley 1581; legal review before scale.
 
 ## Alternatives considered
 
@@ -50,4 +52,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

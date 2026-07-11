@@ -27,7 +27,7 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 **Status (requirement validity):** `Proposed` / `Approved` / `Deprecated`. Implementation progress is not recorded here; it is read in `05_backlog.md`.
 
-> **Governance note (read before treating any value as final).** PRD v0.7 §12 reserves a set of decisions for humans. Where an FR below references a numeric value or a mechanism that the PRD gives only as an **example or default** — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%", render time "~2–5 min" — it is written here as a **PRD-stated default/example pending human confirmation**, not as a decided value, and is linked to its `ADR-XXX`. Structural proposals that go beyond what the PRD states (status codes, field names, response shapes) are marked **Draft / Proposed**. Nothing in this document is implemented; every block is a specification. Traceability tags used below: **VERIFIED** = stated in PRD v0.7 or the one-week pilot; **DRAFT/PROPOSED** = reasonable structuring by the author; **TBD/PENDING** = a human decision (see `docs_en/decisions/`).
+> **Governance note (read before treating any value as final).** PRD v0.7 §12 reserves a set of decisions for humans. Where an FR below references a numeric value or a mechanism that the PRD gives only as an **example or default** — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%", render time "~2–5 min" — the value has been **adopted for the one-week pilot** as a human decision recorded in its `ADR-XXX` (the simplest option consistent with the PRD and the pilot), and is linked to that ADR. Structural proposals that go beyond what the PRD states (status codes, field names, response shapes) are marked **Draft / Proposed**. Nothing in this document is implemented; every block is a specification. Traceability tags used below: **VERIFIED** = stated in PRD v0.7 or the one-week pilot; **DRAFT/PROPOSED** = reasonable structuring by the author; **TBD/PENDING** = a human decision (see `docs_en/decisions/`).
 
 ## Requirements index
 
@@ -99,8 +99,8 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 > **Deferred / not yet catalogued (PRD Must-have coverage gap).** Two PRD §3 "Must have" items are **deliberately not yet written as FRs**. They are recorded here so the gap is visible instead of lost; no FR is invented for them yet.
 >
-> - **Saved designs** — no FR currently catalogues saving, listing, or revisiting a design. The `Project` entity exists in `07_data_model.md` but has no corresponding FR. Note the PRD's own overlap to resolve first: "Saved designs" appears under **Must have** while "Save, revisit, and share designs" appears under **Could have** — the intended scope needs human clarification before an FR is written.
-> - **Order history** — no dedicated FR. Order history is only indirectly reachable via FR-047 (per-purchase-order status and tracking); a distinct "list past orders" capability is not yet catalogued.
+> - **Saved designs** — no FR currently catalogues saving, listing, or revisiting a design. The `Project` entity exists in `07_data_model.md` but has no corresponding FR. The PRD's own overlap is resolved as **Could have** ("Saved designs" appears under **Must have** while "Save, revisit, and share designs" appears under **Could have**): saved designs are **excluded from the one-week pilot** and no FR is catalogued yet.
+> - **Order history** — no dedicated FR. Resolved for the pilot: the pilot shows only the single active order's status via FR-047 (per-purchase-order status and tracking) / the operator; there is no history list, and a distinct "list past orders" FR is deferred (not catalogued yet).
 >
 > When the scope is confirmed, add the FR(s) via `docs_en/templates/template_requirement.md` and link each to its PRD origin.
 
@@ -141,7 +141,7 @@ The system shall, when a visitor submits valid registration data, create a user 
 
 ### Business rules
 
-- Status codes and the exact required fields are **DRAFT/PROPOSED**; final account model and privacy handling depend on the human decision on data privacy → ADR-019.
+- Status codes and the exact required fields are **DRAFT/PROPOSED**; final account model and privacy handling follow the pilot data-privacy decision (minimum data captured; private by default; consent at first use; align with Colombia Ley 1581, legal review before scale) → ADR-019.
 
 ## FR-002 — Authenticate and sign in to an existing account
 
@@ -159,7 +159,7 @@ The system shall, when a registered user submits credentials, verify them and es
 
 ### Business rules
 
-- Authentication must protect account and order data (VERIFIED, PRD §7 → NFR-008). Session/token mechanism is **DRAFT/PROPOSED** pending the technology decision → ADR-001.
+- Authentication must protect account and order data (VERIFIED, PRD §7 → NFR-008). Session/token mechanism is **DRAFT/PROPOSED**; the technology stack is decided for the pilot (native iOS/SwiftUI + one managed backend service + a managed Postgres DB) → ADR-001.
 
 ## FR-003 — Manage a basic profile and preferences
 
@@ -192,7 +192,7 @@ The system shall, when a guest provides a validated email, a phone number, and s
 
 ### Business rules
 
-- Guest checkout requires email validation, phone number, and shipping information (VERIFIED, PRD §4 BR-26). The gateway must support guest checkout (VERIFIED, PRD §7 → NFR-012); gateway selection is **TBD** → ADR-003.
+- Guest checkout requires email validation, phone number, and shipping information (VERIFIED, PRD §4 BR-26). The gateway must support guest checkout (VERIFIED, PRD §7 → NFR-012); the gateway model is decided for the pilot (a single PCI-compliant hosted checkout collecting one payment in COP; provider selection revisit before scale) → ADR-003.
 
 ## FR-005 — Upload a room photo
 
@@ -241,7 +241,7 @@ The system shall, when a user selects a predefined visual style from the style c
 
 ### Business rules
 
-- The set of predefined styles derives from the shared style taxonomy, whose values are **TBD** → ADR-005. The pilot ships with only one or two predefined styles (VERIFIED, pilot scope).
+- The set of predefined styles derives from the shared style taxonomy, whose values are decided for the pilot (1–2 predefined styles + free-text description; no taxonomy engine) → ADR-005. The pilot ships with only one or two predefined styles (VERIFIED, pilot scope).
 
 ## FR-008 — Provide a free-text style description
 
@@ -258,7 +258,7 @@ The system shall, when a user enters a free-text style description, persist that
 
 ### Business rules
 
-- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose approach is **TBD** → ADR-002.
+- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose approach is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002.
 
 ## FR-009 — Enter a budget range (minimum and maximum)
 
@@ -321,7 +321,7 @@ The system shall, when a user's location is available, determine the set of supp
 
 ### Business rules
 
-- Only products deliverable to the user's locality may ultimately be rendered (VERIFIED, PRD §4 BR-11 → FR-020). The supplier partner set is **TBD** → ADR-016.
+- Only products deliverable to the user's locality may ultimately be rendered (VERIFIED, PRD §4 BR-11 → FR-020). The supplier partner set is decided for the pilot (2–4 hand-picked Bogotá suppliers under a one-page written agreement) → ADR-016.
 
 ## FR-013 — Determine the user's delivery zone from location
 
@@ -339,7 +339,7 @@ The system shall, when a user's location is available, determine the applicable 
 
 ### Business rules
 
-- The pilot operates a single delivery zone (Bogotá) (VERIFIED, pilot scope). Additional zones/markets are **TBD** → ADR-015.
+- The pilot operates a single delivery zone (Bogotá) (VERIFIED, pilot scope). The launch market is decided for the pilot (Bogotá, Colombia; COP only); additional zones/markets are out of the pilot (revisit before scale) → ADR-015.
 
 ## FR-014 — Match real, available catalog SKUs to style, dimensions, budget, and locality
 
@@ -357,7 +357,7 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 
 ### Business rules
 
-- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The matching/rendering pipeline approach is **TBD** → ADR-002.
+- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The matching/rendering pipeline approach is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002.
 
 ## FR-015 — Generate a photorealistic render compositing matched SKUs into the room photo
 
@@ -375,7 +375,7 @@ The system shall, when matched SKUs and a valid room photo are available, genera
 
 ### Business rules
 
-- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007) and must be operator-approved before being shown (VERIFIED, pilot → FR-027). The rendering pipeline is **TBD** → ADR-002; the render-time target (~2–5 min is a PRD example) is **TBD** → ADR-013 / NFR-001.
+- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007) and must be operator-approved before being shown (VERIFIED, pilot → FR-027). The rendering pipeline is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002; the render-time target (~2–5 min) is adopted for the pilot as a soft target with no hard SLA → ADR-013 / NFR-001.
 
 ## FR-016 — Restrict every rendered item to a real, purchasable SKU and never fabricate products
 
@@ -447,7 +447,7 @@ The system shall, when evaluating a catalog entry's rendering eligibility, exclu
 
 ### Business rules
 
-- Incomplete catalog entries are excluded from rendering (VERIFIED, PRD §4 BR-2). Required attributes are defined in FR-057 (PRD §4 BR-1). Minimum catalog completeness threshold is **TBD** → ADR-014.
+- Incomplete catalog entries are excluded from rendering (VERIFIED, PRD §4 BR-2). Required attributes are defined in FR-057 (PRD §4 BR-1). Minimum catalog completeness threshold is decided for the pilot (a SKU is renderable only if all PRD BR-1 fields are present) → ADR-014.
 
 ## FR-020 — Restrict rendering to products deliverable to the user's locality
 
@@ -483,7 +483,7 @@ The system shall, when finalizing a render, keep the total cost of rendered prod
 
 ### Business rules
 
-- Total product cost should not exceed the budget beyond an agreed tolerance, which the PRD states only as an example ("such as 10%") — **TBD** → ADR-008. Kept items are excluded from the budget calculation (PRD §4 BR-8 → FR-026).
+- Total product cost should not exceed the budget beyond an agreed tolerance; the 10% value is adopted for the pilot → ADR-008. Kept items are excluded from the budget calculation (PRD §4 BR-8 → FR-026).
 
 ## FR-022 — On unmet budget, disclose it and offer the closest available alternative
 
@@ -762,7 +762,7 @@ The system shall, when the cart or checkout is shown, display each item's suppli
 
 ### Business rules
 
-- Warranty terms must be supplier-declared and displayed before checkout (VERIFIED, PRD §4 BR-18). Warranty and dispute-resolution rules are **TBD** → ADR-020.
+- Warranty terms must be supplier-declared and displayed before checkout (VERIFIED, PRD §4 BR-18). Warranty and dispute-resolution rules are decided for the pilot (warranty display is out of the pilot; suppliers' own warranty terms apply; disputes are handled manually by the operator) → ADR-020.
 
 ## FR-039 — Place a stock hold when a product is added to the cart, for the configured duration
 
@@ -780,7 +780,7 @@ The system shall, when a product is added to the cart, place a stock hold on it 
 
 ### Business rules
 
-- Adding an item to the cart holds stock; the PRD states 15 minutes as the value, presented here as a PRD default pending human confirmation → ADR-011.
+- Adding an item to the cart holds stock; the PRD states 15 minutes. Decided for the pilot: no stock hold in the pilot; the 15-minute value applies only when holds are built post-pilot → ADR-011.
 
 ## FR-040 — Release held stock back to availability when the hold expires
 
@@ -797,7 +797,7 @@ The system shall, when a stock hold's duration elapses without checkout, release
 
 ### Business rules
 
-- Expired holds return stock to availability (VERIFIED, PRD §4 BR-23). Hold duration is **TBD** → ADR-011.
+- Expired holds return stock to availability (VERIFIED, PRD §4 BR-23). Hold duration is decided for the pilot: no stock holds in the pilot; the 15-minute value applies only when holds are built post-pilot → ADR-011.
 
 ## FR-041 — Revalidate price and availability at checkout before payment
 
@@ -833,7 +833,7 @@ The system shall, when a confirmed and revalidated cart is paid, process a singl
 
 ### Business rules
 
-- Checkout produces one user payment (VERIFIED, PRD §4 BR-25). Payment processing must be PCI-compliant (PRD §7 → NFR-009). Payment gateway and merchant-of-record model are **TBD** → ADR-003, ADR-004. The pilot uses one simple in-app checkout (VERIFIED, pilot scope).
+- Checkout produces one user payment (VERIFIED, PRD §4 BR-25). Payment processing must be PCI-compliant (PRD §7 → NFR-009). Payment gateway and merchant-of-record model are decided for the pilot (a single PCI-compliant hosted checkout collecting one COP payment; the Spazio operating entity is merchant of record and pays suppliers manually; provider and tax/legal choices revisit before scale) → ADR-003, ADR-004. The pilot uses one simple in-app checkout (VERIFIED, pilot scope).
 
 ## FR-043 — Settle funds to multiple suppliers via split settlement
 
@@ -851,7 +851,7 @@ The system shall, when a paid order spans multiple suppliers, split and settle t
 
 ### Business rules
 
-- The gateway must support marketplace-style split settlement and multi-supplier payouts (PRD §7 → NFR-010). Split-settlement model and merchant-of-record model are **TBD** → ADR-003, ADR-004. Split settlement may not be available in every country (known risk, PRD §10).
+- The gateway must support marketplace-style split settlement and multi-supplier payouts (PRD §7 → NFR-010). Split-settlement model and merchant-of-record model are decided for the pilot: no split settlement in the pilot (the operator pays suppliers manually); split settlement and provider selection revisit before scale → ADR-003, ADR-004. Split settlement may not be available in every country (known risk, PRD §10).
 
 ## FR-044 — Generate one purchase order per supplier at checkout
 
@@ -885,7 +885,7 @@ The system shall, when a purchase is completed, apply and retain the marketplace
 
 ### Business rules
 
-- Spazio applies a marketplace commission to every completed purchase (VERIFIED, PRD §4 BR-28). The percentage is a PRD example ("for example 10%") pending human confirmation → ADR-007. The gateway must support automatic commission retention (PRD §7 → NFR-012).
+- Spazio applies a marketplace commission to every completed purchase (VERIFIED, PRD §4 BR-28). The percentage is 10%, adopted for the pilot (reconciled manually; no billing code) → ADR-007. The gateway must support automatic commission retention (PRD §7 → NFR-012).
 
 ## FR-046 — Display prices in the user's local currency
 
@@ -902,7 +902,7 @@ The system shall, when displaying prices, show them in the user's local currency
 
 ### Business rules
 
-- Prices are shown in the local currency (VERIFIED, PRD §4 BR-27). The pilot uses a single currency (COP) in one market (VERIFIED, pilot scope). Initial launch markets and per-market taxes/payment methods are **TBD** → ADR-015, ADR-018.
+- Prices are shown in the local currency (VERIFIED, PRD §4 BR-27). The pilot uses a single currency (COP) in one market (VERIFIED, pilot scope). Initial launch markets and per-market taxes/payment methods are decided for the pilot (single market Bogotá/COP; taxes/invoicing handled manually; revisit before scale) → ADR-015, ADR-018.
 
 ## FR-047 — Provide per-purchase-order status and tracking
 
@@ -934,7 +934,7 @@ The system shall, when a user requests a render, enforce the configurable daily 
 
 ### Business rules
 
-- Free render usage is configurable; the PRD states a default of five attempts per user per day, presented here as a PRD default pending human confirmation → ADR-009.
+- Free render usage is configurable; the PRD states a default of five attempts per user per day. Decided for the pilot: no daily free-render limit (every render is operator-reviewed); the five/day default applies only when metering is built post-pilot → ADR-009.
 
 ## FR-049 — Count every render generation or edit as one render attempt
 
@@ -968,7 +968,7 @@ The system shall, when a user has reached the daily render limit, offer the opti
 
 ### Business rules
 
-- After reaching the limit, the user may return the next day or buy a render package (VERIFIED, PRD §4 BR-21). Render-package pricing is **TBD** → ADR-010.
+- After reaching the limit, the user may return the next day or buy a render package (VERIFIED, PRD §4 BR-21). Render-package pricing is decided for the pilot: paid render packages are not offered (deferred) → ADR-010.
 
 ## FR-051 — Ask targeted refinement questions when the user re-renders the same scene
 
@@ -1034,7 +1034,7 @@ The system shall, when ordering similarly ranked products, apply sponsored place
 
 ### Business rules
 
-- Sponsored placement may only break ties among similarly relevant, high-quality products and must never override relevance, quality, budget, locality, or availability (VERIFIED, PRD §4 BR-29, BR-30; §9). Sponsored-plan pricing is **TBD** → ADR-017.
+- Sponsored placement may only break ties among similarly relevant, high-quality products and must never override relevance, quality, budget, locality, or availability (VERIFIED, PRD §4 BR-29, BR-30; §9). Sponsored-plan pricing is decided for the pilot: sponsored placement is not offered (deferred) → ADR-017.
 
 ## FR-055 — Let suppliers self-ingest catalog data through supported channels
 
@@ -1052,7 +1052,7 @@ The system shall, when a supplier submits catalog data through a supported inges
 
 ### Business rules
 
-- The PRD lists software integration, Excel, API, and FTP as candidate channels; the supported set is **TBD** → ADR-006. Imported entries still pass operator curation (FR-056) and completeness checks (FR-019, FR-057).
+- The PRD lists software integration, Excel, API, and FTP as candidate channels; the supported set is decided for the pilot: the operator manually loads a CSV/Excel spreadsheet of 30–60 curated SKUs (no API/FTP/self-service ingestion) → ADR-006. Imported entries still pass operator curation (FR-056) and completeness checks (FR-019, FR-057).
 
 ## FR-056 — Operator curates and approves catalog entries
 
@@ -1088,7 +1088,7 @@ The system shall, when a catalog SKU is saved, store its required attributes: ph
 
 ### Business rules
 
-- Supplier catalog entries must include photos, dimensions, price, available colors, materials, stock, category, style attributes, production/delivery lead time, and warranty terms (VERIFIED, PRD §4 BR-1). Minimum catalog completeness threshold is **TBD** → ADR-014.
+- Supplier catalog entries must include photos, dimensions, price, available colors, materials, stock, category, style attributes, production/delivery lead time, and warranty terms (VERIFIED, PRD §4 BR-1). Minimum catalog completeness threshold is decided for the pilot (a SKU is renderable only if all PRD BR-1 fields are present) → ADR-014.
 
 ## FR-058 — Classify products as in-stock ready-made or made-to-order with required stock/lead-time data
 
@@ -1125,7 +1125,7 @@ The system shall, when a product is prepared for the catalog, map it to the shar
 
 ### Business rules
 
-- Products must be mapped to a shared style taxonomy (VERIFIED, PRD §4 BR-16). The taxonomy values are **TBD** → ADR-005.
+- Products must be mapped to a shared style taxonomy (VERIFIED, PRD §4 BR-16). The taxonomy values are decided for the pilot (1–2 predefined styles + free-text description; no taxonomy engine) → ADR-005.
 
 ## FR-060 — Synchronize supplier catalog data regularly, and in real time for ready-made stock
 
@@ -1143,7 +1143,7 @@ The system shall, when the synchronization schedule runs, update supplier catalo
 
 ### Business rules
 
-- Supplier data must synchronize regularly, or in real time for ready-made stock (VERIFIED, PRD §4 BR-32). Synchronization frequency is **TBD** → ADR-012.
+- Supplier data must synchronize regularly, or in real time for ready-made stock (VERIFIED, PRD §4 BR-32). Synchronization frequency is decided for the pilot: manual/on-demand refresh by the operator (no automated sync) → ADR-012.
 
 ## FR-061 — Operator manually forwards each confirmed order to the supplier
 

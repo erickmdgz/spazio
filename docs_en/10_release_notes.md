@@ -36,10 +36,11 @@ the first `vX.Y.Z` tag is cut (see *First tagged release* below).
   (`NFR-001`–`NFR-018`, in `04_non_functional_requirements.md`), and test cases
   (`TC-001`–`TC-106`, in `08_test_plan.md`) are **authored as specifications** —
   not implemented and not executed.
-- **Architecture Decision Records, all Proposed.** Twenty-one ADR files
-  (`ADR-001`–`ADR-021`) are authored in `docs_en/decisions/`, each carrying
-  **Status: Proposed** with its decision still **pending** — see *Technical
-  changes* below for the register.
+- **Architecture Decision Records, all Accepted (pilot).** Twenty-two ADR files
+  (`ADR-001`–`ADR-022`) are authored in `docs_en/decisions/`, each carrying
+  **Status: Accepted (pilot)** with its decision recorded at the simplest
+  pilot-scoped value — see *Technical changes* below for the register. Recording
+  a decision is not building it: nothing here is implemented or shipped.
 - **Feature specifications, seeded.** Authored feature docs in
   `docs_en/features/`: `FEAT-002`, `FEAT-003`, `FEAT-004`, `FEAT-005`,
   `FEAT-006`, `FEAT-007`, `FEAT-008`, `FEAT-009`, `FEAT-010`, `FEAT-011`, and
@@ -59,41 +60,51 @@ the first `vX.Y.Z` tag is cut (see *First tagged release* below).
 
 ### Technical changes
 
-- **Architecture decisions remain open.** The decisions reserved for humans in
-  **PRD §12** are recorded as ADR files in `docs_en/decisions/`
-  (`ADR-001`–`ADR-021`), each with **Status: Proposed** and its decision still
-  **pending**. None is decided, and no value below should be read as final. The
-  table below registers the identifier, title, and status of each record.
+- **Architecture decisions recorded (pilot-scoped).** The decisions reserved for
+  humans in **PRD §12** have been made for the pilot and are recorded as ADR
+  files in `docs_en/decisions/` (`ADR-001`–`ADR-022`), each with **Status:
+  Accepted (pilot)** and resolved at its simplest implementation consistent with
+  the PRD and the one-week iOS pilot. These values are decided and recorded, not
+  built: nothing below is implemented or shipped in this release. Values marked
+  *(revisit before scale)* stay Accepted for the pilot and carry an explicit
+  scale caveat. The table below registers the identifier, decision, and status of
+  each record.
 
-  | ADR | Decision (Proposed — reserved for humans) | Status |
+  | ADR | Decision (Accepted for the pilot — reserved for humans) | Status |
   |---|---|---|
-  | ADR-001 | Technology stack | Proposed |
-  | ADR-002 | Rendering / AI pipeline | Proposed |
-  | ADR-003 | Payment gateway & split-settlement model | Proposed |
-  | ADR-004 | Merchant-of-record model | Proposed |
-  | ADR-005 | Style taxonomy | Proposed |
-  | ADR-006 | Supplier catalog ingestion channels | Proposed |
-  | ADR-007 | Commission percentage & marketplace fee model | Proposed |
-  | ADR-008 | Budget tolerance | Proposed |
-  | ADR-009 | Daily free-render limit | Proposed |
-  | ADR-010 | Render-package pricing | Proposed |
-  | ADR-011 | Cart-hold duration | Proposed |
-  | ADR-012 | Catalog synchronization frequency | Proposed |
-  | ADR-013 | Render-time target | Proposed |
-  | ADR-014 | Minimum catalog completeness | Proposed |
-  | ADR-015 | Initial launch markets | Proposed |
-  | ADR-016 | Supplier partners & onboarding terms | Proposed |
-  | ADR-017 | Sponsored-placement plan & pricing | Proposed |
-  | ADR-018 | Taxes & multi-market compliance | Proposed |
-  | ADR-019 | Data privacy & consumer protection | Proposed |
-  | ADR-020 | Warranty & dispute-resolution rules | Proposed |
-  | ADR-021 | Brand identity & visual design system | Proposed |
+  | ADR-001 | Technology stack | Accepted (pilot) |
+  | ADR-002 | Rendering / AI pipeline | Accepted (pilot) |
+  | ADR-003 | Payment gateway & split-settlement model | Accepted (pilot) |
+  | ADR-004 | Merchant-of-record model | Accepted (pilot) |
+  | ADR-005 | Style taxonomy | Accepted (pilot) |
+  | ADR-006 | Supplier catalog ingestion channels | Accepted (pilot) |
+  | ADR-007 | Commission percentage & marketplace fee model | Accepted (pilot) |
+  | ADR-008 | Budget tolerance | Accepted (pilot) |
+  | ADR-009 | Daily free-render limit | Accepted (pilot) |
+  | ADR-010 | Render-package pricing | Accepted (pilot) |
+  | ADR-011 | Cart-hold duration | Accepted (pilot) |
+  | ADR-012 | Catalog synchronization frequency | Accepted (pilot) |
+  | ADR-013 | Render-time target | Accepted (pilot) |
+  | ADR-014 | Minimum catalog completeness | Accepted (pilot) |
+  | ADR-015 | Initial launch markets | Accepted (pilot) |
+  | ADR-016 | Supplier partners & onboarding terms | Accepted (pilot) |
+  | ADR-017 | Sponsored-placement plan & pricing | Accepted (pilot) |
+  | ADR-018 | Taxes & multi-market compliance | Accepted (pilot) |
+  | ADR-019 | Data privacy & consumer protection | Accepted (pilot) |
+  | ADR-020 | Warranty & dispute-resolution rules | Accepted (pilot) |
+  | ADR-021 | Brand identity & visual design system | Accepted (pilot) |
+  | ADR-022 | Pilot checkout identity model | Accepted (pilot) |
 
-- Where the PRD offers a working value only as an example or default — commission
-  (PRD example ~10%), daily free-render limit (PRD default ~5), cart-hold duration
-  (PRD default 15 minutes), budget tolerance (PRD example ~10%), render-time
-  target (PRD target ~2–5 min) — it is carried in the relevant ADR record as a
-  **PRD-stated default to be confirmed by humans**, not as a chosen setting.
+- Where the PRD offered a working value only as an example or default, the
+  relevant ADR now records the decided pilot setting: commission is **10%,
+  adopted for the pilot (ADR-007)**, budget tolerance is **10%, adopted for the
+  pilot (ADR-008)**, and the render-time target is **~2–5 min as a soft target,
+  with no hard SLA in the pilot (ADR-013)**. The PRD's daily free-render limit
+  (~5/day) and cart-hold duration (15 minutes) are **out of the pilot**: the
+  pilot sets **no render limit (ADR-009)** and **no stock hold (ADR-011)**, so
+  those PRD defaults apply only if metering/holds are built post-pilot. Each is a
+  decided pilot setting recorded in its ADR, not a value implemented in this
+  release.
 
 ### Requirements covered
 

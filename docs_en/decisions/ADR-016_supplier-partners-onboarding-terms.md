@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ Pilot context: the pilot uses a **small manually curated catalog from a few loca
 
 ## Decision
 
-PENDING - to be decided by the team.
+Hand-pick 2-4 Bogotá suppliers with a one-page written agreement covering commission, lead times, and warranty. This is a business task, done manually.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -53,4 +55,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.
