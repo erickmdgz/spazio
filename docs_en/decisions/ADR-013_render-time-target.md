@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,7 @@ Pilot context: the rendering pipeline is set up on Day 1 and renders are human-r
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopt a ~2-5 minute soft target for a single-room render (PRD §7); NO hard SLA in the pilot (operator-review time is additional). Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -51,4 +51,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

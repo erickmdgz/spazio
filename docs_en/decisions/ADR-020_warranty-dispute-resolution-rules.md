@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ Pilot context: **warranty display is excluded from the pilot**, and fulfillment 
 
 ## Decision
 
-PENDING - to be decided by the team.
+The pilot does NOT display warranty (out of pilot); suppliers' own warranty terms apply; disputes are handled MANUALLY by the operator.
+
+Scope: one-week iOS pilot. Revisit before scale; formal warranty and dispute-resolution policy needs legal / consumer-protection review (this is an operational pilot bridge, not a settled consumer-protection policy; depends on ADR-004 merchant-of-record, ADR-016 supplier contracts, and ADR-019 consumer-protection law).
 
 ## Alternatives considered
 
@@ -51,4 +53,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

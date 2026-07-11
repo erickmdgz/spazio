@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,7 @@ Pilot context: stock holds (FR-039, FR-040) are **not** in the pilot's included 
 
 ## Decision
 
-PENDING - to be decided by the team.
+NO stock hold in the pilot (tiny manually-curated catalog; operator checks availability). The PRD's 15-minute hold applies only when holds are built post-pilot. Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -51,4 +51,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

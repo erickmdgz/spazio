@@ -1,7 +1,7 @@
 # Data model
 
-> **Draft - proposed data model, pending architecture decision.**
-> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. The physical schema, database engine, and field types depend on the technology stack, which is a human decision (see `ADR-001 Technology stack`). Treat every table below as a specification to review, not a settled design.
+> **Draft - proposed data model; architecture decided for the pilot (see `ADR-001`).**
+> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`). Treat every table below as a specification to review, not a settled design.
 
 ## How to read this document
 
@@ -13,13 +13,13 @@ Each entity has a short purpose line, a field table (`Field / Type / Required / 
 |---|---|
 | (PRD …) / (BR-…) / (FR-…) | **Verified** — the field or constraint is stated in the PRD or pilot. The citation points to the source. |
 | **(proposed)** | **Draft** — a reasonable structuring choice not explicitly stated in the PRD; included for referential integrity or clarity, and open to change. |
-| **(TBD …)** | **Pending human decision** — the value, model, or vocabulary is reserved for humans (see the referenced `ADR-`). Presented here only as a placeholder, never as final. |
+| **(pilot: … - ADR-…)** | **Decided (pilot)** — the value, model, or vocabulary is adopted for the one-week iOS pilot per the referenced `ADR-` (some carry an explicit revisit-before-scale caveat). |
 
 **Type conventions.** Types are generic and technology-neutral (`UUID`, `String`, `Text`, `Decimal`, `Integer`, `Boolean`, `DateTime`, `Enum`, `JSON`, `Array`, `URL`). Concrete types depend on the stack (`ADR-001`).
 
 **Structural scaffolding.** Every entity is shown with a surrogate `id` (primary key), foreign keys (`*_id`), and audit timestamps (`created_at`, and where relevant `updated_at`). These are a conventional relational-draft scaffold; they are **(proposed)** collectively and are not re-labeled row by row.
 
-**PRD example / default values are not decisions.** Where the PRD gives a value only as an example or default — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%" — it is carried here as a *PRD-stated default to be confirmed by humans*, tagged with its `ADR-`. It is not a final decision.
+**PRD example / default values — decided for the pilot.** Where the PRD gives a value only as an example or default — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%" — the pilot decision is recorded with its `ADR-`: commission 10% (`ADR-007`) and budget tolerance 10% (`ADR-008`) are adopted for the pilot, while the daily free-render limit (`ADR-009`) and the cart hold (`ADR-011`) are not applied in the pilot and their PRD defaults (five/day, 15 minutes) apply only post-pilot.
 
 ---
 
@@ -66,7 +66,7 @@ A homeowner/renter with profile, preferences, and order history; may also transa
 | name | String | No | Display name for the basic profile (PRD FR-01 / FR-003). |
 | email | String | Yes | Contact email; **must be unique** for registered accounts and validated for guest checkout (PRD FR-01, BR-26). |
 | phone | String | Conditional | Phone number; required for guest checkout (BR-26). |
-| password_hash | String | Conditional | Hashed credential for registered users; never stored in plaintext (NFR-008). Auth mechanism **(TBD ADR-001)**. Not set for guests. |
+| password_hash | String | Conditional | Hashed credential for registered users; never stored in plaintext (NFR-008). Decided (pilot): no end-user login/password/account system - see ADR-022 (stack per ADR-001); this field is unused in the pilot. Not set for guests. |
 | preferences | JSON | No | Basic profile preferences (PRD FR-003). |
 | market_id | UUID (FK) | No | User's market/locality, used for suppliers and delivery zones (PRD FR-05) → `Market`. |
 | status | Enum | No | `active` / `inactive` **(proposed)**; an inactive account cannot sign in. |
@@ -81,7 +81,7 @@ Spazio staff who curate the catalog, maintain the style taxonomy, review renders
 | id | UUID | Yes | Primary key **(proposed)**. |
 | name | String | Yes | Operator name **(proposed)**. |
 | email | String | Yes | Login/contact email; unique **(proposed)**. |
-| password_hash | String | Yes | Hashed credential; auth mechanism **(TBD ADR-001)**. |
+| password_hash | String | Yes | Hashed credential; auth mechanism decided (pilot): per the decided stack (see ADR-001) - operator access only; the pilot has no end-user accounts (ADR-022). |
 | role | Enum | No | Operator function **(proposed)**, e.g. `catalog_curator`, `render_reviewer`, `order_handler` (PRD §5 responsibilities). |
 | status | Enum | No | `active` / `inactive` **(proposed)**. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
@@ -97,10 +97,10 @@ A local furniture/decor vendor whose catalog powers the marketplace, with onboar
 | contact_email | String | No | Operational contact **(proposed)**. |
 | contact_phone | String | No | Operational contact **(proposed)**. |
 | market_id | UUID (FK) | No | Supplier's market/locality (PRD FR-05) → `Market`. |
-| ingestion_channel | Enum | No | How the supplier's catalog is ingested: software integration / Excel / API / FTP (PRD FR-23). Supported channels **(TBD ADR-006)**. In the pilot, catalog is loaded manually by an operator. |
-| onboarding_terms_ref | String | No | Reference to the negotiated onboarding terms/contract **(proposed)**; terms **(TBD ADR-016)**. |
-| commission_rate | Decimal | No | Negotiated commission override, if any **(proposed)**; the marketplace default rate is **(TBD ADR-007)**. |
-| payout_account_ref | String | No | Settlement/payout account reference **(proposed)** for split settlement; model **(TBD ADR-003 / ADR-004)**. Not used in the pilot (fulfillment is manual). |
+| ingestion_channel | Enum | No | How the supplier's catalog is ingested: software integration / Excel / API / FTP (PRD FR-23). Supported channels decided (pilot): operator manually loads a CSV/Excel of 30-60 curated SKUs; no API/FTP/self-service ingestion - see ADR-006. In the pilot, catalog is loaded manually by an operator. |
+| onboarding_terms_ref | String | No | Reference to the negotiated onboarding terms/contract **(proposed)**; terms decided (pilot): a one-page written agreement (commission, lead times, warranty) with 2-4 hand-picked Bogotá suppliers - see ADR-016. |
+| commission_rate | Decimal | No | Negotiated commission override, if any **(proposed)**; the marketplace default rate decided (pilot): 10% of product price, reconciled manually - see ADR-007. |
+| payout_account_ref | String | No | Settlement/payout account reference **(proposed)** for split settlement; decided (pilot): no split settlement - the operator pays suppliers manually (revisit before scale) - see ADR-003 / ADR-004. Not used in the pilot (fulfillment is manual). |
 | status | Enum | No | `active` / `inactive` **(proposed)**. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
@@ -127,10 +127,10 @@ A real, purchasable SKU with photos, dimensions, price, colors, materials, stock
 | production_lead_time | String / Integer | Conditional | Supplier-declared production time; **required for `made_to_order`** (PRD BR-5); shown as an estimate before checkout (BR-17). |
 | delivery_lead_time | String / Integer | Yes | Supplier-declared delivery time (PRD BR-1); shown as an estimate before checkout (BR-17). |
 | warranty_terms | Text | Yes | Supplier-declared warranty terms (PRD BR-1); displayed before checkout (BR-18). |
-| style_attributes | JSON / Array | Yes | Style attributes (PRD BR-1), mapped to the shared taxonomy (BR-16) → `StyleTaxonomy`. Vocabulary **(TBD ADR-005)**. |
+| style_attributes | JSON / Array | Yes | Style attributes (PRD BR-1), mapped to the shared taxonomy (BR-16) → `StyleTaxonomy`. Vocabulary decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005. |
 | listing_url | URL | No | Listing link surfaced in the product tag (PRD FR-07). |
 | is_complete | Boolean | No | Derived flag **(proposed)**: true only if all required attributes are present. Incomplete entries are excluded from rendering (PRD BR-2). |
-| last_synced_at | DateTime | No | Last catalog sync **(proposed)**; supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32). Frequency **(TBD ADR-012)**. |
+| last_synced_at | DateTime | No | Last catalog sync **(proposed)**; supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32). Frequency decided (pilot): manual / on-demand refresh by the operator; no automated sync - see ADR-012. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
 ## Entity: Style
@@ -147,16 +147,16 @@ A predefined visual style a user can select, mapped to product style attributes 
 | taxonomy_id | UUID (FK) | No | Mapping to the shared taxonomy (PRD BR-16) → `StyleTaxonomy`. |
 | status | Enum | No | `active` / `inactive` **(proposed)**. |
 
-Note: the full set of predefined styles is part of the style taxonomy, which is **(TBD ADR-005)**.
+Note: the full set of predefined styles is part of the style taxonomy, decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005.
 
 ## Entity: StyleTaxonomy
 
-The shared classification mapping products and user style choices to a common vocabulary (PRD BR-16). The vocabulary and hierarchy are **(TBD ADR-005)**.
+The shared classification mapping products and user style choices to a common vocabulary (PRD BR-16). The vocabulary and hierarchy decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | id | UUID | Yes | Primary key **(proposed)**. |
-| label | String | Yes | Human-readable taxonomy term (PRD BR-16); values **(TBD ADR-005)**. |
+| label | String | Yes | Human-readable taxonomy term (PRD BR-16); values decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005. |
 | code | String | No | Stable code for the term **(proposed)**. |
 | parent_id | UUID (FK) | No | Self-reference for a hierarchical taxonomy **(proposed)** → `StyleTaxonomy`. |
 | description | Text | No | Definition/notes for the term **(proposed)**. |
@@ -209,7 +209,7 @@ A single render or edit request; counts as one attempt against the daily limit a
 | parent_render_id | UUID (FK) | No | Prior render being re-rendered/edited **(proposed)** → `Render` (PRD FR-18). |
 | refinement_input | Text | No | Answers to targeted refinement questions **(proposed)** (PRD FR-18 / FR-051). Not in the pilot. |
 | inference_cost | Decimal | No | Tracked cost per render **(proposed)** (NFR-005); a global inference-cost threshold applies (NFR-003). |
-| counts_against_limit | Boolean | No | Whether this attempt is metered **(proposed)** (PRD BR-19/BR-20). Daily free-render limit default **five (TBD ADR-009)**. Metering is excluded from the pilot. |
+| counts_against_limit | Boolean | No | Whether this attempt is metered **(proposed)** (PRD BR-19/BR-20). Daily free-render limit decided (pilot): no limit; the PRD default of five/day applies only post-pilot - see ADR-009. Metering is excluded from the pilot. |
 | created_at | DateTime | Yes | Request timestamp **(proposed)**. |
 
 ## Entity: Render
@@ -226,7 +226,7 @@ A generated photorealistic image of the furnished room, private by default, pend
 | reviewed_by | UUID (FK) | No | Reviewing operator **(proposed)** → `Operator` (FR-027). |
 | reviewed_at | DateTime | No | Review timestamp **(proposed)** (FR-027). |
 | total_product_cost | Decimal | No | Sum of rendered products **(proposed / derived)**; must stay within budget plus tolerance (PRD BR-9). |
-| within_budget | Boolean | No | Whether total is within budget + tolerance **(proposed)** (PRD BR-9, FR-14). Tolerance default **10% (TBD ADR-008)**. |
+| within_budget | Boolean | No | Whether total is within budget + tolerance **(proposed)** (PRD BR-9, FR-14). Tolerance decided (pilot): 10% - see ADR-008. |
 | is_private | Boolean | Yes | Private by default (PRD BR-33, NFR-007). Default `true`. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
@@ -292,7 +292,7 @@ A time-boxed reservation of stock for a cart item, released on expiry (PRD FR-19
 | product_id | UUID (FK) | Yes | Product whose stock is held **(proposed)** → `Product`. |
 | quantity | Integer | Yes | Quantity held **(proposed)** (PRD BR-22). |
 | held_at | DateTime | Yes | When the hold started; a hold is placed on add-to-cart (PRD BR-22). |
-| expires_at | DateTime | Yes | Expiry = `held_at` + hold duration. PRD default **15 minutes (TBD ADR-011)**. |
+| expires_at | DateTime | Yes | Expiry = `held_at` + hold duration. Decided (pilot): no stock hold; the PRD default of 15 minutes applies only post-pilot - see ADR-011. |
 | status | Enum | Yes | `active` / `released` / `consumed` **(proposed values)**; expired holds return stock to availability (PRD BR-23). |
 
 Note: applies to ready-made stock. Stock holds are **excluded from the pilot** (FR-039/FR-040 not included).
@@ -362,14 +362,14 @@ The single user payment record, PCI-processed, feeding split settlement and comm
 | amount | Decimal | Yes | Total charged in one payment (PRD FR-11). |
 | currency | String | Yes | Payment currency; multi-currency support (NFR-011, BR-27). |
 | status | Enum | No | `pending` / `authorized` / `captured` / `failed` / `refunded` **(proposed values)**. |
-| gateway_reference | String | No | External gateway transaction id **(proposed)**; gateway **(TBD ADR-003)**. |
+| gateway_reference | String | No | External gateway transaction id **(proposed)**; gateway decided (pilot): a single PCI-compliant hosted checkout collecting one payment in COP (provider selection revisit before scale) - see ADR-003. |
 | payment_method | String | No | Method used **(proposed)**; per-market methods (NFR-018). |
 | commission_amount | Decimal | No | Commission retained by Spazio **(proposed)** (PRD BR-28) → `Commission`. |
-| split_settlement | JSON | No | Per-supplier payout breakdown **(proposed structure)** (NFR-010); model **(TBD ADR-003 / ADR-004)**. **Excluded from the pilot**. |
+| split_settlement | JSON | No | Per-supplier payout breakdown **(proposed structure)** (NFR-010); decided (pilot): no split settlement - the operator pays suppliers manually (revisit before scale) - see ADR-003 / ADR-004. **Excluded from the pilot**. |
 | paid_at | DateTime | No | Capture timestamp **(proposed)**. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
-Note: card data is handled by the PCI-compliant gateway and is not stored by Spazio **(proposed)** (NFR-009); gateway and merchant-of-record model are **(TBD ADR-003 / ADR-004)**.
+Note: card data is handled by the PCI-compliant gateway and is not stored by Spazio **(proposed)** (NFR-009); gateway and merchant-of-record model decided (pilot): a single PCI-compliant hosted checkout collecting one COP payment, with the Spazio operating entity as merchant of record paying suppliers manually (revisit before scale) - see ADR-003 / ADR-004.
 
 ## Entity: Commission
 
@@ -379,7 +379,7 @@ The marketplace fee Spazio retains on each completed purchase (PRD BR-28, §9).
 |---|---|---|---|
 | id | UUID | Yes | Primary key **(proposed)**. |
 | order_id | UUID (FK) | Yes | Order the fee applies to **(proposed)** → `Order` (PRD BR-28). |
-| rate | Decimal | Yes | Commission rate. PRD example **10% (TBD ADR-007)**. |
+| rate | Decimal | Yes | Commission rate. Decided (pilot): 10% of product price, reconciled manually - see ADR-007. |
 | base_amount | Decimal | Yes | Amount the commission is computed on **(proposed)** (PRD §9 "of the product price"). |
 | amount | Decimal | Yes | Computed commission amount **(proposed)**. |
 | currency | String | Yes | Currency (PRD BR-27). |
@@ -401,7 +401,7 @@ A geographic area a supplier can deliver to, used for locality filtering and del
 
 ## Entity: Market
 
-A launch region/city with its currency, taxes, payment methods, and legal configuration (PRD NFR-017, NFR-018). Initial markets are **(TBD ADR-015)**.
+A launch region/city with its currency, taxes, payment methods, and legal configuration (PRD NFR-017, NFR-018). Initial markets decided (pilot): Bogotá, Colombia; COP only - see ADR-015.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -410,14 +410,14 @@ A launch region/city with its currency, taxes, payment methods, and legal config
 | country_code | String | No | ISO country code **(proposed)**. |
 | currency | String | Yes | Local currency; prices shown in it (PRD BR-27). Pilot: COP. |
 | locale | String | No | Language/format locale **(proposed)**. |
-| tax_config | JSON | No | Per-market tax configuration **(proposed structure)** (NFR-018); taxes **(TBD ADR-018)**. |
-| payment_methods | JSON | No | Per-market payment methods **(proposed structure)** (NFR-018); gateway **(TBD ADR-003)**. |
-| legal_config | JSON | No | Per-market legal/compliance settings **(proposed structure)** (NFR-018); **(TBD ADR-018 / ADR-019)**. |
+| tax_config | JSON | No | Per-market tax configuration **(proposed structure)** (NFR-018); taxes decided (pilot): single market (Colombia), taxes/invoicing handled manually, no tax engine (revisit before scale) - see ADR-018. |
+| payment_methods | JSON | No | Per-market payment methods **(proposed structure)** (NFR-018); gateway decided (pilot): a single PCI-compliant hosted checkout collecting one payment in COP - see ADR-003. |
+| legal_config | JSON | No | Per-market legal/compliance settings **(proposed structure)** (NFR-018); decided (pilot): single Colombian market with taxes/invoicing handled manually (ADR-018) and privacy via a short notice + consent aligned to Ley 1581 with minimum data (legal review before scale) - see ADR-018 / ADR-019. |
 | status | Enum | No | `active` / `inactive` **(proposed)**. |
 
 ## Entity: SponsoredPlacement
 
-A paid premium-visibility record usable only to break ties among similarly relevant products (PRD §9, BR-29, BR-30, FR-054). Plan and pricing are **(TBD ADR-017)**. Excluded from the pilot.
+A paid premium-visibility record usable only to break ties among similarly relevant products (PRD §9, BR-29, BR-30, FR-054). Plan and pricing decided (pilot): not offered (deferred) - see ADR-017. Excluded from the pilot.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -434,12 +434,12 @@ A paid premium-visibility record usable only to break ties among similarly relev
 
 ## Rules
 
-PRD-derived invariants that constrain the data model. Each cites its source. Values reserved for humans are tagged **(TBD ADR-…)** and are not final.
+PRD-derived invariants that constrain the data model. Each cites its source. Decision values are tagged with their `ADR-` and are adopted for the one-week iOS pilot (some carry an explicit revisit-before-scale caveat).
 
 ### Identity and accounts
 
 - **Unique email.** A registered user's email must be unique; guest-checkout email must be validated (PRD FR-01, BR-26).
-- **No plaintext credentials.** Passwords are stored only as hashes; the authentication mechanism is **(TBD ADR-001)** (NFR-008).
+- **No plaintext credentials.** Passwords are stored only as hashes; the authentication mechanism follows the decided stack (see ADR-001), and the pilot has no end-user accounts/login/password - see ADR-022 (NFR-008).
 - **Guest checkout data.** Guest checkout requires a validated email, a phone number, and shipping information (PRD BR-26).
 
 ### Catalog integrity
@@ -447,8 +447,8 @@ PRD-derived invariants that constrain the data model. Each cites its source. Val
 - **Required attributes.** A catalog entry must carry photos, dimensions, price, available colors, materials, stock/inventory, category, style attributes, production & delivery lead time, and warranty terms (PRD BR-1).
 - **Incomplete entries excluded from rendering.** Entries missing any required attribute are not eligible for rendering (PRD BR-2).
 - **Classification.** Every product is either `ready_made` (in-stock) or `made_to_order`/manufacturable (PRD BR-3). Ready-made requires current stock (BR-4); made-to-order requires supplier-declared production and delivery times (BR-5).
-- **Shared taxonomy.** Products must be mapped to the shared style taxonomy (PRD BR-16); the taxonomy vocabulary is **(TBD ADR-005)**.
-- **Catalog synchronization.** Supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32); frequency is **(TBD ADR-012)**.
+- **Shared taxonomy.** Products must be mapped to the shared style taxonomy (PRD BR-16); the taxonomy vocabulary decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005.
+- **Catalog synchronization.** Supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32); frequency decided (pilot): manual / on-demand refresh by the operator; no automated sync - see ADR-012.
 
 ### Rendering
 
@@ -456,7 +456,7 @@ PRD-derived invariants that constrain the data model. Each cites its source. Val
 - **Availability gate.** Ready-made items must never be rendered when unavailable (PRD BR-4).
 - **Locality gate.** Only products deliverable to the user's locality may be rendered (PRD BR-11); when local delivery is unavailable, the system may offer nearby regions, alternative shipping, or pickup (BR-12).
 - **Scale to room.** Approximate room dimensions must be used to scale products realistically (PRD BR-7, FR-15).
-- **Budget bound.** Total product cost should not exceed the budget beyond an agreed tolerance — PRD example **10% (TBD ADR-008)** (PRD BR-9). If the budget cannot be met, the system discloses this and offers the closest available alternative (BR-10). When no strong match exists, it suggests similar available products or marks the item unavailable (BR-13).
+- **Budget bound.** Total product cost should not exceed the budget beyond an agreed tolerance — decided (pilot) **10%** - see ADR-008 (PRD BR-9). If the budget cannot be met, the system discloses this and offers the closest available alternative (BR-10). When no strong match exists, it suggests similar available products or marks the item unavailable (BR-13).
 - **Kept items.** Existing items marked to keep must remain in the render but be excluded from the cart and the budget calculation (PRD BR-8). *(Keep-or-replace is excluded from the pilot.)*
 - **Photo quality.** Unusable photos must be rejected with a request to retake (PRD BR-15).
 - **Privacy by default.** User photos and generated renders are private by default (PRD BR-33, NFR-007).
@@ -464,13 +464,13 @@ PRD-derived invariants that constrain the data model. Each cites its source. Val
 
 ### Render metering
 
-- **One attempt per generation/edit.** Every generation or edit counts as one render attempt (PRD BR-20). Free usage defaults to **five attempts per user per day (TBD ADR-009)** (BR-19). On reaching the limit, the user may return the next day or buy a render package — package pricing **(TBD ADR-010)** (BR-21). *(Metering is excluded from the pilot.)*
+- **One attempt per generation/edit.** Every generation or edit counts as one render attempt (PRD BR-20). Free usage decided (pilot): no limit; the PRD default of five attempts per user per day applies only post-pilot - see ADR-009 (BR-19). On reaching the limit, the user may return the next day or buy a render package — package pricing decided (pilot): not offered (deferred) - see ADR-010 (BR-21). *(Metering is excluded from the pilot.)*
 - **Cost tracking.** Cost per render is tracked and a global inference-cost threshold applies (NFR-003, NFR-005).
 
 ### Cart, holds, and checkout
 
 - **Cart is a suggestion.** The cart is auto-populated from the render and must be explicitly confirmed before payment (PRD BR-31, FR-08, FR-35).
-- **Stock hold.** Adding an item to the cart holds stock for a configured duration — PRD default **15 minutes (TBD ADR-011)** (PRD BR-22); expired holds return stock to availability (BR-23). *(Stock holds are excluded from the pilot.)*
+- **Stock hold.** Adding an item to the cart holds stock for a configured duration — decided (pilot): no stock hold; the PRD default of 15 minutes applies only post-pilot - see ADR-011 (PRD BR-22); expired holds return stock to availability (BR-23). *(Stock holds are excluded from the pilot.)*
 - **Revalidate at checkout.** Price and stock must be revalidated at checkout before payment (PRD BR-24).
 - **Estimates and warranty before checkout.** Supplier-sourced production and delivery estimates and supplier-declared warranty terms must be shown before checkout (PRD BR-17, BR-18, NFR-015).
 
@@ -478,13 +478,13 @@ PRD-derived invariants that constrain the data model. Each cites its source. Val
 
 - **One payment, one PO per supplier.** Checkout produces one user payment and one purchase order per supplier (PRD BR-25). *(Automated split settlement and PO automation are excluded from the pilot; the operator forwards each PO manually — FR-061.)*
 - **Local currency.** Prices are shown in the user's local currency (PRD BR-27); the architecture supports multiple currencies (NFR-011, NFR-017).
-- **Commission.** Spazio applies a marketplace commission to every completed purchase — PRD example **10% (TBD ADR-007)** (PRD BR-28).
-- **PCI compliance.** Payment processing must be PCI-compliant; card data is handled by the gateway, which is **(TBD ADR-003)** together with the merchant-of-record and split-settlement models **(TBD ADR-004)** (NFR-009–NFR-012).
+- **Commission.** Spazio applies a marketplace commission to every completed purchase — decided (pilot) **10%** of product price, reconciled manually - see ADR-007 (PRD BR-28).
+- **PCI compliance.** Payment processing must be PCI-compliant; card data is handled by the gateway — decided (pilot): a single PCI-compliant hosted checkout collecting one COP payment with no split settlement, and the Spazio operating entity as merchant of record paying suppliers manually (revisit before scale) - see ADR-003 / ADR-004 (NFR-009–NFR-012).
 
 ### Monetization visibility
 
-- **Sponsored tie-break only.** Sponsored placement may only break ties among similarly relevant, high-quality products, and must never override relevance, product quality, budget, locality, or availability (PRD BR-29, BR-30). Plan and pricing are **(TBD ADR-017)**. *(Excluded from the pilot.)*
+- **Sponsored tie-break only.** Sponsored placement may only break ties among similarly relevant, high-quality products, and must never override relevance, product quality, budget, locality, or availability (PRD BR-29, BR-30). Plan and pricing decided (pilot): not offered (deferred) - see ADR-017. *(Excluded from the pilot.)*
 
 ### Internationalization
 
-- **Per-market configuration.** Taxes, payment methods, and legal requirements must be configurable per market (NFR-018); taxes and compliance are **(TBD ADR-018 / ADR-019)**. Initial launch markets are **(TBD ADR-015)**; the pilot runs in a single market (Bogotá, COP).
+- **Per-market configuration.** Taxes, payment methods, and legal requirements must be configurable per market (NFR-018); taxes and compliance decided (pilot): single Colombian market, taxes/invoicing handled manually, privacy via a short notice + consent aligned to Ley 1581 with minimum data (revisit / legal review before scale) - see ADR-018 / ADR-019. Initial launch markets decided (pilot): Bogotá, Colombia; COP only - see ADR-015; the pilot runs in a single market (Bogotá, COP).

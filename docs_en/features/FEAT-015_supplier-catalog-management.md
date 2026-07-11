@@ -28,17 +28,17 @@ For the pilot the need is deliberately narrowed: rather than build ingestion inf
 Functional (canonical set for FEAT-015, per `05_backlog.md`):
 
 - FR-056 — Operator curates and approves catalog entries *(pilot)*
-- FR-057 — Store required catalog attributes per SKU *(pilot; minimum completeness threshold TBD — see ADR-014)*
+- FR-057 — Store required catalog attributes per SKU *(pilot; minimum completeness threshold — Decided (pilot): all PRD BR-1 fields present, operator-enforced — see ADR-014)*
 - FR-058 — Classify products as in-stock ready-made or made-to-order with required stock/lead-time data *(pilot uses in-stock ready-made only)*
-- FR-059 — Map each product to the shared style taxonomy *(pilot; taxonomy values TBD — see ADR-005)*
-- FR-055 — Let suppliers self-ingest catalog data through supported channels *(full product, out of pilot; supported channels TBD — see ADR-006)*
-- FR-060 — Synchronize supplier catalog data regularly, and in real time for ready-made stock *(full product, out of pilot; sync frequency TBD — see ADR-012)*
+- FR-059 — Map each product to the shared style taxonomy *(pilot; taxonomy values — Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005)*
+- FR-055 — Let suppliers self-ingest catalog data through supported channels *(full product, out of pilot; pilot ingestion — Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no self-service channels — see ADR-006)*
+- FR-060 — Synchronize supplier catalog data regularly, and in real time for ready-made stock *(full product, out of pilot; pilot sync — Decided (pilot): manual/on-demand refresh by the operator, no automated sync — see ADR-012)*
 
 Non-functional:
 
-- NFR-016 — Supplier onboarding scales by region *(directly cites FEAT-015 / FR-055–FR-060; pilot catalog is small, manually curated, one city — supplier partners and onboarding terms **TBD**, ADR-016)*
-- NFR-017 — Architecture supports multiple countries and currencies *(catalog is scoped per market; pilot is single-market Bogotá, COP — initial markets **TBD**, ADR-015)*
-- NFR-018 — Per-market taxes, payment methods, and legal config *(supplier/catalog onboarding resolves per `Market`; values **TBD**, ADR-018)*
+- NFR-016 — Supplier onboarding scales by region *(directly cites FEAT-015 / FR-055–FR-060; pilot catalog is small, manually curated, one city — supplier partners and onboarding terms — Decided (pilot): hand-pick 2–4 Bogotá suppliers with a one-page written agreement — ADR-016)*
+- NFR-017 — Architecture supports multiple countries and currencies *(catalog is scoped per market; pilot is single-market Bogotá, COP — initial markets — Decided (pilot): Bogotá, Colombia; COP only — ADR-015)*
+- NFR-018 — Per-market taxes, payment methods, and legal config *(supplier/catalog onboarding resolves per `Market`; values — Decided (pilot): single market (Colombia), taxes/invoicing handled manually, no tax engine (revisit before scale) — ADR-018)*
 
 Upstream/downstream dependencies (owned by other features, referenced for context, **not** FEAT-015's own FRs):
 
@@ -52,17 +52,17 @@ The PRD §8 numbered basic flow describes the **user's** journey (photo → inpu
 
 Pilot flow (VERIFIED — manual curation):
 
-1. The operator **selects the supplier set** and obtains their product data (pilot Day 1; supplier partners **TBD** — ADR-016).
+1. The operator **selects the supplier set** and obtains their product data (pilot Day 1; supplier partners — Decided (pilot): hand-picked 2–4 Bogotá suppliers with a one-page written agreement — ADR-016).
 2. The operator **loads each SKU by hand** with its required attributes — photo, price, dimensions, stock, style tag (FR-057; pilot Day 1). Entries missing a required attribute are stored `incomplete` and flagged (FR-057, feeding FR-019).
 3. Each product is **classified** — in the pilot, in-stock **ready-made** with current stock data (FR-058; pilot "real, in-stock catalog products").
-4. Each product is **mapped to the shared style taxonomy** (the style tag) so it can be style-matched (FR-059; taxonomy values **TBD** — ADR-005).
+4. Each product is **mapped to the shared style taxonomy** (the style tag) so it can be style-matched (FR-059; taxonomy values — Decided (pilot): 1–2 predefined visual styles + free-text description — ADR-005).
 5. The operator **approves** the entry into the active, renderable catalog (or rejects it) (FR-056).
 6. The approved catalog is then consumed by matching/rendering (FEAT-005) and locality/delivery filtering (FEAT-004).
 
 Full-product additions (VERIFIED, out of pilot):
 
-7. Suppliers **self-ingest** catalog data through supported channels (FR-055; channels **TBD** — ADR-006); imported entries still pass operator curation (FR-056) and completeness checks (FR-057 / FR-019).
-8. Catalog data **synchronizes automatically** on a schedule, and **ready-made stock in real time** (FR-060; frequency **TBD** — ADR-012), keeping availability current for the rendering availability gate (FR-018).
+7. Suppliers **self-ingest** catalog data through supported channels (FR-055; pilot ingestion — Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no self-service channels — ADR-006); imported entries still pass operator curation (FR-056) and completeness checks (FR-057 / FR-019).
+8. Catalog data **synchronizes automatically** on a schedule, and **ready-made stock in real time** (FR-060; frequency — Decided (pilot): manual/on-demand refresh by the operator, no automated sync — ADR-012), keeping availability current for the rendering availability gate (FR-018).
 
 ## 6. Acceptance criteria
 
@@ -82,39 +82,39 @@ If you detect a new criterion during implementation, first add it to the FR (wit
 Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not rewritten here. Reference:
 
 - FR-056 (derived from the pilot's manual-curation model and PRD §5 operator responsibilities: a small, clean, manually curated catalog ensures every rendered product is real, priced, and in stock. Catalog quality is a **human responsibility** — PRD §12.)
-- FR-057 (PRD BR-1: catalog entries must include photos, dimensions, price, available colors, materials, stock, category, style attributes, production/delivery lead time, and warranty terms — minimum completeness threshold **TBD**, see ADR-014)
+- FR-057 (PRD BR-1: catalog entries must include photos, dimensions, price, available colors, materials, stock, category, style attributes, production/delivery lead time, and warranty terms — minimum completeness threshold — Decided (pilot): all PRD BR-1 fields present, operator-enforced — see ADR-014)
 - FR-058 (PRD BR-3, BR-4, BR-5: products are classified ready-made or made-to-order; ready-made requires current stock, made-to-order requires supplier-declared production and delivery times)
-- FR-059 (PRD BR-16: products must be mapped to the shared style taxonomy — taxonomy values **TBD**, see ADR-005)
-- FR-055 (PRD FR-23: candidate ingestion channels are software integration, Excel, API, FTP — the supported set is **TBD**, see ADR-006)
-- FR-060 (PRD BR-32: supplier data must synchronize regularly, and in real time for ready-made stock — frequency **TBD**, see ADR-012)
+- FR-059 (PRD BR-16: products must be mapped to the shared style taxonomy — taxonomy values — Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005)
+- FR-055 (PRD FR-23: candidate ingestion channels are software integration, Excel, API, FTP — the pilot supported set — Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no API/FTP/self-service — see ADR-006)
+- FR-060 (PRD BR-32: supplier data must synchronize regularly, and in real time for ready-made stock — frequency — Decided (pilot): manual/on-demand refresh by the operator, no automated sync — see ADR-012)
 
 ## 8. Proposed technical design
 
-*High-level only. Technology, ingestion, and synchronization mechanisms are reserved for humans (PRD §12) and marked PENDING; do not treat any choice as decided.*
+*High-level only. Technology, ingestion, and synchronization mechanisms are human decisions (PRD §12), Decided for the pilot — see ADR-001 (stack), ADR-006 (manual CSV/Excel ingestion), ADR-012 (manual/on-demand sync); the choices below reflect those pilot decisions.*
 
 ### Frontend
 
-- An **operator catalog console** (DRAFT / PROPOSED — internal tool) to load, edit, classify, style-tag, review, and **approve / reject** catalog entries, and to surface `incomplete` / `unmapped` / `invalid-classification` flags. Client/tooling technology **[PENDING — see ADR-001]**.
-- (Full product) A **supplier-facing ingestion surface** (DRAFT / PROPOSED) for self-service submission (FR-055); presentation depends on the supported channel set **[PENDING — see ADR-006]**.
+- An **operator catalog console** (DRAFT / PROPOSED — internal tool) to load, edit, classify, style-tag, review, and **approve / reject** catalog entries, and to surface `incomplete` / `unmapped` / `invalid-classification` flags. Client/tooling technology **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres DB + object storage; specific tool choices left to implementation — see ADR-001**.
+- (Full product) A **supplier-facing ingestion surface** (DRAFT / PROPOSED) for self-service submission (FR-055); presentation depends on the supported channel set **Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no self-service ingestion surface — see ADR-006**.
 
 ### Backend
 
-- **Catalog ingestion service** (DRAFT / PROPOSED): accepts supplier submissions via supported channels and imports entries for curation; rejects unsupported formats/channels with an `unsupported-format` status (FR-055). The concrete channels (software integration / Excel / API / FTP) are **[PENDING — see ADR-006]**. **In the pilot this path is not built — entries are loaded manually by an operator.**
+- **Catalog ingestion service** (DRAFT / PROPOSED): accepts supplier submissions via supported channels and imports entries for curation; rejects unsupported formats/channels with an `unsupported-format` status (FR-055). The concrete channels are **Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no API/FTP/self-service ingestion — see ADR-006**. **In the pilot this path is not built — entries are loaded manually by an operator.**
 - **Curation / approval workflow** (DRAFT / PROPOSED state machine): an entry moves from ingested/loaded → operator review → `active` (renderable) or `not-approved` (FR-056).
-- **Completeness validation** (DRAFT / PROPOSED): checks required attributes on save; complete entries are marked renderable-eligible, incomplete entries are stored `incomplete` and flagged (FR-057), which the rendering-eligibility gate consumes (FR-019). The **minimum completeness threshold is [PENDING — see ADR-014]**.
+- **Completeness validation** (DRAFT / PROPOSED): checks required attributes on save; complete entries are marked renderable-eligible, incomplete entries are stored `incomplete` and flagged (FR-057), which the rendering-eligibility gate consumes (FR-019). The **minimum completeness threshold is Decided (pilot): all PRD BR-1 fields present, operator-enforced — see ADR-014**.
 - **Classification logic** (DRAFT / PROPOSED): records `ready_made` (requires current stock) vs `made_to_order` (requires supplier-declared production/delivery times); missing required data yields `invalid-classification` (FR-058).
-- **Style-taxonomy mapping** (DRAFT / PROPOSED): maps each product to the shared taxonomy; unmapped products are flagged `unmapped` and excluded from style matching (FR-059). The **taxonomy vocabulary is [PENDING — see ADR-005]**.
-- **Catalog synchronization** (DRAFT / PROPOSED — full product): scheduled sync for catalog data and **real-time sync for ready-made stock**; a per-feed failure records `sync-failed` (FR-060). The **sync frequency is [PENDING — see ADR-012]**; this path is **not built in the pilot** (manual load).
+- **Style-taxonomy mapping** (DRAFT / PROPOSED): maps each product to the shared taxonomy; unmapped products are flagged `unmapped` and excluded from style matching (FR-059). The **taxonomy vocabulary is Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005**.
+- **Catalog synchronization** (DRAFT / PROPOSED — full product): scheduled sync for catalog data and **real-time sync for ready-made stock**; a per-feed failure records `sync-failed` (FR-060). The **sync frequency is Decided (pilot): manual/on-demand refresh by the operator, no automated sync — see ADR-012**; this path is **not built in the pilot** (manual load).
 
 ### Database
 
-- Entities involved (canonical registry in `07_data_model.md`; fields **DRAFT / PROPOSED** until the stack is decided):
+- Entities involved (canonical registry in `07_data_model.md`; fields **DRAFT / PROPOSED** — the stack is Decided (pilot, ADR-001); field-level schema still to be finalized):
   - `Product` — the real, purchasable SKU and its required attributes: `sku`, `name`, `category`, `photos`, `dimensions`, `price`, `currency`, `available_colors`, `materials`, `product_type` (`ready_made` / `made_to_order`), `stock_quantity` (required for ready-made), `production_lead_time` / `delivery_lead_time`, `warranty_terms`, `style_attributes`, `is_complete` (derived flag), `last_synced_at`. **(All field names DRAFT / PROPOSED.)**
-  - `Supplier` — owner of products; `ingestion_channel` (candidate channels software integration / Excel / API / FTP — supported set **[PENDING — see ADR-006]**), `market_id`, `onboarding_terms_ref` (**TBD** — ADR-016). **(Fields DRAFT / PROPOSED.)**
-  - `StyleTaxonomy` and `Style` — the shared classification products are mapped to (FR-059); vocabulary **[PENDING — see ADR-005]**. **(Fields DRAFT / PROPOSED.)**
+  - `Supplier` — owner of products; `ingestion_channel` (candidate channels software integration / Excel / API / FTP — pilot ingestion — Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no API/FTP/self-service — see ADR-006), `market_id`, `onboarding_terms_ref` (Decided (pilot): hand-picked 2–4 Bogotá suppliers with a one-page written agreement — ADR-016). **(Fields DRAFT / PROPOSED.)**
+  - `StyleTaxonomy` and `Style` — the shared classification products are mapped to (FR-059); vocabulary **Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005**. **(Fields DRAFT / PROPOSED.)**
   - `Operator` — the staff member who curates/approves and maps entries (FR-056, FR-059).
-  - `DeliveryZone` / `Market` — supplier delivery coverage and market scoping, consumed downstream by locality filtering (FEAT-004) and multi-market onboarding (NFR-016, NFR-017); markets **[PENDING — see ADR-015]**.
-- Field-level schema is **TBD**; the physical schema and engine depend on the stack **[PENDING — see ADR-001]**.
+  - `DeliveryZone` / `Market` — supplier delivery coverage and market scoping, consumed downstream by locality filtering (FEAT-004) and multi-market onboarding (NFR-016, NFR-017); markets **Decided (pilot): Bogotá, Colombia; COP only — see ADR-015**.
+- Field-level schema is **TBD**; the physical schema and engine follow the decided stack — a managed relational (Postgres) DB — **Decided (pilot): see ADR-001**.
 
 ### Security
 

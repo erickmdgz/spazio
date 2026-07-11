@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,11 @@ Pilot context: the pilot runs in one market (Bogotá, COP). The pilot documents 
 
 ## Decision
 
-PENDING - to be decided by the team.
+Single market (Colombia); taxes and invoicing handled manually for the pilot; no tax engine.
+
+Scope: one-week iOS pilot.
+
+Revisit before scale; confirm with an accountant.
 
 ## Alternatives considered
 
@@ -51,4 +55,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

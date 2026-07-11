@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,11 @@ This decision needs legal input and is explicitly outside the AI's authority (PR
 
 ## Decision
 
-PENDING - to be decided by the team.
+Decided (pilot): the Spazio operating entity collects the single payment and pays suppliers manually (see ADR-004).
+
+Scope: one-week iOS pilot.
+
+Tax/legal implications, ties ADR-018: revisit before scale; confirm with an accountant.
 
 ## Alternatives considered
 
@@ -51,4 +55,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

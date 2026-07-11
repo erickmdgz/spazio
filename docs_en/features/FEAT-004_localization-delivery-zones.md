@@ -20,7 +20,7 @@ Spazio's core promise is furniture the user **can actually buy and receive**: th
 - **Actor: System** — resolves the user's location into a supplier set (FR-012) and a delivery zone (FR-013), applies the locality gate to rendering (FR-020), formats prices in the local currency (FR-046), and computes delivery fallback (FR-053).
 - **Beneficiary: Homeowner/renter** — sees only products deliverable to them, prices in their currency, and, when local delivery is not possible, an alternative (nearby region / alternative shipping / pickup) instead of a dead end. In the pilot this is "Valentina" in Bogotá, transacting in COP (pilot persona; pilot scope).
 - **Supplier** — is included in or excluded from a user's candidate set based on the delivery zones it serves (PRD §5, FR-05; entity `Supplier` → `DeliveryZone`).
-- **Operator** — indirectly: catalog curation (FEAT-015) and supplier onboarding define which zones exist; supplier partners and onboarding terms are **TBD** (ADR-016), and initial markets/zones are **TBD** (ADR-015).
+- **Operator** — indirectly: catalog curation (FEAT-015) and supplier onboarding define which zones exist; supplier partners and onboarding terms are **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement** (ADR-016), and initial markets/zones are **Decided (pilot): Bogotá, Colombia — COP only** (ADR-015).
 
 ## 4. Related requirements
 
@@ -34,10 +34,10 @@ Functional (canonical set from `05_backlog.md`):
 
 Non-functional:
 
-- NFR-011 — Multi-currency payment processing *(pilot is single-currency COP; gateway is **TBD** — see ADR-003)*
-- NFR-016 — Supplier onboarding scales by region *(supplier partners/terms **TBD** — see ADR-016)*
+- NFR-011 — Multi-currency payment processing *(pilot is single-currency COP; gateway is **Decided (pilot): a single PCI-compliant hosted checkout, one payment in COP, no split settlement (provider selection revisit before scale)** — see ADR-003)*
+- NFR-016 — Supplier onboarding scales by region *(supplier partners/terms **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement** — see ADR-016)*
 - NFR-017 — Architecture supports multiple countries and currencies *(explicitly traces to FEAT-004; pilot targets a single market/currency)*
-- NFR-018 — Per-market taxes, payment methods, and legal config *(values **TBD** — see ADR-015, ADR-018)*
+- NFR-018 — Per-market taxes, payment methods, and legal config *(values **Decided (pilot): single market Bogotá, Colombia (COP); taxes/invoicing handled manually with no tax engine (revisit before scale)** — see ADR-015, ADR-018)*
 
 ## 5. Expected flow
 
@@ -68,15 +68,15 @@ If you detect a new criterion during implementation, first add it to the FR (wit
 
 Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not rewritten here. Reference:
 
-- FR-012 (PRD BR-11: only products deliverable to the user's locality may ultimately be rendered; supplier partner set is **TBD** — see ADR-016)
-- FR-013 (pilot: a single delivery zone, Bogotá; additional zones/markets are **TBD** — see ADR-015)
+- FR-012 (PRD BR-11: only products deliverable to the user's locality may ultimately be rendered; supplier partner set is **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement** — see ADR-016)
+- FR-013 (pilot: a single delivery zone, Bogotá; additional zones/markets are **Decided (pilot): single market Bogotá, Colombia (COP) — no additional zones/markets in the pilot** — see ADR-015)
 - FR-020 (PRD BR-11: only products deliverable to the user's locality may be rendered; fallback per FR-053/BR-12)
-- FR-046 (PRD BR-27: prices are shown in the local currency; pilot is single-currency COP; initial markets and per-market taxes/payment methods are **TBD** — see ADR-015, ADR-018)
+- FR-046 (PRD BR-27: prices are shown in the local currency; pilot is single-currency COP; initial markets and per-market taxes/payment methods are **Decided (pilot): single market Bogotá, Colombia (COP); taxes/payment handled manually with no tax engine (revisit before scale)** — see ADR-015, ADR-018)
 - FR-053 (PRD BR-12: when local delivery is unavailable, the system may offer nearby regions, alternative shipping, or pickup)
 
 ## 8. Proposed technical design
 
-*High-level only. Technology, the rendering/AI pipeline, the payment gateway, initial markets, and per-market taxes/legal config are reserved for humans (PRD §12) and marked PENDING; do not treat any of these as decided.*
+*High-level only. Technology (ADR-001), the rendering/AI pipeline (ADR-002), the payment gateway (ADR-003), initial markets (ADR-015), and per-market taxes/legal config (ADR-018, ADR-019) are human-reserved decisions (PRD §12) that are now **Decided for the pilot** — see the referenced ADRs.*
 
 ### Frontend
 
@@ -86,16 +86,16 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Backend
 
-- **Location-resolution service** (DRAFT / PROPOSED): maps a user location to a `Market` and a `DeliveryZone`, returning `unresolved-location` when it cannot resolve (FR-012) and `no-coverage` when the location falls outside all defined zones (FR-013). Geocoding/resolution mechanism is **DRAFT / PROPOSED**; the stack is **[PENDING — see ADR-001]**.
-- **Supplier-coverage service** (DRAFT / PROPOSED): returns the set of suppliers whose `DeliveryZone` coverage includes the locality (FR-012). Candidate supplier/catalog data comes from FEAT-015; the supplier partner set is **[PENDING — see ADR-016]**.
-- **Locality gate for matching/rendering:** exposes the deliverable-product constraint consumed by FEAT-005 so non-deliverable products are excluded with a `locality` exclusion (FR-020). Integration point with the rendering pipeline is **[PENDING — see ADR-002]**.
+- **Location-resolution service** (DRAFT / PROPOSED): maps a user location to a `Market` and a `DeliveryZone`, returning `unresolved-location` when it cannot resolve (FR-012) and `no-coverage` when the location falls outside all defined zones (FR-013). Geocoding/resolution mechanism is **DRAFT / PROPOSED**; the stack is **Decided (pilot): native iOS (SwiftUI) + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
+- **Supplier-coverage service** (DRAFT / PROPOSED): returns the set of suppliers whose `DeliveryZone` coverage includes the locality (FR-012). Candidate supplier/catalog data comes from FEAT-015; the supplier partner set is **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement — see ADR-016**.
+- **Locality gate for matching/rendering:** exposes the deliverable-product constraint consumed by FEAT-005 so non-deliverable products are excluded with a `locality` exclusion (FR-020). Integration point with the rendering pipeline is **Decided (pilot): a hosted generative image API (image-to-image / inpainting) with mandatory operator QA of every render — see ADR-002**.
 - **Delivery-fallback resolver** (DRAFT / PROPOSED): computes nearby regions / alternative shipping / pickup, or `no-delivery-available` (FR-053) from `DeliveryZone.fallback_options`.
-- **Currency/market resolution:** attaches the market's currency to prices for display (FR-046). Multi-currency **payment** processing is a gateway capability (NFR-011) and the gateway is **[PENDING — see ADR-003]**; per-market taxes/payment methods/legal config are **[PENDING — see ADR-015 / ADR-018]**.
+- **Currency/market resolution:** attaches the market's currency to prices for display (FR-046). Multi-currency **payment** processing is a gateway capability (NFR-011) and the gateway is **Decided (pilot): a single PCI-compliant hosted checkout, one payment in COP, no split settlement (provider selection revisit before scale) — see ADR-003**; per-market taxes/payment methods/legal config are **Decided (pilot): single market Bogotá, Colombia (COP); taxes/payment handled manually with no tax engine (revisit before scale) — see ADR-015 / ADR-018**.
 
 ### Database
 
 - Entities involved (from the canonical registry; treat concrete fields as **DRAFT / PROPOSED** until finalized against `07_data_model.md`):
-  - `Market` — a launch region/city with its currency, taxes, payment methods, and legal configuration. Pilot: single market **"Bogotá, Colombia"**, `currency` = **COP**. `tax_config`, `payment_methods`, and `legal_config` are **(proposed)** structures with values **TBD** (ADR-018 taxes, ADR-003 payment methods, ADR-019 privacy/consumer protection); initial markets **TBD** (ADR-015).
+  - `Market` — a launch region/city with its currency, taxes, payment methods, and legal configuration. Pilot: single market **"Bogotá, Colombia"**, `currency` = **COP**. `tax_config`, `payment_methods`, and `legal_config` are **(proposed)** structures whose pilot values are **Decided (pilot): taxes/invoicing handled manually with no tax engine (ADR-018 taxes), a single hosted checkout with one payment in COP and no split settlement (ADR-003 payment methods), photos/renders private by default with minimum data and consent (ADR-019 privacy/consumer protection); revisit before scale**; initial markets **Decided (pilot): Bogotá, Colombia — COP only (ADR-015)**.
   - `DeliveryZone` — a geographic area a supplier can deliver to, used for the locality gate and fallback. Pilot: one zone named **"Bogotá"**. `geo_definition` (postal codes / city list / polygon), `delivery_available`, and `fallback_options` (nearby regions / alternative shipping / pickup per BR-12) are **(proposed)**.
   - `Supplier` — carries `market_id` and serves one or more `DeliveryZone` areas (PRD FR-05, BR-11).
   - `Project` — carries the resolved `market_id` (locality for suppliers/delivery) and `currency`.
@@ -104,8 +104,8 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Security
 
-- Location data is user data; access is restricted to the owning user's session and authorized operators. Broader data-privacy rules are human-reserved (**[PENDING — see ADR-019]**).
-- Per-market **legal/compliance** configuration (taxes, consumer protection) must be resolved from `Market` rather than hard-coded (NFR-018); the concrete rules are **[PENDING — see ADR-018 / ADR-019]**.
+- Location data is user data; access is restricted to the owning user's session and authorized operators. Broader data-privacy rules are human-reserved and **Decided (pilot): photos/renders private by default, minimum data (email, phone, shipping), short privacy notice + consent at first use, aligned with Colombia Ley 1581 (legal review before scale) — see ADR-019**.
+- Per-market **legal/compliance** configuration (taxes, consumer protection) must be resolved from `Market` rather than hard-coded (NFR-018); the concrete rules are **Decided (pilot): taxes/invoicing handled manually with no tax engine (ADR-018), and photos/renders private by default with minimum data and consent aligned with Colombia Ley 1581 (ADR-019); revisit before scale — see ADR-018 / ADR-019**.
 - Guardrail: the locality gate must **fail closed** — if a locality cannot be resolved or coverage is unknown, products must not be presented as deliverable (consistent with PRD BR-11); the exact fail-closed behavior is **DRAFT / PROPOSED** pending the criteria in FR-012/FR-013/FR-020.
 
 ## 9. Required tests

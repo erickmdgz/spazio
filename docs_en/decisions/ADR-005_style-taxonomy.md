@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,9 @@ The actual taxonomy values (the specific styles and how they are organized) are 
 
 ## Decision
 
-PENDING - to be decided by the team.
+Adopted for the pilot: 1-2 predefined visual styles + free-text description. No taxonomy engine.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -52,4 +54,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

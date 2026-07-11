@@ -45,7 +45,7 @@ Non-functional:
 This feature covers PRD §8 steps 15–17 (payment and PO generation), continuing after the cart is explicitly confirmed (FEAT-008/FR-035):
 
 1. (Full product, PRD §8 step 17 / BR-24) The system **revalidates price and availability** before charging (FR-041). *Not built in the pilot.*
-2. (PRD §8 step 15) The user **checks out with one payment** (FR-042). In the full product, unauthenticated users may complete **guest checkout** with validated email, phone, and shipping info (FR-004 / PRD BR-26). *The pilot excludes guest checkout. **OPEN QUESTION — the pilot identity/checkout model is unresolved:** guest checkout is excluded, and accounts (FEAT-001) are out of the pilot per `05_backlog.md`, NFR-008, and `02_architecture.md`, yet the pilot spec calls for "one simple in-app checkout" without stating how a pilot user is identified. How the pilot user is identified at checkout must be decided by the team.*
+2. (PRD §8 step 15) The user **checks out with one payment** (FR-042). In the full product, unauthenticated users may complete **guest checkout** with validated email, phone, and shipping info (FR-004 / PRD BR-26). *The pilot excludes guest checkout. **Decided (pilot):** minimal contact capture (email+phone+shipping), no accounts, single COP capture, manual payout — see ADR-022, ADR-003, ADR-004. Accounts (FEAT-001) remain out of the pilot per `05_backlog.md`, NFR-008, and `02_architecture.md`; this resolves how the pilot user is identified at checkout.*
 3. (PRD §8 step 16, full product) The system **generates one purchase order per supplier** (FR-044 / PRD BR-25) and **settles funds to suppliers via split settlement** (FR-043), **retaining Spazio's commission** (FR-045 / PRD BR-28).
 4. In the pilot, instead of automated split/PO, the **operator manually forwards** the confirmed order to the supplier (FEAT-011/FR-061).
 5. Prices are shown in the user's local currency (pilot **COP**, VERIFIED; general rule FR-046 in FEAT-004); delivery/production estimates shown before checkout come from FEAT-009 (FR-036, pilot-included).
@@ -70,23 +70,23 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 - FR-042 / FR-044 (PRD BR-25: checkout produces **one user payment and one purchase order per supplier**)
 - FR-041 (PRD BR-24: price and stock must be validated again at checkout)
 - FR-004 (PRD BR-26: guest checkout requires email validation, phone number, and shipping information)
-- FR-045 (PRD BR-28: Spazio applies a marketplace commission to every completed purchase — **PRD example "10%" is TBD**, see ADR-007)
-- Related human-reserved decisions: **payment gateway & split-settlement model** (ADR-003) and **merchant-of-record model** (ADR-004) are **PENDING** (PRD §12); do not treat any gateway/settlement/MoR choice as decided.
+- FR-045 (PRD BR-28: Spazio applies a marketplace commission to every completed purchase — **PRD default "10%" adopted for the pilot (ADR-007)**; reconciled manually in the pilot)
+- Related decisions — **Decided (pilot):** a single PCI-compliant hosted checkout collecting one payment in COP with **no split settlement** (ADR-003), and the **Spazio operating entity as merchant-of-record** paying suppliers manually (ADR-004); split settlement, gateway/provider selection, and tax/legal implications **revisit before scale** (PRD §12).
 
 ## 8. Proposed technical design
 
-*High-level only. Payment gateway, split-settlement model, and merchant-of-record are explicitly reserved for humans (PRD §12) and marked PENDING; do not select or assume any of them here.*
+*High-level only. **Decided (pilot):** a single PCI-compliant hosted COP checkout with **no split settlement** (ADR-003) and the Spazio operating entity as merchant-of-record paying suppliers manually (ADR-004); split settlement, gateway/provider selection, and tax/legal implications **revisit before scale** (PRD §12).*
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): a **checkout screen** and a **single payment** flow (FR-042), showing order total in local currency (COP in pilot) with per-item delivery/production estimates (FEAT-009). Broader stack **[PENDING — see ADR-001]**.
+- On iOS (pilot, VERIFIED): a **checkout screen** and a **single payment** flow (FR-042), showing order total in local currency (COP in pilot) with per-item delivery/production estimates (FEAT-009). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
 - Full product adds a **guest-checkout** form (email/phone/shipping, FR-004).
 
 ### Backend
 
-- **Payment processing** via a **PCI-compliant gateway** (NFR-009). The specific gateway is **[PENDING — see ADR-003]**; it must (full product) support **split settlement, multi-supplier payouts, multi-currency, guest checkout, and automatic commission retention** (NFR-010/011/012).
+- **Payment processing** via a **PCI-compliant gateway** (NFR-009). **Decided (pilot):** a single PCI-compliant hosted checkout collecting one payment in COP with **no split settlement** — see ADR-003; in the full product the gateway must support **split settlement, multi-supplier payouts, multi-currency, guest checkout, and automatic commission retention** (NFR-010/011/012).
 - **Checkout revalidation** of price and availability before charging (FR-041, full product; coordinates with stock holds in FEAT-008).
-- **Order/PO generation** (full product): create an `Order` from the confirmed cart and **one `PurchaseOrder` per supplier** (FR-044); apply/retain **commission** (FR-045). **Merchant-of-record** model is **[PENDING — see ADR-004]**.
+- **Order/PO generation** (full product): create an `Order` from the confirmed cart and **one `PurchaseOrder` per supplier** (FR-044); apply/retain **commission** (FR-045). **Merchant-of-record** model — **Decided (pilot): the Spazio operating entity collects the single payment and pays suppliers manually (revisit before scale) — see ADR-004**.
 - **Pilot substitute:** record the paid `Order` and hand it to an operator for **manual** forwarding to the supplier (FEAT-011/FR-061); automated split/PO not built.
 
 ### Database
@@ -95,12 +95,12 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `Order` — a confirmed purchase from a single user payment spanning one or more suppliers.
   - `Payment` — the single PCI-processed user payment record, feeding split settlement and commission retention.
   - `PurchaseOrder` — one per supplier (full product), generated from an `Order`.
-  - `Commission` — the marketplace fee Spazio retains (**PRD example 10%, TBD** — ADR-007).
+  - `Commission` — the marketplace fee Spazio retains (**PRD default 10% adopted for the pilot — ADR-007**; reconciled manually in the pilot).
 - Field-level schema is **TBD**.
 
 ### Security
 
-- **PCI-compliant** payment handling (NFR-009); sensitive card data handled by the gateway, not stored by Spazio (design **PENDING** on ADR-003/ADR-004).
+- **PCI-compliant** payment handling (NFR-009); sensitive card data handled by the gateway, not stored by Spazio (**Decided (pilot): single hosted COP checkout, no split; Spazio operating entity as merchant-of-record paying suppliers manually — see ADR-003/ADR-004**).
 - Authentication protects account and order data (NFR-008); order access limited to its owner and authorized operators.
 - Commission retention and settlement must be auditable (full product).
 

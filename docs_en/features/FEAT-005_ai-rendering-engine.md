@@ -8,7 +8,7 @@ The core engine that turns the user's inputs into a **photorealistic render of t
 
 This is **the one core thing** the pilot must prove (pilot, "The one core thing"): *"Show Valentina a photorealistic image of her own room furnished only with real furniture she can buy right now."* The **central innovation is that the AI does not invent furniture** — every rendered item must correspond to a real SKU already in the marketplace (PRD §1, BR-6, BR-14).
 
-- **Pilot scope (VERIFIED):** matching (FR-014), render generation (FR-015), the real-SKU-only constraint (FR-016), dimension-based scaling (FR-017), rendering only currently available products (FR-018), and keeping total cost within budget plus the agreed tolerance (FR-021 — the tolerance *value* remains a human decision, **TBD**, see ADR-008).
+- **Pilot scope (VERIFIED):** matching (FR-014), render generation (FR-015), the real-SKU-only constraint (FR-016), dimension-based scaling (FR-017), rendering only currently available products (FR-018), and keeping total cost within budget plus the agreed tolerance (FR-021 — the tolerance *value* was a human decision, now **decided (pilot): 10%**, see ADR-008).
 - **Full-product scope (VERIFIED, PRD, out of pilot):** exclude incomplete catalog entries (FR-019), budget-unmet disclosure and alternatives (FR-022), and no-match handling (FR-023).
 
 ## 2. Problem or need
@@ -30,14 +30,14 @@ Functional:
 - FR-016 — Restrict every rendered item to a real, purchasable SKU and never fabricate products *(pilot)*
 - FR-017 — Use approximate room dimensions to scale rendered products realistically *(pilot)*
 - FR-018 — Restrict rendering to currently available products *(pilot)*
-- FR-021 — Keep total rendered product cost within budget plus the agreed tolerance *(pilot; tolerance value TBD — see ADR-008)*
+- FR-021 — Keep total rendered product cost within budget plus the agreed tolerance *(pilot; tolerance value adopted for the pilot: 10% — see ADR-008)*
 - FR-019 — Exclude catalog entries with incomplete required data from rendering eligibility *(full product, out of pilot)*
 - FR-022 — On unmet budget, disclose it and offer the closest available alternative *(full product, out of pilot)*
 - FR-023 — On no strong match, suggest similar available products or mark the item unavailable *(full product, out of pilot)*
 
 Non-functional:
 
-- NFR-001 — Single-room render completes within the target time *(PRD target ~2–5 min, **TBD** — see ADR-013)*
+- NFR-001 — Single-room render completes within the target time *(PRD target ~2–5 min soft target adopted for the pilot; no hard SLA — see ADR-013)*
 - NFR-002 — Targeted edits complete faster than full renders *(edits are FEAT-014, out of pilot)*
 - NFR-003 — Enforce a global inference-cost threshold
 - NFR-004 — Degrade gracefully via queueing or slower rendering when cost thresholds are exceeded
@@ -52,7 +52,7 @@ This feature covers the matching-and-render portion of the PRD §8 basic flow (i
 1. Inputs are gathered by upstream features: photo + dimensions (FEAT-002), style + budget (FEAT-003), and locality (FEAT-004).
 2. (Internal) The engine **matches** real, available catalog SKUs to style, dimensions, budget, and locality (FR-014), restricting candidates to **real, purchasable SKUs** (FR-016) that are **currently available** (FR-018) and, in the full product, that have **complete data** (FR-019) and are **deliverable to the locality** (FR-020, handled with FEAT-004).
 3. (PRD §8 step 9) The AI **generates the room render**, compositing the matched SKUs into the user's photo and **scaling them to the approximate dimensions** (FR-015, FR-017).
-4. The engine keeps total cost **within budget plus the agreed tolerance** (FR-021, pilot; tolerance value **TBD**, ADR-008). (Full product) If budget cannot be met it **discloses this and offers the closest alternative** (FR-022); where no strong match exists it **suggests similar products or marks the item unavailable** (FR-023).
+4. The engine keeps total cost **within budget plus the agreed tolerance** (FR-021, pilot; tolerance value **adopted for the pilot: 10%**, ADR-008). (Full product) If budget cannot be met it **discloses this and offers the closest alternative** (FR-022); where no strong match exists it **suggests similar products or marks the item unavailable** (FR-023).
 5. The render is passed to **operator review** (FEAT-006, PRD §8 continues to step 10 tagging only after the render is approved in the pilot).
 
 ## 6. Acceptance criteria
@@ -79,25 +79,25 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 - FR-017 (PRD BR-7: approximate dimensions must be used to scale products realistically)
 - FR-018 (PRD BR-4: ready-made items must never be rendered when unavailable)
 - FR-019 (PRD BR-2: incomplete catalog entries are excluded from rendering)
-- FR-021 (PRD BR-9: total product cost should not exceed budget beyond an agreed tolerance — **"such as 10%" is a PRD example, TBD**, see ADR-008)
+- FR-021 (PRD BR-9: total product cost should not exceed budget beyond an agreed tolerance — **10% adopted for the pilot (PRD BR-9 default)**, see ADR-008)
 - FR-022 (PRD BR-10: on unmet budget, disclose and offer the closest available alternative)
 - FR-023 (PRD BR-13: on no strong match, suggest similar available products or mark the item unavailable)
 
 ## 8. Proposed technical design
 
-*High-level only. The rendering/AI pipeline and stack are explicitly reserved for humans (PRD §12) and marked PENDING; do not treat any pipeline choice as decided.*
+*High-level only. The rendering/AI pipeline and stack were human decisions (PRD §12), now decided for the pilot: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA and no custom-trained model (ADR-002), on a native iOS + managed-backend stack (ADR-001).*
 
 ### Frontend
 
-- A **render request** trigger and a **progress/wait** state on the iOS client while generation runs (render time target **TBD**, NFR-001 / ADR-013). In the pilot the render is not shown until an operator approves it (FEAT-006).
+- A **render request** trigger and a **progress/wait** state on the iOS client while generation runs (render time target ~2–5 min soft, no hard SLA in the pilot, NFR-001 / ADR-013). In the pilot the render is not shown until an operator approves it (FEAT-006).
 - Display of the returned render image (private by default). Tagging overlay is FEAT-007.
 
 ### Backend
 
 - **Matching service** (DRAFT / PROPOSED): selects candidate SKUs from the catalog constrained by style (via the shared taxonomy, ADR-005), dimensions, budget, availability, completeness, and locality. Candidate data comes from FEAT-015 (supplier catalog) and FEAT-004 (locality/delivery).
-- **Rendering pipeline** (DRAFT / PROPOSED orchestration): composites matched SKUs into the user's photo at correct scale. The concrete model/pipeline, object detection/segmentation, and hosting are **[PENDING — see ADR-002]** (and stack **[PENDING — see ADR-001]**).
+- **Rendering pipeline** (DRAFT / PROPOSED orchestration): composites matched SKUs into the user's photo at correct scale. The pipeline is a **hosted generative image API (image-to-image / inpainting) with mandatory operator QA and no custom-trained model — decided (pilot), see ADR-002**; the specific model/hosting product and any object detection/segmentation are left to implementation on the decided **native iOS + managed-backend stack (ADR-001)**.
 - **Cost & conversion instrumentation:** track **cost per render** (NFR-005) and **render-to-purchase** from day one (NFR-006); enforce a **global inference-cost threshold** (NFR-003) and **degrade gracefully** via queueing/slower rendering when exceeded (NFR-004).
-- **Real-SKU guarantee:** the pipeline must be architected so rendered items are always drawn from real catalog SKUs and can be tagged back to them (FR-016 → feeds FEAT-007). Approach is **DRAFT / PROPOSED** pending ADR-002.
+- **Real-SKU guarantee:** the pipeline must be architected so rendered items are always drawn from real catalog SKUs and can be tagged back to them (FR-016 → feeds FEAT-007). Approach is **DRAFT / PROPOSED**, aligned with the decided pipeline (ADR-002).
 
 ### Database
 
@@ -106,7 +106,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `Render` — the generated photorealistic image, **private by default**, pending or approved by an operator.
   - `RenderItem` — the link between a `Render` and a shown `Product` (carries the data used by tagging in FEAT-007).
   - Reads from `Product`, `Style`/`StyleTaxonomy`, `Project`, `RoomPhoto`, `DeliveryZone`.
-- Field-level schema is **TBD**; minimum catalog completeness that gates eligibility is **[PENDING — see ADR-014]**.
+- Field-level schema is **TBD**; minimum catalog completeness that gates eligibility requires **all PRD BR-1 fields present — decided (pilot), see ADR-014**.
 
 ### Security
 
@@ -124,7 +124,7 @@ The `TC-` rows in `08_test_plan.md` for this feature's related FRs are:
 - FR-018 (pilot) (TC-034, TC-035): unavailable ready-made stock is never rendered.
 - FR-014 / FR-015 / FR-017 (pilot) (TC-026, TC-027 / TC-028, TC-029 / TC-032, TC-033): matching honors style/dimensions/budget/locality; render composites matched SKUs at believable scale.
 - FR-019 (full product) (TC-036, TC-037): incomplete catalog entries are excluded.
-- FR-021 (pilot; tolerance value **TBD** — see ADR-008) (TC-040, TC-041): total product cost is kept within budget plus the agreed tolerance.
+- FR-021 (pilot; tolerance value 10%, adopted for the pilot — see ADR-008) (TC-040, TC-041): total product cost is kept within budget plus the agreed tolerance.
 - FR-022 (full product) (TC-042, TC-043): unmet budget is disclosed with the closest available alternative.
 - FR-023 (full product) (TC-044, TC-045): no-match yields similar suggestions or an unavailable mark.
 - Cross-cutting NFR checks — render-time target (NFR-001), cost-per-render tracking (NFR-005), render-to-purchase tracking (NFR-006), privacy of renders (NFR-007) — do not yet have dedicated `TC-` rows in `08_test_plan.md`.

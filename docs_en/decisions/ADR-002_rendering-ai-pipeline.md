@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -14,12 +14,14 @@ This is the product's core and highest-risk area:
 - The pipeline must composite matched SKUs into the user's own room photo photorealistically, at believable scale, using approximate room dimensions (FR-015, FR-017; BR-7), and only from currently available products (BR-4; FR-018).
 - **Render fidelity is called out as the highest risk** in the PRD: accurately compositing a real SKU into the user's room at the correct size and appearance; a poor match could increase returns and disputes (PRD §10).
 - Dependencies include object detection and segmentation and an AI pipeline constrained to real inventory (PRD §10).
-- Performance and cost constraints apply: a render-time target (PRD ~2–5 min, TBD; NFR-001), faster targeted edits (NFR-002), a global inference-cost threshold, graceful degradation, and per-render cost tracking (PRD §7; NFR-003, NFR-004, NFR-005).
+- Performance and cost constraints apply: a render-time target (PRD ~2–5 min soft; NFR-001, ADR-013), faster targeted edits (NFR-002), a global inference-cost threshold, graceful degradation, and per-render cost tracking (PRD §7; NFR-003, NFR-004, NFR-005).
 - In the pilot, an operator reviews each render before it reaches the user (Pilot, "The human's role"; FR-027), which the pipeline design must accommodate.
 
 ## Decision
 
-PENDING - to be decided by the team.
+A hosted generative image API (image-to-image / inpainting) that composites the operator-curated product images into the user's room photo, with MANDATORY operator QA of every render before the user sees it. No custom-trained model.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -53,4 +55,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

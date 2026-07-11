@@ -55,11 +55,11 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. Technology-stack decisions were made by humans (PRD §12) and are Decided (pilot) — see ADR-001 (Native iOS (SwiftUI) app + one managed backend + Postgres + object storage); specific product/tool choices are left to implementation.*
 
 ### Frontend
 
-- An **operator review surface** (DRAFT / PROPOSED — internal tool/console) listing pending renders with the source photo, matched products, and the generated image, plus **approve / reject** actions. Client/tooling technology **[PENDING — see ADR-001]**.
+- An **operator review surface** (DRAFT / PROPOSED — internal tool/console) listing pending renders with the source photo, matched products, and the generated image, plus **approve / reject** actions. Client/tooling technology **Decided (pilot) — see ADR-001** (specific product/tool choice left to implementation).
 - On the user's iOS client: a **waiting/hold state** until the render is approved (the render is not displayed while pending).
 
 ### Backend

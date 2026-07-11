@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -20,7 +20,11 @@ Pilot context: automated split payments and one-purchase-order-per-supplier auto
 
 ## Decision
 
-PENDING - to be decided by the team.
+Decided (pilot): a single PCI-compliant hosted checkout collecting ONE payment in COP. NO split settlement in the pilot; the operator pays suppliers manually (see ADR-003).
+
+Scope: one-week iOS pilot.
+
+Split settlement + gateway/provider selection for COP: revisit before scale.
 
 ## Alternatives considered
 
@@ -54,4 +58,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

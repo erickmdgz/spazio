@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ This ADR is about which market(s) to launch beyond the pilot, and in what order.
 
 ## Decision
 
-PENDING - to be decided by the team.
+Launch in a single market: Bogotá, Colombia; COP only (as the pilot already fixes).
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -47,4 +49,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

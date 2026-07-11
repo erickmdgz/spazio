@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -19,7 +19,9 @@ Pilot context: the pilot is a native iOS app for one persona (Valentina) in Bogo
 
 ## Decision
 
-PENDING - to be decided by the team.
+Dark-green + off-white palette (PRD v0.3), a simple wordmark, and the system font; minimal. The full design system comes later.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -49,4 +51,4 @@ PENDING - to be decided by the team.
 
 ## Date
 
-TBD.
+2026-07-10.

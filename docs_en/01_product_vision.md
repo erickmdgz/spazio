@@ -7,7 +7,7 @@
 > **Status labels used below:**
 > - **VERIFIED** — stated directly in the PRD or the pilot doc (cited).
 > - **DRAFT / PROPOSED** — reasonable structuring by the author, not a decision.
-> - **TBD / PENDING** — reserved for a human decision (tracked as an `ADR-`; see *Open decisions* at the end).
+> - **DECIDED (pilot)** — a decision that was reserved for humans and has now been accepted for the one-week iOS pilot (tracked as an `ADR-`; see *Human-reserved decisions* at the end).
 
 ## Problem
 
@@ -71,7 +71,7 @@ FR/FEAT references below map pilot capabilities to the canonical registry for tr
 
 **Full-product scope (VERIFIED — PRD §3 "Must have"):** the PRD's "Must have" list is broader than the pilot and includes, among others, accounts and saved designs, guest checkout, in-app camera capture, keep-or-replace of existing items, localization and delivery-zone detection, per-supplier purchase orders with automated split settlement, stock holds, warranty display, order tracking, supplier self-service catalog ingestion, and a configurable daily render limit. These are deliberately deferred out of the first version (see *Out of scope*).
 
-> **Known gaps vs. PRD "Must have" (DRAFT — FR-coverage note):** two PRD "Must have" capabilities are not yet catalogued as functional requirements — **saved designs** has no FR, and **order history** is only partially covered by FR-047 (per-purchase-order status and tracking). They are recorded here as deferred / known gaps rather than silently dropped; the same deferral is noted in `03_requirements.md`.
+> **Known gaps vs. PRD "Must have" (DRAFT — FR-coverage note):** two PRD "Must have" capabilities remain uncatalogued as dedicated functional requirements, and both are now resolved for the pilot — **saved designs** is resolved to a Could-have, excluded from the pilot (no FR catalogued yet), and **order history** is resolved to the single active order's status only in the pilot (covered by FR-047 tracking / operator; a dedicated "list past orders" FR is deferred). They are recorded here as resolved deferrals rather than silently dropped; the same deferral is noted in `03_requirements.md`.
 
 ## Out of scope
 
@@ -93,8 +93,8 @@ Two layers of exclusion apply.
 - Supplier self-service ingestion via API, FTP, or automated Excel processing.
 - Keep-or-replace of existing furniture via segmentation.
 - Targeted edit-by-question refinement.
-- Daily render limits *(PRD default is five attempts/day — a default to be confirmed by humans, not a decision; ADR-009)*.
-- Paid render packages *(pricing TBD; ADR-010)*.
+- Daily render limits *(Decided (pilot): no limit — every render is operator-reviewed anyway; the PRD default of five attempts/day applies only when metering is built post-pilot; ADR-009)*.
+- Paid render packages *(Decided (pilot): not offered — deferred; no paid packages; ADR-010)*.
 - Guest checkout.
 - Saved designs, sharing, personalized recommendations, chat assistant.
 - Automated split payments and one-purchase-order-per-supplier automation.
@@ -102,7 +102,7 @@ Two layers of exclusion apply.
 - Warranty display.
 - Augmented reality and multiple rooms.
 
-> Note on stock holds: the pilot cart supports review and removal but does not implement time-boxed stock holds. The PRD states a 15-minute hold as a **default/example to be confirmed by humans**, not a final value (ADR-011; FR-039/FR-040).
+> Note on stock holds: the pilot cart supports review and removal but does not implement time-boxed stock holds. **Decided (pilot): no stock hold** (tiny manually-curated catalog; the operator checks availability); the PRD's 15-minute hold is **adopted only when holds are built post-pilot** (ADR-011; FR-039/FR-040).
 
 ## Success criteria
 
@@ -133,30 +133,30 @@ render-to-purchase rate = purchases / renders
 - **Unsatisfied budgets.** The available catalog may not contain enough products within certain budget ranges.
 - **Supplier data reliability.** Delivery times and warranty information depend on supplier accuracy.
 
-## Open decisions (reserved for humans)
+## Human-reserved decisions (resolved for the pilot)
 
-*(Governance — PRD §12 reserves these for human decision. Listed here so no value above is read as final. Values the PRD gives are examples/defaults to be confirmed, not decisions.)*
+*(Governance — PRD §12 reserved these for human decision. Each has now been decided and accepted for the one-week iOS pilot and recorded as an `ADR-` (Status: Accepted, Date: 2026-07-10), so no value above is open. Values marked "revisit before scale" stay accepted for the pilot with an explicit scale caveat; the PRD's examples/defaults are noted where the pilot adopts them.)*
 
-| Reserved decision | PRD-stated example/default (if any) | Tracking |
+| Decision | Decided for the one-week pilot | Tracking |
 |---|---|---|
-| Technology stack | — | ADR-001 |
-| Rendering / AI pipeline | — | ADR-002 |
-| Payment gateway & split-settlement model | — | ADR-003 |
-| Merchant-of-record model | — | ADR-004 |
-| Style taxonomy | — | ADR-005 |
-| Supplier catalog ingestion channels | PRD lists integration, Excel, API, FTP (TBD) | ADR-006 |
-| Commission percentage / fee model | "for example 10%" | ADR-007 |
-| Budget tolerance | "such as 10%" | ADR-008 |
-| Daily free-render limit | "defaulting to five" per user/day | ADR-009 |
-| Render-package pricing | — | ADR-010 |
-| Cart-hold duration | "15 minutes" | ADR-011 |
-| Catalog synchronization frequency | "regularly, real time for ready-made stock" | ADR-012 |
-| Render-time target | "approximately 2–5 minutes" | ADR-013 |
-| Minimum catalog completeness | — | ADR-014 |
-| Initial launch markets | pilot uses Bogotá / COP (pilot only) | ADR-015 |
-| Supplier partners & onboarding terms | — | ADR-016 |
-| Sponsored-placement plan & pricing | — | ADR-017 |
-| Taxes & multi-market compliance | — | ADR-018 |
-| Data privacy & consumer protection | — | ADR-019 |
-| Warranty & dispute-resolution rules | — | ADR-020 |
-| Brand identity & visual design system | — | ADR-021 |
+| Technology stack | Native iOS (SwiftUI) app + one small managed backend service + a managed Postgres DB + object storage for photos/renders; single environment/region; no multi-platform | ADR-001 |
+| Rendering / AI pipeline | Hosted generative image API (image-to-image / inpainting) compositing operator-curated products into the room photo, with mandatory operator QA of every render; no custom-trained model | ADR-002 |
+| Payment gateway & split-settlement model | Single PCI-compliant hosted checkout collecting one payment in COP; no split settlement (operator pays suppliers manually). Split settlement + COP gateway: revisit before scale | ADR-003 |
+| Merchant-of-record model | The Spazio operating entity collects the single payment and pays suppliers manually. Tax/legal (ties ADR-018): revisit before scale; confirm with an accountant | ADR-004 |
+| Style taxonomy | 1–2 predefined visual styles + free-text description; no taxonomy engine | ADR-005 |
+| Supplier catalog ingestion channels | Operator manually loads a CSV/Excel of 30–60 curated SKUs; no API/FTP/self-service ingestion in the pilot | ADR-006 |
+| Commission percentage / fee model | 10% of product price (PRD §9 default); reconciled manually in the pilot | ADR-007 |
+| Budget tolerance | 10% (PRD BR-9 default) | ADR-008 |
+| Daily free-render limit | No limit in the pilot (every render is operator-reviewed); the PRD default of five/day applies only when metering is built post-pilot | ADR-009 |
+| Render-package pricing | Not offered in the pilot (deferred) | ADR-010 |
+| Cart-hold duration | No stock hold in the pilot; the PRD's 15-minute hold applies only when holds are built post-pilot | ADR-011 |
+| Catalog synchronization frequency | Manual / on-demand refresh by the operator; no automated sync in the pilot | ADR-012 |
+| Render-time target | ~2–5 minutes soft target (PRD §7); no hard SLA in the pilot | ADR-013 |
+| Minimum catalog completeness | A SKU is renderable only if all PRD BR-1 fields are present; the operator enforces this on load | ADR-014 |
+| Initial launch markets | Bogotá, Colombia; COP only | ADR-015 |
+| Supplier partners & onboarding terms | Hand-pick 2–4 Bogotá suppliers with a one-page written agreement (commission, lead times, warranty) | ADR-016 |
+| Sponsored-placement plan & pricing | Not offered in the pilot (deferred) | ADR-017 |
+| Taxes & multi-market compliance | Single market (Colombia); taxes/invoicing handled manually for the pilot; no tax engine. Revisit before scale; confirm with an accountant | ADR-018 |
+| Data privacy & consumer protection | Photos/renders private by default (PRD BR-33); collect the minimum data (email, phone, shipping); short privacy notice + consent at first use. Align with Colombia Ley 1581; legal review before scale | ADR-019 |
+| Warranty & dispute-resolution rules | Pilot does not display warranty; suppliers' own warranty terms apply; disputes handled manually by the operator. Revisit before scale; legal / consumer-protection review needed | ADR-020 |
+| Brand identity & visual design system | Dark-green + off-white palette (PRD v0.3), a simple wordmark, system font; minimal. Full design system later | ADR-021 |

@@ -2,11 +2,11 @@
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
-The PRD reserves the technology stack as a human decision (PRD §12, "Human definitions"). Nothing is built yet; this ADR records the decision the team still owes, not a chosen stack.
+The PRD reserves the technology stack as a human decision (PRD §12, "Human definitions"). Nothing is built yet; this ADR records the stack decision now made for the one-week pilot.
 
 Several documented constraints shape it:
 
@@ -15,11 +15,13 @@ Several documented constraints shape it:
 - Non-functional requirements call for scalability and internationalization: supplier onboarding that scales by region, architecture supporting multiple countries and currencies, and per-market configuration of taxes, payment methods, and legal requirements (PRD §7; NFR-016, NFR-017, NFR-018).
 - The stack must support the render pipeline (FR-015), catalog matching (FR-014), payments/split settlement (FR-042–FR-044), and localization (FR-012, FR-013, FR-046).
 
-There is a real tension between "smallest thing shippable to iOS in a week" and "architecture that later scales to multiple countries, currencies, and platforms." This ADR should make that trade-off explicit so humans can choose.
+There is a real tension between "smallest thing shippable to iOS in a week" and "architecture that later scales to multiple countries, currencies, and platforms." This ADR makes that trade-off explicit; the decision below resolves it for the one-week pilot.
 
 ## Decision
 
-PENDING - to be decided by the team.
+Native iOS (SwiftUI) app + one small managed backend service + a managed relational (Postgres) DB + object storage for photos/renders; single environment/region. Product/tool choices are left to implementation; no multi-platform.
+
+Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
@@ -39,7 +41,7 @@ PENDING - to be decided by the team.
 
 4. **Serverless vs. long-running services for the backend and render orchestration.**
    - Pros (serverless): Scales with demand; pairs well with a global inference-cost threshold and graceful degradation (PRD §7; NFR-003, NFR-004).
-   - Cons (serverless): Long render jobs (PRD target ~2–5 min, TBD; NFR-001) and cost tracking per render (NFR-005) may need queueing/async patterns that add complexity.
+   - Cons (serverless): Long render jobs (PRD target ~2–5 min soft; NFR-001, ADR-013) and cost tracking per render (NFR-005) may need queueing/async patterns that add complexity.
 
 (Client and backend choices are related but separable; the team may combine options above.)
 
@@ -51,8 +53,8 @@ PENDING - to be decided by the team.
 ## Negative consequences
 
 - Whatever is chosen is hard to reverse once code exists; a pilot-optimized choice may need rework to reach the multi-country, multi-platform scope, and a scale-optimized choice may slow the pilot.
-- Leaving this pending blocks the start of the pilot build; it is a prerequisite for almost every other decision here.
+- This decision unblocks the start of the pilot build; it is a prerequisite for almost every other decision here.
 
 ## Date
 
-TBD.
+2026-07-10.

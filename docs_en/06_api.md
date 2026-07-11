@@ -1,14 +1,17 @@
 # API
 
-> **DRAFT — proposed API surface; concrete contracts depend on ADR decisions.**
-> Nothing here is built or final. This document sketches the endpoints the product
+> **DRAFT — proposed API surface; contract shapes still to be detailed.**
+> Nothing here is built yet. This document sketches the endpoints the product
 > *will need* so that requirements stay traceable. The concrete shape of every
 > contract (base URL, verbs, auth scheme, payload fields, status codes, pagination,
-> async model) depends on decisions that are still reserved for humans — above all
-> the technology stack (**ADR-001**), the rendering/AI pipeline (**ADR-002**), and
-> the payment gateway and split-settlement model (**ADR-003**, **ADR-004**). Treat
-> every path, verb, and JSON body below as *illustrative structuring*, not a
-> committed interface.
+> async model) is still draft, but the decisions that gate it are now **Accepted for
+> the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
+> backend service + Postgres + object storage (**ADR-001**), the rendering/AI
+> pipeline is a hosted generative image API with mandatory operator QA of every
+> render (**ADR-002**), and checkout is a single PCI-compliant COP capture with **no
+> split settlement**, the operator paying suppliers manually (**ADR-003**,
+> **ADR-004**). Treat every path, verb, and JSON body below as *illustrative
+> structuring*, not a committed interface.
 
 ## How to read this document
 
@@ -22,24 +25,29 @@ The **capabilities** (what the endpoints must let an actor do) are VERIFIED agai
 the functional requirements. The **endpoints** (paths, verbs, bodies) are
 PROPOSED. Values such as the commission percentage, the daily free-render limit,
 the cart-hold duration and the budget tolerance appear in the PRD only as
-**defaults or examples** and are repeated here as such — they are **not** final.
+**defaults or examples**; for the pilot they are **adopted as decided values**
+(see **ADR-007**, **ADR-008**, **ADR-009**, **ADR-011**).
 
 ## Conventions (all PROPOSED / DRAFT)
 
-- **Base path:** a placeholder `/api/v1` is used only for readability. The real
-  base path, versioning scheme and host are TBD (**ADR-001**).
+- **Base path:** a placeholder `/api/v1` is used only for readability. The stack is
+  decided — native iOS app + one managed backend service (**ADR-001**); the concrete
+  base path, versioning scheme and host are an implementation detail left to build.
 - **Auth:** endpoints that touch account or order data assume an authenticated
-  session; the scheme (token type, header) is TBD (**ADR-001**). This satisfies
-  the *intent* of NFR-008 but does not specify it.
+  session; the stack is decided (**ADR-001**) and the concrete scheme (token type,
+  header) is an implementation detail. This satisfies the *intent* of NFR-008 but
+  does not specify it.
 - **Rendering is asynchronous.** A render is expected to take on the order of
-  minutes (PRD target ~2–5 min, TBD via **ADR-013**), so render creation is
-  modelled as *submit → poll*, not a blocking call.
+  minutes (PRD target ~2–5 min, adopted for the pilot as a soft target with no hard
+  SLA via **ADR-013**), so render creation is modelled as *submit → poll*, not a
+  blocking call.
 - **Privacy.** Room photos and renders are private by default (VERIFIED, BR-33 /
-  NFR-007); any URL returned is assumed to be access-controlled/expiring. Storage
-  mechanism is TBD (**ADR-001**).
+  NFR-007); any URL returned is assumed to be access-controlled/expiring. Storage is
+  object storage for photos/renders, decided (**ADR-001**).
 - **Currency.** Amounts are shown in the user's local currency (VERIFIED, BR-27 /
-  FR-046). Examples use `COP` to match the pilot (Bogotá, one currency); multi-currency
-  is architecture-only for now (TBD **ADR-015**, **ADR-018**).
+  FR-046). The pilot is fixed to Bogotá and COP only, decided (**ADR-015**); taxes/
+  invoicing are handled manually for the pilot with no tax engine (**ADR-018**,
+  revisit before scale). Multi-currency stays architecture-only, out of the pilot.
 - **JSON bodies below are labelled `illustrative / draft`.** Field names, types and
   units are proposals; none are guaranteed by the PRD.
 - **Pilot note.** Some capabilities exist in the pilot only with a human in the
@@ -188,7 +196,7 @@ source="upload"          // "upload" (FR-005) | "capture" (FR-006)
 ### `GET /api/v1/styles`
 
 - **Purpose (VERIFIED):** List the predefined visual styles the user can pick from (the visual style catalog).
-- **Note (TBD):** the underlying **style taxonomy** is a human decision (**ADR-005**, BR-16); the values returned here are not defined yet. Pilot ships "one or two predefined visual styles".
+- **Note (Decided, pilot):** the **style taxonomy** is 1–2 predefined visual styles + free-text description, no taxonomy engine (**ADR-005**, BR-16); the concrete style values are a draft data detail. Pilot ships "one or two predefined visual styles".
 - **Related requirements:** FR-007; NFR-013.
 
 ### Free-text style, budget range, and room-change description
@@ -214,14 +222,14 @@ endpoints are effectively constant in the pilot.
 
 - **Purpose (VERIFIED):** Report whether items are deliverable to the user's locality (BR-11) and, when local delivery is unavailable, surface fallback options — nearby regions, alternative shipping, or pickup (BR-12).
 - **Related requirements:** FR-020, FR-053. **Excluded from the pilot** (single fixed zone).
-- **Note (TBD):** market rules — taxes, payment methods, legality — are per-market and human-decided (**ADR-015**, **ADR-018**).
+- **Note (Decided, pilot):** single market — Bogotá, Colombia, COP only (**ADR-015**); taxes/invoicing are handled manually for the pilot with no tax engine (**ADR-018**, revisit before scale).
 
 ---
 
 ## 5. Render generation, review & targeted edit
 
 **Capability area:** FEAT-005 (rendering) + FEAT-006 (operator review) + FEAT-014 (targeted edit) + FEAT-013 (metering).
-This is the heart of the product. **The pipeline itself is undecided (ADR-002); everything below is DRAFT.**
+This is the heart of the product. **The pipeline is decided — a hosted generative image API with mandatory operator QA of every render (ADR-002); the concrete contracts below are still DRAFT.**
 The core render + human review is **pilot core**.
 
 ### `POST /api/v1/renders`  *(representative — full contract, illustrative)*
@@ -263,7 +271,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
   "renderId": "rnd_789",
   "status": "queued",             // queued → rendering → pending_review → approved | rejected
   "countsAsAttempt": true,        // one attempt against the daily limit (BR-20)
-  "estimateSeconds": 180          // informational; render-time target is TBD (ADR-013)
+  "estimateSeconds": 180          // informational; render-time target ~2–5 min soft target, no hard SLA in the pilot (ADR-013)
 }
 ```
 
@@ -272,7 +280,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 | Code | Cause |
 |---|---|
 | 400 | Missing photo/style/budget/dimensions inputs |
-| 402 | Daily free-render limit reached — return next day or buy a package (BR-21). *Limit is a PRD default of five, TBD (**ADR-009**); package pricing TBD (**ADR-010**). Metering is excluded from the pilot.* |
+| 402 | Daily free-render limit reached — return next day or buy a package (BR-21). *The pilot has NO daily limit (metering excluded; every render is operator-reviewed) — the PRD default of five applies only when metering is built post-pilot (**ADR-009**); render packages are not offered in the pilot (**ADR-010**).* |
 | 404 | `photoId` not found |
 | 409 | Budget cannot be met within tolerance — see fallback behaviour below (BR-10) |
 | 422 | No strong match for one or more items (BR-13) |
@@ -282,8 +290,8 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 > alternative (FR-022, BR-10); when there is no strong match it must suggest
 > similar available products or mark the item unavailable (FR-023, BR-13). These
 > may surface as a `409/422` body or as flags on the render result; the exact
-> shape is DRAFT. The budget tolerance itself is a PRD *example* of "such as 10%",
-> TBD (**ADR-008**).
+> shape is DRAFT. The budget tolerance is **10%**, adopted for the pilot
+> (**ADR-008**).
 
 #### Related requirements
 
@@ -291,7 +299,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 - FR-017 (scale by dimensions — BR-7), FR-018 (available stock only — BR-4), FR-021 (within budget+tolerance — BR-9)
 - FR-022 / FR-023 (budget & no-match fallbacks), FR-019 (incomplete catalog entries excluded — BR-2)
 - FR-048 / FR-049 (daily limit and attempt counting — metering, not in pilot)
-- NFR-001 (render-time target, TBD), NFR-003/NFR-005 (cost threshold / cost per render)
+- NFR-001 (render-time target — ~2–5 min soft target, no hard SLA in the pilot, **ADR-013**), NFR-003/NFR-005 (cost threshold / cost per render)
 
 ### `GET /api/v1/renders/{renderId}`
 
@@ -311,7 +319,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 ### `GET /api/v1/renders/quota`
 
 - **Purpose (VERIFIED):** Report the user's remaining free renders for the day and, when the limit is reached, the options: return next day or buy a render package (BR-19, BR-21).
-- **Note (TBD):** the daily limit is a PRD **default of five** (**ADR-009**); render-package pricing is undecided (**ADR-010**).
+- **Note (Decided, pilot):** metering is excluded from the pilot — NO daily limit (the PRD **default of five** applies only when metering is built post-pilot, **ADR-009**) and no render packages (deferred, **ADR-010**).
 - **Related requirements:** FR-048, FR-049, FR-050. **Excluded from the pilot.**
 
 ---
@@ -345,7 +353,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 ### `POST /api/v1/cart/items`
 
 - **Purpose (VERIFIED):** Add a rendered/tagged product to the cart. Adding an item places a stock hold for the configured duration (BR-22).
-- **Note (TBD):** the hold duration is a PRD **default of 15 minutes** (**ADR-011**); on expiry the hold is released back to availability (BR-23).
+- **Note (Decided, pilot):** the pilot has **NO stock hold** (tiny operator-curated catalog; the operator checks availability) — the PRD **default of 15 minutes** applies only when holds are built post-pilot (**ADR-011**); when holds exist, on expiry the hold is released back to availability (BR-23).
 - **Related requirements:** FR-030, FR-039, FR-040. (FR-030/holds not in the pilot; pilot ships auto-population + review + removal.)
 
 ### `DELETE /api/v1/cart/items/{itemId}`
@@ -383,13 +391,15 @@ automated split settlement, one-PO-per-supplier automation, commission retention
 and guest checkout are **excluded from the pilot** (in the pilot the operator
 forwards the order and handles fulfilment manually — FR-061).
 
-> **All payment contracts here are DRAFT and blocked on human decisions:** the
-> payment gateway and split-settlement model (**ADR-003**), the merchant-of-record
-> model (**ADR-004**), and the commission percentage (**ADR-007**). Payment
-> processing must be PCI-compliant (NFR-009) and the gateway must support split
-> settlement, multi-supplier payouts, multi-currency, guest checkout and automatic
-> commission retention (NFR-010–012) — these are requirements on the *chosen*
-> gateway, not a chosen design.
+> **The payment decisions are Accepted for the pilot; the contract shapes here are
+> still DRAFT.** Checkout is a single PCI-compliant hosted COP capture with **no
+> split settlement** — the operator pays suppliers manually (**ADR-003**); the
+> Spazio operating entity is the merchant of record for the pilot (**ADR-004**,
+> revisit before scale, confirm with an accountant); commission is **10%** of
+> product price, reconciled manually (**ADR-007**). Payment processing must be
+> PCI-compliant (NFR-009); split settlement, multi-supplier payouts, multi-currency,
+> guest checkout and automatic commission retention (NFR-010–012) are **out of the
+> pilot** and remain requirements on any gateway chosen before scale.
 
 ### `POST /api/v1/checkout`  *(representative — full contract, illustrative)*
 
@@ -419,8 +429,9 @@ requires validated email, phone and shipping (BR-26).
 
 #### Successful response
 
-*Illustrative / draft* — payment confirmation is gateway-dependent (**ADR-003**),
-so a payment intent / client secret is only a placeholder shape:
+*Illustrative / draft* — the checkout model is decided (a single PCI-compliant COP
+capture, no split — **ADR-003**), but the concrete provider is a scale-time choice
+(revisit before scale), so the payment intent / client secret is only a placeholder shape:
 
 ```json
 // 201 Created
@@ -433,10 +444,10 @@ so a payment intent / client secret is only a placeholder shape:
   ],
   "totals": {
     "productTotal": 5700000,
-    "commission": { "note": "PRD EXAMPLE of 10%, TBD via ADR-007", "amount": null },
+    "commission": { "note": "Decided (pilot): 10% of product price, reconciled manually — ADR-007", "amount": null },
     "currency": "COP"
   },
-  "payment": { "status": "requires_confirmation", "intentRef": "<gateway-dependent, TBD ADR-003>" }
+  "payment": { "status": "requires_confirmation", "intentRef": "<single hosted COP capture — ADR-003; concrete provider revisit before scale>" }
 }
 ```
 
@@ -445,7 +456,7 @@ so a payment intent / client secret is only a placeholder shape:
 | Code | Cause |
 |---|---|
 | 400 | Missing guest contact fields (BR-26) or unconfirmed cart (BR-31) |
-| 402 | Payment declined (gateway-dependent — TBD **ADR-003**) |
+| 402 | Payment declined (single hosted COP capture — **ADR-003**; concrete provider revisit before scale) |
 | 409 | Price or availability changed at revalidation (BR-24) — client must re-confirm |
 | 410 | Stock hold expired (BR-23) |
 
@@ -458,7 +469,7 @@ so a payment intent / client secret is only a placeholder shape:
 
 ### `POST /api/v1/payments/{paymentId}/confirm`
 
-- **Purpose (VERIFIED):** Complete the single user payment (feeds split settlement and commission retention). **Shape entirely gateway-dependent — DRAFT (ADR-003).**
+- **Purpose (VERIFIED):** Complete the single user payment. In the pilot this is one PCI-compliant COP capture with **no split settlement**; commission is reconciled manually (decided — **ADR-003**, **ADR-007**). The concrete gateway shape is still DRAFT (provider revisit before scale).
 - **Related requirements:** FR-042, FR-043, FR-045; NFR-009, NFR-010.
 
 ---
@@ -489,19 +500,19 @@ the pilot**. Every rendered item depends on this data being complete (BR-1, BR-2
 ### `POST /api/v1/operator/catalog/products`  · `PATCH /.../{sku}`
 
 - **Purpose (VERIFIED):** Operator curates and approves catalog entries (Pilot; PRD §5), storing the required per-SKU attributes: photos, dimensions, price, colors, materials, stock, category, style attributes, production/delivery lead time, and warranty (BR-1). Each product is classified as in-stock ready-made or made-to-order with the required stock/lead-time data (BR-3, BR-4, BR-5) and mapped to the shared style taxonomy (BR-16). Actor: **Operator**.
-- **Note (TBD):** the style taxonomy is human-decided (**ADR-005**); minimum catalog completeness is human-decided (**ADR-014**).
+- **Note (Decided, pilot):** the style taxonomy is 1–2 predefined visual styles + free-text, no taxonomy engine (**ADR-005**); minimum catalog completeness is all PRD BR-1 fields present, operator-enforced on load (**ADR-014**).
 - **Related requirements:** FR-056, FR-057, FR-058, FR-059. **Pilot core.**
 
 ### `POST /api/v1/suppliers/{supplierId}/catalog:import`
 
-- **Purpose (VERIFIED):** Let suppliers self-ingest catalog data. The PRD lists candidate channels — software integration, Excel, API, FTP — but the supported set is undecided.
-- **Note (TBD):** supported ingestion channels are human-decided (**ADR-006**); onboarding terms (**ADR-016**).
+- **Purpose (VERIFIED):** Let suppliers self-ingest catalog data. The PRD lists candidate channels — software integration, Excel, API, FTP — but for the pilot **none** is supported: self-service ingestion is excluded and the operator loads a CSV/Excel instead (decided — **ADR-006**).
+- **Note (Decided, pilot):** ingestion is an operator-loaded spreadsheet (CSV/Excel) of 30–60 curated SKUs — no API/FTP/self-service in the pilot (**ADR-006**); suppliers are 2–4 hand-picked Bogotá partners under a one-page written agreement (**ADR-016**).
 - **Related requirements:** FR-055. **Excluded from the pilot.**
 
 ### `GET /api/v1/catalog/products` *(internal — matching/render input)*
 
 - **Purpose (VERIFIED):** Query the curated catalog for matching. Entries with incomplete required data are excluded from rendering eligibility (BR-2); only currently available stock is eligible (BR-4). Sponsored placement may act **only as a tie-breaker** and must never override relevance, quality, budget, locality or availability (BR-29, BR-30).
-- **Note (TBD):** catalog synchronization frequency is human-decided (**ADR-012**, BR-32); sponsored-placement plan/pricing (**ADR-017**).
+- **Note (Decided, pilot):** catalog synchronization is a manual / on-demand refresh by the operator, no automated sync (**ADR-012**, BR-32); sponsored placement is not offered in the pilot (**ADR-017**).
 - **Related requirements:** FR-014, FR-019, FR-060, FR-054.
 
 ---
@@ -528,28 +539,29 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 > dimension-based *scaling* requirement **FR-017** is served by the render engine
 > (**FEAT-005**, row 5, within the FR-014–FR-023 range) — per the canonical registry.
 
-## Open decisions that gate these contracts
+## Decisions that shape these contracts (Accepted for the pilot)
 
-None of the following are decided; each blocks part of the surface above (see the ADR registry):
+All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-10; see the ADR registry). Each shapes part of the surface above; the concrete contract shapes remain DRAFT:
 
-- **ADR-001** technology stack — base path, auth, storage, async model.
-- **ADR-002** rendering / AI pipeline — the entire render section (§5).
-- **ADR-003 / ADR-004** payment gateway, split-settlement, merchant-of-record — checkout & payment (§9).
-- **ADR-005** style taxonomy — `GET /styles`, catalog style mapping.
-- **ADR-006** supplier ingestion channels — supplier self-ingest (§11).
-- **ADR-007** commission percentage (PRD *example* 10%) — checkout totals.
-- **ADR-008** budget tolerance (PRD *example* "such as 10%") — render budget rule.
-- **ADR-009 / ADR-010** daily free-render limit (PRD *default* five) and render-package pricing — render metering.
-- **ADR-011** cart-hold duration (PRD *default* 15 minutes) — stock holds.
-- **ADR-012** catalog synchronization frequency — catalog sync.
-- **ADR-013** render-time target (PRD *target* ~2–5 min) — render async estimates.
-- **ADR-014** minimum catalog completeness — catalog curation gate.
-- **ADR-015 / ADR-018** initial markets, taxes & multi-market compliance — localization, currency, checkout.
-- **ADR-016** supplier partners & onboarding terms — supplier ingestion.
-- **ADR-017** sponsored-placement plan & pricing — catalog tie-breaking.
-- **ADR-019 / ADR-020** data privacy / consumer protection, warranty & dispute rules — privacy defaults, warranty display, order handling.
-- **ADR-021** brand identity & visual design system — client-facing surfaces.
+- **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation).
+- **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA of every render, no custom-trained model. Shapes the render section (§5).
+- **ADR-003 / ADR-004** payment & merchant of record — Accepted: a single PCI-compliant hosted COP capture with **no split settlement**, the operator paying suppliers manually (**ADR-003**); the Spazio operating entity is the merchant of record for the pilot (**ADR-004**, revisit before scale). Shapes checkout & payment (§9).
+- **ADR-005** style taxonomy — Accepted: 1–2 predefined visual styles + free-text, no taxonomy engine. Shapes `GET /styles`, catalog style mapping.
+- **ADR-006** supplier ingestion channels — Accepted: operator-loaded CSV/Excel of 30–60 curated SKUs, no self-service ingestion in the pilot. Shapes supplier self-ingest (§11).
+- **ADR-007** commission percentage — Accepted: **10%** of product price, reconciled manually in the pilot. Shapes checkout totals.
+- **ADR-008** budget tolerance — Accepted: **10%**. Shapes the render budget rule.
+- **ADR-009 / ADR-010** render metering — Accepted: **no daily limit** in the pilot (the PRD default of five applies only post-pilot) and no render packages (deferred). Shapes render metering.
+- **ADR-011** cart-hold duration — Accepted: **no stock hold** in the pilot (the PRD default of 15 minutes applies only post-pilot). Shapes stock holds.
+- **ADR-012** catalog synchronization frequency — Accepted: manual / on-demand refresh by the operator, no automated sync. Shapes catalog sync.
+- **ADR-013** render-time target — Accepted: **~2–5 min** soft target, no hard SLA in the pilot. Shapes render async estimates.
+- **ADR-014** minimum catalog completeness — Accepted: all PRD BR-1 fields required, operator-enforced on load. Shapes the catalog curation gate.
+- **ADR-015 / ADR-018** market, taxes & compliance — Accepted: single market Bogotá, COP only (**ADR-015**); taxes/invoicing handled manually for the pilot, no tax engine (**ADR-018**, revisit before scale). Shapes localization, currency, checkout.
+- **ADR-016** supplier partners & onboarding terms — Accepted: 2–4 hand-picked Bogotá suppliers under a one-page written agreement. Shapes supplier ingestion.
+- **ADR-017** sponsored-placement plan & pricing — Accepted: not offered in the pilot (deferred). Shapes catalog tie-breaking.
+- **ADR-019 / ADR-020** privacy & warranty/disputes — Accepted: photos/renders private by default, minimum data + short consent (**ADR-019**, align Colombia Ley 1581, legal review before scale); warranty **not displayed** in the pilot, disputes handled manually by the operator (**ADR-020**). Shapes privacy defaults, warranty display, order handling.
+- **ADR-021** brand identity & visual design system — Accepted: dark-green + off-white palette, simple wordmark, system font; full design system later. Shapes client-facing surfaces.
 
-> **Reminder:** this is a DRAFT specification. Nothing here is implemented, and no
-> capability listed is "built" or "covered" — these are proposed contracts pending
-> the decisions above and human approval.
+> **Reminder:** this is a DRAFT specification. Nothing here is implemented yet, and
+> no capability listed is "built" or "covered" — these are proposed contracts. The
+> gating decisions above are **Accepted for the pilot**; the concrete contract shapes
+> still await implementation and human approval.

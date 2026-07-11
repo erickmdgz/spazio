@@ -63,16 +63,16 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - FR-036 (PRD BR-17: delivery and production estimates must come from supplier data and be shown before checkout)
 - FR-037 (PRD FR-10: aggregated production/delivery estimate for the full order, shown before checkout)
-- FR-038 (PRD BR-18: warranty terms must be supplier-declared and displayed before checkout; warranty/dispute rules are **TBD** → ADR-020)
+- FR-038 (PRD BR-18: warranty terms must be supplier-declared and displayed before checkout; warranty/dispute rules **Decided (pilot): warranty is NOT displayed in the pilot — suppliers' own warranty terms apply and disputes are handled manually by the operator → ADR-020**)
 - Cross-cutting: NFR-015 (price, delivery, and warranty visible before checkout). Supplier lead-time/warranty data is guaranteed present for renderable products by the catalog completeness rules (PRD BR-1, BR-2 → FR-019, FR-057, FEAT-015).
 
 ## 8. Proposed technical design
 
-*High-level only. Technology choices are reserved for humans (PRD §12) and marked PENDING.*
+*High-level only. Technology stack decided for the pilot — see ADR-001 (product/tool choices left to implementation).*
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): each **cart line** shows the item's production/delivery estimate next to price and supplier (FR-036). Broader stack **[PENDING — see ADR-001]**.
+- On iOS (pilot, VERIFIED): each **cart line** shows the item's production/delivery estimate next to price and supplier (FR-036). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
 - Full product adds an **order-summary estimate** line (FR-037) and a **warranty** field per item / in the product detail (FR-038). Warranty presentation is **out of the pilot**.
 - Items with no supplier estimate are shown with a `missing-estimate` indicator **(DRAFT / PROPOSED)** rather than a fabricated value.
 
@@ -89,7 +89,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `CartItem` / `Cart` — the cart lines the per-item estimate and warranty are displayed against, and the scope over which the order-level estimate (FR-037) is aggregated.
   - `RenderItem` — carries `warranty_terms` captured at render time (PRD FR-07), a possible display source for FR-038.
   - `PurchaseOrder` — carries `production_estimate` / `delivery_estimate` **(proposed)** as the *post-order* counterpart (generated at checkout, FEAT-010/FR-044); the *pre-checkout* aggregate for FR-037 is derived at the cart level.
-- Field-level schema and the `missing-estimate` status value are **DRAFT / PROPOSED**; final types are **TBD** with the stack (ADR-001).
+- Field-level schema and the `missing-estimate` status value are **DRAFT / PROPOSED**; final types follow the pilot stack, now decided (ADR-001).
 
 ### Security
 
