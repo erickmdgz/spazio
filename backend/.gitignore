@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+coverage/
+
+# local render/photo storage used by the dev ObjectStorage impl
+.storage/
+
+# OS noise
+.DS_Store

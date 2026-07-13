@@ -1,0 +1,403 @@
+// Spazio pilot — Prisma schema (PILOT entity subset only).
+// Stack: Postgres (ADR-001). Money is stored as integer COP (ADR-015; COP has no
+// commonly used minor unit). Photos/renders live in object storage; only their
+// storage keys are persisted here (BR-33 / NFR-007, private by default).
+//
+// DEFERRED ENTITIES — intentionally omitted from the pilot (see docs 06_api /
+// 07_data_model and the ADRs). Do NOT add these here; features add them later:
+//   - StockHold            (no cart stock holds in the pilot — ADR-011)
+//   - Commission / split-settlement payout tables (single COP capture, commission
+//                           reconciled manually — ADR-003 / ADR-004 / ADR-007;
+//                           commissionCop is a snapshot column on Order, not an entity)
+//   - warranty-display-only surfaces (warranty NOT displayed in the pilot — ADR-020;
+//                           warrantyTerms is stored on Product but not surfaced)
+//   - keep-or-replace segmentation (Project.keep_replace_map / RenderItem.is_kept_item — deferred)
+//   - render metering / quota / render packages (no daily limit — ADR-009 / ADR-010)
+//   - SponsoredPlacement   (not offered in the pilot — ADR-017)
+//   - User / Operator accounts, OrderTracking, Market, StyleTaxonomy
+//                           (no end-user accounts — ADR-022; single fixed market — ADR-015)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ProjectStatus {
+  draft // bootstrapped at first input (§0.1#3)
+  finalized // finalized when a render is created (FR-014..018/021)
+}
+
+enum PhotoQualityStatus {
+  pending
+  accepted
+  rejected
+}
+
+enum ProductClassification {
+  ready_made // in-stock (BR-3 / BR-4)
+  made_to_order // manufacturable (BR-3 / BR-5)
+}
+
+enum ProductCompletenessStatus {
+  incomplete // missing one or more BR-1 fields -> excluded from rendering (BR-2)
+  complete
+}
+
+enum ProductApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum StyleStatus {
+  active
+  inactive
+}
+
+enum RenderRequestStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum RenderReviewStatus {
+  pending_review
+  approved
+  rejected
+}
+
+enum CartStatus {
+  draft
+  confirmed
+}
+
+enum OrderStatus {
+  pending
+  paid_unforwarded // paid but not yet forwarded to suppliers (operator queue, §0.1#5)
+  forwarded
+  completed
+  cancelled
+}
+
+enum PurchaseOrderStatus {
+  created // created at checkout (§0.1#1)
+  sent_to_supplier
+  accepted
+  in_production
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  captured
+  failed
+  refunded
+}
+
+// ---------------------------------------------------------------------------
+// Client-session domain
+// ---------------------------------------------------------------------------
+
+// A room-design session. Bootstrapped at first input (§0.1#3); there are no
+// end-user accounts in the pilot (ADR-022) — the client is identified by an
+// opaque device token.
+model Project {
+  id          String        @id @default(uuid())
+  deviceToken String
+  status      ProjectStatus @default(draft)
+
+  // Inputs collected via PATCH /projects/:id (FR-011 dimensions; FR-007/008/009 style/budget).
+  roomWidthCm  Int?
+  roomLengthCm Int?
+  roomHeightCm Int?
+  styleId      String?
+  freeText     String?
+  budgetMinCop Int?
+  budgetMaxCop Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  style          Style?          @relation(fields: [styleId], references: [id])
+  photos         RoomPhoto[]
+  renderRequests RenderRequest[]
+  renders        Render[]
+  cart           Cart?
+  orders         Order[]
+  events         Event[]
+
+  @@index([deviceToken])
+}
+
+model RoomPhoto {
+  id            String             @id @default(uuid())
+  projectId     String
+  storageKey    String // object-storage key (private, BR-33 / NFR-007)
+  widthCm       Int?
+  heightCm      Int?
+  qualityStatus PhotoQualityStatus @default(pending)
+  createdAt     DateTime           @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Catalog domain
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id           String   @id @default(uuid())
+  name         String
+  contactEmail String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+
+  products       Product[]
+  deliveryZones  DeliveryZone[]
+  purchaseOrders PurchaseOrder[]
+}
+
+// A real, purchasable SKU. Carries all BR-1 fields (photos, dimensions, price,
+// colors, materials, stock, category, style attributes, lead times, warranty).
+model Product {
+  id         String @id @default(uuid())
+  supplierId String
+  sku        String @unique
+  name       String
+  category   String
+
+  photos          String[] // BR-1
+  colors          String[] // BR-1
+  materials       String[] // BR-1
+  styleAttributes String[] // BR-1 (predefined styles + free-text vocab, ADR-005)
+
+  // Dimensions in cm, used to scale renders (BR-7 / FR-017).
+  widthCm Int?
+  depthCm Int?
+  heightCm Int?
+
+  priceCop Int // BR-1 (COP, ADR-015)
+
+  classification ProductClassification
+  stock          Int? // required for ready_made (BR-4); null allowed for made_to_order
+
+  productionLeadTimeDays Int? // required for made_to_order (BR-5)
+  deliveryLeadTimeDays   Int // BR-1 / BR-17
+  warrantyTerms          String // BR-1 (stored; NOT displayed in the pilot — ADR-020)
+
+  // Curation state (§0.1#5, ADR-014).
+  completenessStatus ProductCompletenessStatus @default(incomplete)
+  approvalStatus     ProductApprovalStatus     @default(pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  renderItems RenderItem[]
+  cartItems   CartItem[]
+
+  @@index([supplierId])
+  @@index([approvalStatus])
+  @@index([completenessStatus])
+}
+
+// Predefined visual style (ADR-005). 1-2 shipped for the pilot.
+model Style {
+  id          String      @id @default(uuid())
+  code        String      @unique
+  name        String
+  description String?
+  status      StyleStatus @default(active)
+
+  projects Project[]
+}
+
+// Delivery coverage. Pilot ships a single zone (Bogota, COP — ADR-015).
+model DeliveryZone {
+  id         String  @id @default(uuid())
+  supplierId String
+  name       String // e.g. "Bogota"
+  currency   String  @default("COP")
+  active     Boolean @default(true)
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId])
+}
+
+// ---------------------------------------------------------------------------
+// Render domain
+// ---------------------------------------------------------------------------
+
+// One render/generate request. Snapshots the style/free-text/budget used.
+model RenderRequest {
+  id           String              @id @default(uuid())
+  projectId    String
+  styleId      String?
+  freeText     String?
+  budgetMinCop Int?
+  budgetMaxCop Int?
+  status       RenderRequestStatus @default(queued)
+  createdAt    DateTime            @default(now())
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  renders Render[]
+
+  @@index([projectId])
+}
+
+// A generated image, private by default, gated by operator review (FR-027).
+model Render {
+  id              String             @id @default(uuid())
+  renderRequestId String
+  projectId       String
+  imageKey        String? // object-storage key, set when the pipeline completes
+  reviewStatus    RenderReviewStatus @default(pending_review)
+  createdAt       DateTime           @default(now())
+  reviewedAt      DateTime?
+
+  renderRequest RenderRequest @relation(fields: [renderRequestId], references: [id], onDelete: Cascade)
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items         RenderItem[]
+
+  @@index([projectId])
+  @@index([reviewStatus])
+}
+
+// Link from a Render to a real Product, with tag position and a price snapshot.
+model RenderItem {
+  id               String @id @default(uuid())
+  renderId         String
+  productId        String
+  tagPosition      Json? // { x, y } on-image tag coordinates (FR-028/029)
+  priceCopSnapshot Int // price captured at render time
+
+  render  Render  @relation(fields: [renderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([renderId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Cart / checkout domain
+// ---------------------------------------------------------------------------
+
+// Auto-populated suggestion derived from an approved render (FR-031, BR-31).
+// One cart per project in the pilot.
+model Cart {
+  id        String     @id @default(uuid())
+  projectId String     @unique
+  status    CartStatus @default(draft)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items   CartItem[]
+}
+
+// Auto-populated cart line (no manual add in the pilot — POST /cart/items deferred, §0.1#2).
+model CartItem {
+  id               String @id @default(uuid())
+  cartId           String
+  productId        String
+  priceCopSnapshot Int
+  quantity         Int    @default(1)
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+// A confirmed purchase. Single COP capture (ADR-003). Contact + shipping per ADR-022.
+// commissionCop is a snapshot column (10% reconciled manually — ADR-007), not an entity.
+model Order {
+  id        String @id @default(uuid())
+  projectId String
+
+  // Contact + shipping (ADR-022; no end-user accounts).
+  contactEmail    String
+  contactPhone    String
+  shippingName    String?
+  shippingLine1   String?
+  shippingCity    String  @default("Bogota")
+  shippingRegion  String?
+  shippingCountry String  @default("CO")
+
+  subtotalCop   Int
+  commissionCop Int
+  totalCop      Int
+  status        OrderStatus @default(pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project        Project         @relation(fields: [projectId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  payment        Payment?
+
+  @@index([projectId])
+  @@index([status])
+}
+
+// One per supplier, created AT CHECKOUT (§0.1#1). Operator forwards manually (FR-061).
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  orderId     String
+  supplierId  String
+  status      PurchaseOrderStatus @default(created)
+  subtotalCop Int                 @default(0)
+  forwardedAt DateTime?
+  createdAt   DateTime            @default(now())
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+}
+
+// The single user payment (single hosted COP capture — ADR-003; manual payout).
+model Payment {
+  id        String        @id @default(uuid())
+  orderId   String        @unique
+  amountCop Int
+  status    PaymentStatus @default(pending)
+  createdAt DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Instrumentation
+// ---------------------------------------------------------------------------
+
+// The NFR-006 event trail. Six pilot events are emitted (see src/events.ts).
+model Event {
+  id        String   @id @default(uuid())
+  type      String
+  projectId String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([type])
+  @@index([projectId])
+}

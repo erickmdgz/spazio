@@ -23,6 +23,8 @@ Native iOS (SwiftUI) app + one small managed backend service + a managed relatio
 
 Scope: one-week iOS pilot.
 
+**Implementation note (2026-07-13):** the backend language/framework left open above is now fixed for the pilot as **Node.js 22 + TypeScript (Fastify)** with **Prisma** over **Postgres** and a queue abstraction for async render jobs. The hosted rendering and COP payment vendors remain unselected and are built behind interfaces (see ADR-002, ADR-003). Recorded here as the concrete language choice; the foundation scaffold implements it (`backend/`).
+
 ## Alternatives considered
 
 1. **Native iOS (Swift / SwiftUI) client + cloud backend.**
