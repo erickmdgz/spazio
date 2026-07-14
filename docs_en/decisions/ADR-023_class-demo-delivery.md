@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (demo scope).
+Accepted (demo scope). **Update (ADR-024, 2026-07-14):** the web-app delivery recorded here for the demo is now the product direction — see ADR-024. The mock substitutions below (in-memory state, mock checkout, faked render, seeded catalog) remain demo artifacts slated for replacement by the real backend integration.
 
 ## Context
 

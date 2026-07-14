@@ -173,6 +173,15 @@ below).
   Foundation only — no feature UX, no per-action role enforcement, nothing
   deployed; it satisfies the *intent* of NFR-008 but covers no requirement.
 
+- **Web-platform pivot recorded (`ADR-024`).** The product owner's 2026-07-14
+  decision: no native iOS app will be built (the opportunity cost versus a
+  working platform is too high); the product continues on the **web app**
+  (`web-demo/`), to be wired to the real backend at **class-demo scale**.
+  Supersedes the client choice in `ADR-001` and the one-week pilot *program*
+  framing; the backend/Postgres stack decision and the build plan's loop design
+  stand. Recording a decision is not building it: the wiring work follows the
+  normal plan-approval flow.
+
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
   class-project demo is delivered. **For the demo scope only** it supersedes
