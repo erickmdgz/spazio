@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Prisma, ProductClassification } from "@prisma/client";
+import { completenessOf } from "../../services/completeness.js";
 
 type CatalogFilter = "incomplete" | "unmapped" | "pending";
 
@@ -60,25 +61,7 @@ const productBodySchema = {
   },
 } as const;
 
-/** Derive completeness from BR-1 fields (operator-enforced, ADR-014). */
-function completenessOf(input: UpsertProductBody): "complete" | "incomplete" {
-  const hasCore =
-    input.photos.length > 0 &&
-    input.colors.length > 0 &&
-    input.materials.length > 0 &&
-    input.styleAttributes.length > 0 &&
-    input.priceCop > 0 &&
-    input.deliveryLeadTimeDays >= 0 &&
-    input.warrantyTerms.length > 0 &&
-    input.widthCm != null &&
-    input.depthCm != null &&
-    input.heightCm != null;
-  const classOk =
-    input.classification === "ready_made"
-      ? input.stock != null
-      : input.productionLeadTimeDays != null;
-  return hasCore && classOk ? "complete" : "incomplete";
-}
+// BR-1 completeness lives in services/completeness.ts (shared with the seed).
 
 /**
  * Operator catalog curation (§0.1#5; FR-056..059). Registered under /api/v1/operator.
