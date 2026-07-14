@@ -3,6 +3,7 @@ import fastifyCookie from "@fastify/cookie";
 import type { AppDeps } from "./types.js";
 import { healthRoutes } from "./routes/health.js";
 import { projectRoutes } from "./routes/client/projects.js";
+import { styleRoutes } from "./routes/client/styles.js";
 import { localizationRoutes } from "./routes/client/localization.js";
 import { renderRoutes } from "./routes/client/renders.js";
 import { cartRoutes } from "./routes/client/cart.js";
@@ -55,6 +56,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(
     async (client) => {
       await client.register(projectRoutes);
+      await client.register(styleRoutes);
       await client.register(localizationRoutes);
       await client.register(renderRoutes);
       await client.register(cartRoutes);

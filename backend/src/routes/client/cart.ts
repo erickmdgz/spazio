@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
+import { productSummary } from "../../services/productSummary.js";
 
 /**
  * Cart routes. The cart is auto-populated from an approved render (FR-031, BR-31);
@@ -28,7 +29,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const cart = await prisma.cart.findUnique({
         where: { projectId: request.query.projectId },
-        include: { items: true },
+        include: { items: { include: { product: { include: { supplier: true } } } } },
       });
       if (!cart) {
         return reply.code(404).send({ error: "not_found", message: "Cart not found." });
@@ -41,6 +42,8 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
           productId: it.productId,
           quantity: it.quantity,
           priceCopSnapshot: it.priceCopSnapshot,
+          // Display data for cart review (FR-032) — name, price, supplier.
+          product: productSummary(it.product),
         })),
       });
     },

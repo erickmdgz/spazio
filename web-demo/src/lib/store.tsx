@@ -1,19 +1,26 @@
 "use client";
 
-// In-memory wizard + cart state for the whole demo. Lives in the root layout so
-// it survives client-side navigation between steps. No database, no persistence —
-// a refresh resets the demo, which is exactly what we want for a class demo.
+// Wizard state + backend session for the whole app. Since the ADR-024 pivot the
+// backend (backend/, Fastify + Prisma) is the source of truth for the loop's
+// data — project, render, cart, order — while this store keeps the wizard's UI
+// selections and the cached render visuals (the ADR-002 image vendor is still
+// an open task, so the composite image stays a local demo asset).
 
 import {
   createContext,
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { RenderResult } from "./render/types";
 import { BUDGET_DEFAULT } from "./scenarios";
+import * as api from "./api";
+import type { BackendCart, BackendRenderItem, BackendStyle, CheckoutResult, Contact } from "./api";
+
+export type { Contact } from "./api";
 
 export interface RoomSelection {
   id: string;
@@ -27,135 +34,203 @@ export interface StyleSelection {
   budgetCop: number;
 }
 
-export interface Contact {
-  email: string;
-  phone: string;
-  address: string;
-}
+export type ReviewStatus = "idle" | "pending_review" | "approved" | "rejected";
 
-export interface OrderInfo {
-  number: string;
-  placedAt: Date;
+export interface PlacedOrder extends CheckoutResult {
   contact: Contact;
-  productIds: string[];
+  placedAt: Date;
+  /** Cart lines snapshotted at checkout, for the confirmation breakdown. */
+  items: BackendCart["items"];
 }
 
 interface DemoState {
   room?: RoomSelection;
   style?: StyleSelection;
-  render?: RenderResult;
-  cart: string[];
-  order?: OrderInfo;
+  projectId?: string;
+  backendStyleId?: string;
+  renderVisual?: RenderResult;
+  renderId?: string;
+  reviewStatus: ReviewStatus;
+  renderItems: BackendRenderItem[];
+  cart?: BackendCart;
+  order?: PlacedOrder;
 }
 
 interface DemoStore extends DemoState {
   budgetCop: number;
-  setRoom: (room: RoomSelection) => void;
-  setStyle: (style: StyleSelection) => void;
-  setRender: (render: RenderResult) => void;
-  isInCart: (productId: string) => boolean;
-  addToCart: (productId: string) => void;
-  removeFromCart: (productId: string) => void;
-  toggleCart: (productId: string) => void;
-  placeOrder: (contact: Contact) => OrderInfo;
+  /** Room selected: bootstrap the project at first input (§0.1#3) + photo + dimensions. */
+  beginRoom: (room: RoomSelection) => Promise<void>;
+  /** Style/budget selected: resolve the backend style by code and patch the project. */
+  applyStyle: (style: StyleSelection) => Promise<void>;
+  setRenderVisual: (render: RenderResult) => void;
+  /** Submit the render job (202 + poll — plan §1.1). */
+  submitRender: () => Promise<void>;
+  /** Poll the render; on approval loads the tagged items + auto-populated cart. */
+  refreshRender: () => Promise<ReviewStatus>;
+  reloadCart: () => Promise<void>;
+  removeItem: (cartItemId: string) => Promise<void>;
+  /** True if a product (by sku) is in the backend cart. */
+  isInCart: (sku: string) => boolean;
+  cartItemIdFor: (sku: string) => string | undefined;
+  /** Confirm the cart, run the single COP capture, store the order. */
+  checkoutOrder: (contact: Contact) => Promise<PlacedOrder>;
   reset: () => void;
 }
 
 const DemoContext = createContext<DemoStore | null>(null);
 
-function makeOrderNumber(): string {
-  const n = Math.floor(1000 + Math.random() * 9000);
-  const y = new Date().getFullYear();
-  return `SPZ-${y}-${n}`;
-}
+const INITIAL: DemoState = { reviewStatus: "idle", renderItems: [] };
 
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DemoState>({ cart: [] });
+  const [state, setState] = useState<DemoState>(INITIAL);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const stylesRef = useRef<BackendStyle[] | null>(null);
 
-  const setRoom = useCallback((room: RoomSelection) => {
-    setState((s) => ({ ...s, room }));
+  const beginRoom = useCallback(async (room: RoomSelection) => {
+    let projectId = stateRef.current.projectId;
+    if (!projectId) {
+      projectId = (await api.bootstrapProject()).id;
+    }
+    await api.patchProject(projectId, {
+      roomWidthCm: Math.round(room.widthM * 100),
+      roomLengthCm: Math.round(room.lengthM * 100),
+    });
+    // The preset room asset stands in for the uploaded photo until real photo
+    // upload lands (the backend persists the storage key — FR-005 as built).
+    await api.addRoomPhoto(projectId, `web-demo/rooms/${room.id}`);
+    setState((s) => ({ ...s, room, projectId }));
   }, []);
 
-  const setStyle = useCallback((style: StyleSelection) => {
-    setState((s) => ({ ...s, style }));
+  const applyStyle = useCallback(async (style: StyleSelection) => {
+    const projectId = stateRef.current.projectId;
+    if (!projectId) throw new Error("Pick a room first.");
+    if (!stylesRef.current) {
+      stylesRef.current = (await api.listStyles()).styles;
+    }
+    const backendStyle = stylesRef.current.find((s) => s.code === style.id);
+    await api.patchProject(projectId, {
+      ...(backendStyle ? { styleId: backendStyle.id } : {}),
+      // Keep the chosen look queryable even when the style row is not seeded yet.
+      freeText: [style.id, style.note.trim()].filter(Boolean).join(" · "),
+      budgetMaxCop: style.budgetCop,
+    });
+    setState((s) => ({ ...s, style, backendStyleId: backendStyle?.id }));
   }, []);
 
-  // Setting a render auto-populates the cart from its tagged items (FR-031).
-  const setRender = useCallback((render: RenderResult) => {
+  const setRenderVisual = useCallback((render: RenderResult) => {
+    setState((s) => ({ ...s, renderVisual: render }));
+  }, []);
+
+  const submitRender = useCallback(async () => {
+    const { projectId, backendStyleId, style } = stateRef.current;
+    if (!projectId || !style) throw new Error("Missing room or style.");
+    const created = await api.createRender({
+      projectId,
+      ...(backendStyleId ? { styleId: backendStyleId } : {}),
+      ...(style.note.trim() ? { freeText: style.note.trim() } : {}),
+      budgetMaxCop: style.budgetCop,
+    });
     setState((s) => ({
       ...s,
-      render,
-      cart: render.items.map((i) => i.productId),
+      renderId: created.renderId,
+      reviewStatus: "pending_review",
+      renderItems: [],
+      cart: undefined,
     }));
   }, []);
 
-  const isInCart = useCallback(
-    (productId: string) => state.cart.includes(productId),
-    [state.cart],
+  const reloadCart = useCallback(async () => {
+    const projectId = stateRef.current.projectId;
+    if (!projectId) return;
+    try {
+      const cart = await api.getCart(projectId);
+      setState((s) => ({ ...s, cart }));
+    } catch (error) {
+      if (error instanceof api.ApiError && error.status === 404) {
+        setState((s) => ({ ...s, cart: undefined })); // no cart yet (pre-approval)
+        return;
+      }
+      throw error;
+    }
+  }, []);
+
+  const refreshRender = useCallback(async (): Promise<ReviewStatus> => {
+    const renderId = stateRef.current.renderId;
+    if (!renderId) return "idle";
+    const status = (await api.getRender(renderId)).reviewStatus;
+    if (status === "approved" && stateRef.current.reviewStatus !== "approved") {
+      const { items } = await api.getRenderItems(renderId);
+      setState((s) => ({ ...s, reviewStatus: status, renderItems: items }));
+      await reloadCart();
+    } else {
+      setState((s) => ({ ...s, reviewStatus: status }));
+    }
+    return status;
+  }, [reloadCart]);
+
+  const removeItem = useCallback(
+    async (cartItemId: string) => {
+      await api.removeCartItem(cartItemId);
+      await reloadCart();
+    },
+    [reloadCart],
   );
 
-  const addToCart = useCallback((productId: string) => {
-    setState((s) =>
-      s.cart.includes(productId) ? s : { ...s, cart: [...s.cart, productId] },
-    );
-  }, []);
+  const isInCart = useCallback(
+    (sku: string) => Boolean(stateRef.current.cart?.items.some((i) => i.product.sku === sku)),
+    [],
+  );
 
-  const removeFromCart = useCallback((productId: string) => {
-    setState((s) => ({ ...s, cart: s.cart.filter((id) => id !== productId) }));
-  }, []);
+  const cartItemIdFor = useCallback(
+    (sku: string) => stateRef.current.cart?.items.find((i) => i.product.sku === sku)?.id,
+    [],
+  );
 
-  const toggleCart = useCallback((productId: string) => {
-    setState((s) =>
-      s.cart.includes(productId)
-        ? { ...s, cart: s.cart.filter((id) => id !== productId) }
-        : { ...s, cart: [...s.cart, productId] },
-    );
-  }, []);
-
-  const placeOrder = useCallback((contact: Contact): OrderInfo => {
-    const order: OrderInfo = {
-      number: makeOrderNumber(),
-      placedAt: new Date(),
-      contact,
-      productIds: [],
-    };
-    setState((s) => {
-      const finalized = { ...order, productIds: [...s.cart] };
-      return { ...s, order: finalized };
-    });
-    // Return a best-effort copy for immediate navigation; the stored order
-    // captures the real cart snapshot above.
+  const checkoutOrder = useCallback(async (contact: Contact): Promise<PlacedOrder> => {
+    const cart = stateRef.current.cart;
+    if (!cart || cart.items.length === 0) throw new Error("The cart is empty.");
+    if (cart.status !== "confirmed") {
+      await api.confirmCart(cart.id);
+    }
+    const result = await api.checkout(cart.id, contact);
+    const order: PlacedOrder = { ...result, contact, placedAt: new Date(), items: cart.items };
+    setState((s) => ({ ...s, order, cart: { ...cart, status: "confirmed" } }));
     return order;
   }, []);
 
   const reset = useCallback(() => {
-    setState({ cart: [] });
+    setState(INITIAL);
   }, []);
 
   const value = useMemo<DemoStore>(
     () => ({
       ...state,
       budgetCop: state.style?.budgetCop ?? BUDGET_DEFAULT,
-      setRoom,
-      setStyle,
-      setRender,
+      beginRoom,
+      applyStyle,
+      setRenderVisual,
+      submitRender,
+      refreshRender,
+      reloadCart,
+      removeItem,
       isInCart,
-      addToCart,
-      removeFromCart,
-      toggleCart,
-      placeOrder,
+      cartItemIdFor,
+      checkoutOrder,
       reset,
     }),
     [
       state,
-      setRoom,
-      setStyle,
-      setRender,
+      beginRoom,
+      applyStyle,
+      setRenderVisual,
+      submitRender,
+      refreshRender,
+      reloadCart,
+      removeItem,
       isInCart,
-      addToCart,
-      removeFromCart,
-      toggleCart,
-      placeOrder,
+      cartItemIdFor,
+      checkoutOrder,
       reset,
     ],
   );
