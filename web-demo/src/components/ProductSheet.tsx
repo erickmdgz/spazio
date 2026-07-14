@@ -12,7 +12,7 @@ export function ProductSheet({
   productId: string | null;
   onClose: () => void;
 }) {
-  const { isInCart, toggleCart } = useDemo();
+  const { isInCart, cartItemIdFor, removeItem } = useDemo();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -91,13 +91,24 @@ export function ProductSheet({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => toggleCart(product.id)}
-            className={inCart ? "btn-secondary mt-5 w-full" : "btn-primary mt-5 w-full"}
-          >
-            {inCart ? "Remove from cart" : "Add to cart"}
-          </button>
+          {/* View + remove only: manual add-to-cart is out of the pilot (§0.1#2). */}
+          {inCart ? (
+            <button
+              type="button"
+              onClick={() => {
+                const cartItemId = cartItemIdFor(product.id);
+                if (cartItemId) void removeItem(cartItemId).catch(() => {});
+                onClose();
+              }}
+              className="btn-secondary mt-5 w-full"
+            >
+              Remove from cart
+            </button>
+          ) : (
+            <p className="mt-5 rounded-xl bg-forest-800/8 p-3 text-center text-xs text-forest-900/70">
+              Your cart fills automatically from the products in your render.
+            </p>
+          )}
         </div>
       </div>
     </div>

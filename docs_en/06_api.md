@@ -326,7 +326,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 ### `POST /api/v1/operator/renders/{renderId}/approve` · `.../reject`
 
 - **Purpose (VERIFIED):** Operator reviews each render and approves (or rejects) it before it is shown to the user (Pilot; PRD §5 render-quality monitoring). Actor: **Operator**.
-- **Related requirements:** FR-027. **Pilot core.** *(As built — PR #27: stamps `reviewed_by` from the operator session.)*
+- **Related requirements:** FR-027. **Pilot core.** *(As built — PR #27: stamps `reviewed_by` from the operator session. #31 increment 1: approval auto-populates the project cart from the render's items, FR-031.)*
 
 ### `POST /api/v1/operator/session` · `GET` · `DELETE` *(as built, pilot — PR #27)*
 
@@ -399,6 +399,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 
 - **Purpose (VERIFIED):** Show supplier-sourced production and delivery estimates per item (BR-17), aggregated estimates for the full order, and supplier-declared warranty terms per item (BR-18) — all before checkout.
 - **Related requirements:** FR-036 (per-item estimate — **pilot core**), FR-037 (aggregated — not in pilot), FR-038 (warranty display — **excluded from the pilot**); NFR-015.
+- **As built (#31 increment 1):** per-item lead times straight from the `Product` row (`deliveryLeadTimeDays`; `productionLeadTimeDays` for made-to-order), null = `missing-estimate` placeholder, never fabricated. FR-037 aggregation and FR-038 warranty stay out.
 
 ---
 

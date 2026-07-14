@@ -7,9 +7,11 @@ import { useDemo } from "@/lib/store";
 
 export default function RoomPage() {
   const router = useRouter();
-  const { room, setRoom } = useDemo();
+  const { room, beginRoom } = useDemo();
   const [selected, setSelected] = useState<string>(room?.id ?? "");
   const [uploaded, setUploaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState<string>(
     room ? String(room.widthM) : "4.2",
   );
@@ -35,14 +37,22 @@ export default function RoomPage() {
     }
   }
 
-  function next() {
-    if (!selected) return;
-    setRoom({
-      id: selected,
-      widthM: parseFloat(width) || 4,
-      lengthM: parseFloat(length) || 4,
-    });
-    router.push("/style");
+  // Bootstraps the backend project at first input (§0.1#3) with photo + dims.
+  async function next() {
+    if (!selected || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await beginRoom({
+        id: selected,
+        widthM: parseFloat(width) || 4,
+        lengthM: parseFloat(length) || 4,
+      });
+      router.push("/style");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save your room.");
+      setSaving(false);
+    }
   }
 
   return (
@@ -151,14 +161,15 @@ export default function RoomPage() {
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
+      <div className="mt-8 flex items-center justify-end gap-4">
+        {error && <p className="text-sm text-wood-dark">{error}</p>}
         <button
           type="button"
           onClick={next}
-          disabled={!selected}
+          disabled={!selected || saving}
           className="btn-primary"
         >
-          Continue <span aria-hidden>→</span>
+          {saving ? "Saving…" : "Continue"} <span aria-hidden>→</span>
         </button>
       </div>
     </div>

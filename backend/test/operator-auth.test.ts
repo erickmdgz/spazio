@@ -200,7 +200,19 @@ describe("operator session guard", () => {
       projectId: "p1",
       reviewStatus: "approved",
     });
-    ({ app } = await buildTestApp({ render: { update } }));
+    // Approval also auto-populates the cart (FR-031) — stub what that path needs.
+    const txStub = {
+      cart: { upsert: vi.fn().mockResolvedValue({ id: "cart_1", status: "draft" }) },
+      cartItem: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    ({ app } = await buildTestApp({
+      render: { update },
+      renderItem: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn(async (fn: (t: typeof txStub) => Promise<void>) => fn(txStub)),
+    }));
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/operator/renders/r1/approve",

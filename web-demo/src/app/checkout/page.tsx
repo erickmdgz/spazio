@@ -2,62 +2,71 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { SUPPLIERS, getProduct } from "@/lib/catalog";
 import { formatCop } from "@/lib/format";
 import { useDemo } from "@/lib/store";
 
+// Checkout runs against the backend: cart confirm (FR-035) then the single COP
+// capture (FR-042, fake gateway — the ADR-003/004 vendor is still an open task,
+// so no real card is charged). Contact per ADR-022: email + phone + shipping.
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, placeOrder } = useDemo();
+  const { cart, checkoutOrder } = useDemo();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const items = useMemo(() => cart?.items ?? [], [cart]);
 
   useEffect(() => {
-    if (cart.length === 0) router.replace("/cart");
-  }, [cart, router]);
+    if (items.length === 0) router.replace("/cart");
+  }, [items.length, router]);
 
-  const products = useMemo(
-    () => cart.map((id) => getProduct(id)).filter((p) => p !== undefined),
-    [cart],
-  );
-  const total = products.reduce((s, p) => s + p.priceCop, 0);
+  const total = items.reduce((s, item) => s + item.priceCopSnapshot, 0);
 
-  // One purchase order per supplier — a nod to the fulfilment model.
+  // One purchase order per supplier (§0.1#1) — grouped from the backend cart.
   const bySupplier = useMemo(() => {
-    return SUPPLIERS.map((sup) => {
-      const items = products.filter((p) => p.supplierId === sup.id);
-      const subtotal = items.reduce((s, p) => s + p.priceCop, 0);
-      return { supplier: sup, items, subtotal };
-    }).filter((g) => g.items.length > 0);
-  }, [products]);
+    const groups = new Map<string, typeof items>();
+    for (const item of items) {
+      const name = item.product.supplierName ?? "Supplier";
+      groups.set(name, [...(groups.get(name) ?? []), item]);
+    }
+    return Array.from(groups, ([supplierName, groupItems]) => ({
+      supplierName,
+      items: groupItems,
+      subtotal: groupItems.reduce((s, i) => s + i.priceCopSnapshot, 0),
+    }));
+  }, [items]);
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const formOk = emailOk && phone.trim().length >= 7 && address.trim().length >= 6;
 
-  function pay() {
+  async function pay() {
     if (!formOk || processing) return;
     setProcessing(true);
-    // Mock payment — no real gateway. Simulate a brief capture then confirm.
-    setTimeout(() => {
-      placeOrder({
+    setError(null);
+    try {
+      await checkoutOrder({
         email: email.trim(),
         phone: phone.trim(),
         address: address.trim(),
       });
       router.push("/confirmation");
-    }, 1900);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Payment failed.");
+      setProcessing(false);
+    }
   }
 
-  if (cart.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <div className="animate-fade-up">
       <h1 className="text-3xl font-semibold text-forest-900">Checkout</h1>
       <p className="mt-2 text-muted/70">
-        No account needed — just where to send it. Payment is simulated for this
-        demo.
+        No account needed — just where to send it. Payment runs through the pilot&apos;s test
+        gateway; no real card is charged.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -66,9 +75,7 @@ export default function CheckoutPage() {
           <h2 className="font-semibold text-forest-900">Contact & shipping</h2>
           <div className="mt-4 grid gap-4">
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-forest-900/70">
-                Email
-              </span>
+              <span className="text-xs font-medium text-forest-900/70">Email</span>
               <input
                 type="email"
                 value={email}
@@ -79,9 +86,7 @@ export default function CheckoutPage() {
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-forest-900/70">
-                Phone
-              </span>
+              <span className="text-xs font-medium text-forest-900/70">Phone</span>
               <input
                 type="tel"
                 value={phone}
@@ -111,37 +116,35 @@ export default function CheckoutPage() {
         <aside className="lg:sticky lg:top-40 lg:self-start">
           <div className="card p-5">
             <h2 className="font-semibold text-forest-900">Order summary</h2>
-            <p className="mt-1 text-xs text-muted/60">
-              One purchase order per supplier.
-            </p>
+            <p className="mt-1 text-xs text-muted/60">One purchase order per supplier.</p>
 
             <div className="mt-4 space-y-4">
-              {bySupplier.map((g) => (
-                <div key={g.supplier.id}>
+              {bySupplier.map((group) => (
+                <div key={group.supplierName}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-forest-900">
-                      {g.supplier.name}
+                      {group.supplierName}
                     </span>
                     <span className="chip bg-forest-800/8 text-forest-900">
-                      PO · {g.items.length}
+                      PO · {group.items.length}
                     </span>
                   </div>
                   <ul className="mt-2 space-y-1">
-                    {g.items.map((p) => (
+                    {group.items.map((item) => (
                       <li
-                        key={p.id}
+                        key={item.id}
                         className="flex justify-between gap-2 text-sm text-muted/80"
                       >
-                        <span className="truncate">{p.name}</span>
+                        <span className="truncate">{item.product.name}</span>
                         <span className="whitespace-nowrap">
-                          {formatCop(p.priceCop)}
+                          {formatCop(item.priceCopSnapshot)}
                         </span>
                       </li>
                     ))}
                   </ul>
                   <div className="mt-1 flex justify-between border-t border-forest-900/10 pt-1 text-xs text-forest-900/60">
                     <span>Subtotal</span>
-                    <span>{formatCop(g.subtotal)}</span>
+                    <span>{formatCop(group.subtotal)}</span>
                   </div>
                 </div>
               ))}
@@ -149,9 +152,7 @@ export default function CheckoutPage() {
 
             <div className="mt-4 flex justify-between border-t border-forest-900/10 pt-3">
               <span className="font-semibold text-forest-900">Total</span>
-              <span className="font-serif text-xl text-forest-900">
-                {formatCop(total)}
-              </span>
+              <span className="font-serif text-xl text-forest-900">{formatCop(total)}</span>
             </div>
 
             <button
@@ -173,9 +174,10 @@ export default function CheckoutPage() {
               )}
             </button>
             <p className="mt-2 text-center text-[11px] text-muted/50">
-              Mock payment · no card is charged
+              Pilot test gateway · no real card is charged
             </p>
-            {!formOk && (
+            {error && <p className="mt-2 text-center text-[11px] text-wood-dark">{error}</p>}
+            {!formOk && !error && (
               <p className="mt-2 text-center text-[11px] text-wood-dark">
                 Enter a valid email, phone and address to pay.
               </p>

@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
-import type { NotImplementedBody } from "../../types.js";
+import { productSummary } from "../../services/productSummary.js";
 
 /**
  * Cart routes. The cart is auto-populated from an approved render (FR-031, BR-31);
@@ -29,7 +29,7 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const cart = await prisma.cart.findUnique({
         where: { projectId: request.query.projectId },
-        include: { items: true },
+        include: { items: { include: { product: { include: { supplier: true } } } } },
       });
       if (!cart) {
         return reply.code(404).send({ error: "not_found", message: "Cart not found." });
@@ -42,6 +42,8 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
           productId: it.productId,
           quantity: it.quantity,
           priceCopSnapshot: it.priceCopSnapshot,
+          // Display data for cart review (FR-032) — name, price, supplier.
+          product: productSummary(it.product),
         })),
       });
     },
@@ -105,8 +107,11 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // Per-item production/delivery estimates before checkout (FR-036/037).
-  // Scaffold: not implemented (warranty is NOT displayed in the pilot — ADR-020).
+  // Per-item production/delivery estimates before checkout (FR-036; FEAT-009).
+  // Estimates come straight from the supplier lead-time fields on the Product
+  // row — never fabricated; a missing value is returned as null so the client
+  // shows a `missing-estimate` placeholder. Aggregated estimates (FR-037) are
+  // deferred. Warranty is NOT displayed in the pilot (ADR-020).
   app.get<{ Querystring: { cartId: string } }>(
     "/cart/estimates",
     {
@@ -118,13 +123,28 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
         },
       },
     },
-    async (_request, reply) => {
-      const body: NotImplementedBody = {
-        error: "not_implemented",
-        requirement: "FR-036/FR-037",
-        message: "Per-item and aggregated estimates are implemented by the estimates feature.",
-      };
-      return reply.code(501).send(body);
+    async (request, reply) => {
+      const cart = await prisma.cart.findUnique({
+        where: { id: request.query.cartId },
+        include: { items: { include: { product: true } } },
+      });
+      if (!cart) {
+        return reply.code(404).send({ error: "not_found", message: "Cart not found." });
+      }
+      return reply.code(200).send({
+        cartId: cart.id,
+        items: cart.items.map((item) => ({
+          cartItemId: item.id,
+          productId: item.productId,
+          name: item.product.name,
+          classification: item.product.classification,
+          deliveryLeadTimeDays: item.product.deliveryLeadTimeDays ?? null,
+          productionLeadTimeDays:
+            item.product.classification === "made_to_order"
+              ? (item.product.productionLeadTimeDays ?? null)
+              : null,
+        })),
+      });
     },
   );
 };

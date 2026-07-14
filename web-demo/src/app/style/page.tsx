@@ -13,9 +13,11 @@ import { useDemo } from "@/lib/store";
 
 export default function StylePage() {
   const router = useRouter();
-  const { room, style, setStyle } = useDemo();
+  const { room, style, applyStyle } = useDemo();
   const [selected, setSelected] = useState<string>(style?.id ?? "");
   const [note, setNote] = useState<string>(style?.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [budget, setBudget] = useState<number>(
     style?.budgetCop ?? BUDGET_DEFAULT,
   );
@@ -25,10 +27,18 @@ export default function StylePage() {
     if (!room) router.replace("/room");
   }, [room, router]);
 
-  function next() {
-    if (!selected) return;
-    setStyle({ id: selected, note: note.trim(), budgetCop: budget });
-    router.push("/render");
+  // Persists style + budget on the backend project (FR-007/008/009).
+  async function next() {
+    if (!selected || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await applyStyle({ id: selected, note: note.trim(), budgetCop: budget });
+      router.push("/render");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save your style.");
+      setSaving(false);
+    }
   }
 
   const pct = ((budget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
@@ -135,13 +145,14 @@ export default function StylePage() {
         >
           <span aria-hidden>←</span> Back
         </button>
+        {error && <p className="self-center text-sm text-wood-dark">{error}</p>}
         <button
           type="button"
           onClick={next}
-          disabled={!selected}
+          disabled={!selected || saving}
           className="btn-primary"
         >
-          Generate render <span aria-hidden>→</span>
+          {saving ? "Saving…" : "Generate render"} <span aria-hidden>→</span>
         </button>
       </div>
     </div>

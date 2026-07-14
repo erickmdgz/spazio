@@ -9,6 +9,7 @@ const EXPECTED_ROUTES: Array<{ method: HTTPMethods; url: string }> = [
   { method: "POST", url: "/api/v1/projects" },
   { method: "POST", url: "/api/v1/projects/:id/photos" },
   { method: "PATCH", url: "/api/v1/projects/:id" },
+  { method: "GET", url: "/api/v1/styles" },
   { method: "GET", url: "/api/v1/localization/resolve" },
   { method: "POST", url: "/api/v1/renders" },
   { method: "GET", url: "/api/v1/renders/:id" },

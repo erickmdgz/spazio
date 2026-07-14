@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
+import { populateCartFromRender } from "../../services/cart.js";
 
 /**
  * Operator render review queue (§0.1#5; FR-027). Registered under /api/v1/operator.
@@ -49,7 +50,9 @@ export const operatorRenderRoutes: FastifyPluginAsync = async (app) => {
         },
       });
 
-      // Approval auto-populates the cart (FR-031) — deferred to the cart feature.
+      // Approval auto-populates the cart from the render's items (FR-031, BR-31).
+      await populateCartFromRender(prisma, render);
+
       await emit(prisma, {
         type: EVENTS.RENDER_APPROVED,
         projectId: render.projectId,

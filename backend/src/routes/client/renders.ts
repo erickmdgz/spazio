@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
+import { productSummary } from "../../services/productSummary.js";
 
 interface CreateRenderBody {
   projectId: string;
@@ -108,7 +109,7 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const render = await prisma.render.findUnique({
         where: { id: request.params.id },
-        include: { items: true },
+        include: { items: { include: { product: { include: { supplier: true } } } } },
       });
       if (!render) {
         return reply.code(404).send({ error: "not_found", message: "Render not found." });
@@ -128,6 +129,8 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
           productId: it.productId,
           tagPosition: it.tagPosition,
           priceCopSnapshot: it.priceCopSnapshot,
+          // The tag carries name, price, supplier (FR-028; plan §1.5 step 5).
+          product: productSummary(it.product),
         })),
       });
     },
