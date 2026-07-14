@@ -1,17 +1,21 @@
-# ADR-023 - Automated render QA and order forwarding (remove human gates from the request path)
+# ADR-025 - Automated render QA and order forwarding (remove human gates from the request path)
 
 ## Status
 
 **Proposed.** (Team decision pending — this ADR records a critique and an alternative design, authored by the incoming team. It amends FR-027 and FR-061 and partially amends ADR-002's "mandatory operator QA" clause. Per CLAUDE.md §2, product decisions are human: this document proposes; the team decides.)
 
+> **Revision note (2026-07-14):** originally drafted as ADR-023; renumbered to ADR-025 after ADR-023 (class-demo delivery) and ADR-024 (web-platform pivot) landed on `develop`. Updated for ADR-024 (the client is the web app; the one-week iOS pilot program no longer governs) and for the #31 increments (matching, cart population, and the operator console shell now exist). The argument is unchanged.
+
 ## Context
 
 The pilot places a human operator at two points **inside the request path**:
 
-1. **Render review (FR-027 / FEAT-006):** every render waits in `pending_review` until an operator approves it. Three problems: **(a) privacy** — a human views every user's room photo and render, in tension with "private by default" (BR-33 / NFR-007 / ADR-019); review is pseudonymous (ADR-022) but a photo of a home is personal data in itself. **(b) Latency** — the 2–5 min render target (ADR-013 / NFR-001) becomes unbounded: the render waits until a human acts, and FEAT-006's operator console is DRAFT/PROPOSED with **no notification mechanism anywhere in the scaffold** — in practice, approval latency is "whenever someone polls `GET /operator/renders`". **(c) Availability** — the operator is a single point of failure.
+1. **Render review (FR-027 / FEAT-006):** every render waits in `pending_review` until an operator approves it. Three problems: **(a) privacy** — a human views every user's room photo and render, in tension with "private by default" (BR-33 / NFR-007 / ADR-019); review is pseudonymous (ADR-022) but a photo of a home is personal data in itself. **(b) Latency** — the 2–5 min render target (ADR-013 / NFR-001) becomes unbounded: the render waits until a human acts. A console shell now exists (`operator/`, PR #27) but **no notification mechanism does** — nothing consumes the `Event` trail, so approval latency is still "whenever someone opens the console and polls the queue". **(c) Availability** — the operator is a single point of failure.
 2. **Order forwarding (FR-061):** paid orders stall in `paid_unforwarded` until an operator calls `POST /operator/orders/:id/forward`. Same polling, latency, and single-point-of-failure problems, now with the customer's money already captured.
 
-Catalog curation is **not** part of this critique: the operator-approved catalog is what structurally guarantees "the AI never invents furniture" (BR-6 / BR-14 — the pipeline only composes from `candidateProductIds`), and it sits outside the request path.
+Catalog curation is **not** part of this critique: the operator-approved catalog is what structurally guarantees "the AI never invents furniture" (BR-6 / BR-14 — the pipeline only composes from `candidateProductIds`, wired for real in #31 via `services/matching.ts`), and it sits outside the request path.
+
+Supporting precedent from this repo's own history: the 2-day class demo (ADR-023) shipped the full render-to-purchase flow **with no operator QA at all** ("the render is faked/cached and there is no operator QA"), and ADR-024 then adopted that web app as the product platform. The gate has already been dropped once when a deadline demanded it; this ADR proposes deciding that deliberately instead of incidentally.
 
 ## Decision
 
@@ -21,15 +25,15 @@ Catalog curation is **not** part of this critique: the operator-approved catalog
 - **Post-hoc moderation:** a user-facing **Report** action (`POST /renders/:id/report`) replaces pre-publication review. An open report blocks cart confirmation/checkout for that render and places it in an operator **remediation queue** — a human looks at a render only when its owner explicitly asks (which doubles as consent).
 - **Automated order forwarding:** checkout enqueues a forwarding job that sends each `PurchaseOrder` to its supplier through a `SupplierNotifier` interface (templated email in the pilot; fake implementation for dev/test, mirroring `FakePaymentGateway`). Retries with backoff; on repeated failure the PO is marked `forward_failed` and escalated to the operator queue as a fallback.
 
-Humans move from **gatekeepers** (in the path, blocking) to **exception handlers** (off the path, responding to reports and failures). Full detail and scaffold mapping: [`docs_en/proposals/ADR-023_automated_pilot_build_plan.md`](../proposals/ADR-023_automated_pilot_build_plan.md).
+Humans move from **gatekeepers** (in the path, blocking) to **exception handlers** (off the path, responding to reports and failures). Full detail and scaffold mapping: [`docs_en/proposals/ADR-025_automated_pilot_build_plan.md`](../proposals/ADR-025_automated_pilot_build_plan.md).
 
-Scope: one-week iOS pilot (v1). Confidence-based routing is explicitly **deferred to v2**.
+Scope: the render-to-purchase loop at class-demo scale (ADR-024) — v1. Confidence-based routing is explicitly **deferred to v2**.
 
 ## Alternatives considered
 
 1. **Keep FEAT-006 as specified (human pre-publication gate).**
    - Pros: strongest protection against the top risk (render fidelity, PRD §10) reaching a user; zero automation to build; human judgment on believability, which programmatic checks cannot evaluate.
-   - Cons: the privacy, latency, availability, and missing-infrastructure problems above; the operator console + notification system it silently requires is itself unbuilt work.
+   - Cons: the privacy, latency, availability, and missing-infrastructure problems above; the console shell exists (PR #27) but the notification system the gate silently requires is still unbuilt work.
 2. **Confidence-based routing (hybrid).** Pipeline returns a confidence score; high-confidence renders auto-publish, low-confidence ones go to a human.
    - Pros: best long-term shape — automation where it is safe, humans where it is not; the human decisions calibrate the threshold over time.
    - Cons: requires a calibrated confidence signal that does not exist yet, plus both the automated path *and* the operator console. Too much for the pilot timeline. **Deferred to v2** (see build plan §7).
@@ -41,7 +45,7 @@ Scope: one-week iOS pilot (v1). Confidence-based routing is explicitly **deferre
 
 - Renders are seen by no human unless the user reports one — a materially stronger implementation of "private by default" (NFR-007 / ADR-019) than pseudonymous mandatory review.
 - End-to-end latency becomes the pipeline's own 2–5 min target (ADR-013) with no unbounded human wait; paid orders reach suppliers in seconds instead of stalling in `paid_unforwarded`.
-- The unbuilt operator console + notification system stops being a launch dependency; operator endpoints are repurposed as a remediation/fallback queue.
+- The still-unbuilt notification system stops being a launch dependency; the existing console and operator endpoints are repurposed as a remediation/fallback queue instead of a blocking gate.
 - Reports and forwarding failures produce exactly the labeled data v2's confidence-based routing needs.
 
 ## Negative consequences
@@ -53,4 +57,4 @@ Scope: one-week iOS pilot (v1). Confidence-based routing is explicitly **deferre
 
 ## Date
 
-2026-07-13.
+2026-07-13 (drafted as ADR-023); revised and renumbered 2026-07-14.

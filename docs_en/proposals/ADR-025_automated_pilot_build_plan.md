@@ -1,6 +1,8 @@
-# ADR-023 build plan — the pilot without human gates in the request path
+# ADR-025 build plan — the render-to-purchase loop without human gates in the request path
 
-> **Status: Proposed** (companion to [`ADR-023`](../decisions/ADR-023_automated-render-qa-and-order-forwarding.md); GitHub Issue #24). Nothing here is implemented. This document (1) states precisely what is wrong with the current human-gated design, (2) specifies the automated design that replaces it, and (3) maps every change onto the existing `backend/` scaffold, file by file. Confidence-based routing is **out of scope for v1** and specified as v2 in §7.
+> **Status: Proposed** (companion to [`ADR-025`](../decisions/ADR-025_automated-render-qa-and-order-forwarding.md); GitHub Issue #24). Nothing here is implemented. This document (1) states precisely what is wrong with the current human-gated design, (2) specifies the automated design that replaces it, and (3) maps every change onto the existing `backend/` scaffold, file by file. Confidence-based routing is **out of scope for v1** and specified as v2 in §7.
+>
+> **Revision note (2026-07-14):** originally drafted as ADR-023; renumbered after ADR-023 (class-demo delivery) and ADR-024 (web-platform pivot) landed. Code citations updated for the #31 increments: matching (`services/matching.ts`), `RenderItem` persistence with a fabrication guard, real cart population (`services/cart.ts`), and the operator console shell (`operator/`, PR #27) now exist. The client is the web app (ADR-024), not iOS.
 
 **Scope guard — what this proposal does NOT touch:** operator catalog curation (FEAT-015) stays fully human. The curated, operator-approved catalog is the mechanism that structurally guarantees *"the AI never invents furniture"* (BR-6 / BR-14): the render pipeline receives `candidateProductIds` drawn only from approved, in-stock products and can compose nothing else (`backend/src/services/render/pipeline.ts`). Curation sits **outside** the request path — a user never waits on it — so none of the problems in §1 apply to it. The two gates this proposal removes are the ones **inside** the request path: render review (FR-027) and order forwarding (FR-061).
 
@@ -22,7 +24,7 @@ The existing mitigation is pseudonymity: with no user accounts (ADR-022), the op
 
 ### 1.2 Latency: the 2–5 minute target is actually unbounded
 
-ADR-013 / NFR-001 set a ~2–5 min soft render target. But the pipeline finishing does not release the render: `renderWorker.ts` persists the image and leaves `reviewStatus = "pending_review"`; the iOS client sits in FEAT-006's "waiting/hold state" until a human acts. Real user-visible latency is:
+ADR-013 / NFR-001 set a ~2–5 min soft render target. But the pipeline finishing does not release the render: `renderWorker.ts` (post-#31 included) persists the image and items and leaves `reviewStatus = "pending_review"`; the web client (ADR-024) sits in FEAT-006's "waiting/hold state" until a human acts. Real user-visible latency is:
 
 ```text
 latency = pipeline time (2–5 min target) + [unbounded human wait]
@@ -32,13 +34,13 @@ The human wait is unbounded **by construction**, because of §1.3.
 
 ### 1.3 Missing infrastructure: nobody is told there is something to review
 
-The user asked the right question: *where would approvers even watch this stuff? Would they be notified?* The honest answers from the current repo:
+The right questions are: *where would approvers even watch this stuff? Would they be notified?* The honest answers from the current repo (updated 2026-07-14):
 
-- **Where:** nowhere yet. FEAT-006 §8 marks the operator review surface "DRAFT / PROPOSED — internal tool/console." No console exists or is scheduled; the only interface is the raw API (`GET /api/v1/operator/renders?status=pending_review`).
-- **Notified:** no. The scaffold's `Event` table and `events.ts` *write* rows (`render_created`, …) but nothing consumes them. There is no push, email, webhook, or worker that alerts an operator. Review latency is therefore literally *"whenever a human happens to poll the queue."*
+- **Where:** a console **shell** now exists — `operator/` (static HTML/JS served by `routes/operator/console.ts`) with operator session auth (`Operator` model, `auth/passwords.ts`; PR #27). This answers "where" in a way the original scaffold did not; when this proposal was first drafted, no console existed at all. It remains a shell: it must be manually opened and manually refreshed.
+- **Notified:** still no. The `Event` table and `events.ts` *write* rows (`render_created`, …) but **nothing consumes them**. There is no push, email, webhook, or worker that alerts an operator that a render is waiting. Review latency is therefore literally *"whenever a human happens to open the console and look."*
 - Same for orders: after payment capture the order sits in `paid_unforwarded` until someone calls `POST /api/v1/operator/orders/:id/forward` (`routes/operator/orders.ts`) — with the customer's money already taken.
 
-So the human-gated design silently depends on an unbuilt console **plus** an unbuilt notification system — unscheduled work hiding inside "a human checks it."
+So the human-gated design still depends on an unbuilt notification system — and on a person keeping the console open — unscheduled work hiding inside "a human checks it." (The console shell's existence sharpens the point rather than blunting it: the gap was real enough that PR #27 had to start filling it, and the notification half is still missing.)
 
 ### 1.4 Availability and scaling: the operator is a single point of failure
 
@@ -66,7 +68,7 @@ When the pipeline returns, the render worker runs a **validation suite** instead
 | V4 | Tags in bounds | every `tagPosition.{x,y}` ∈ [0, 1] | FR-028/FR-029 tag contract |
 | V5 | Budget respected | `Σ priceCopSnapshot ≤ budgetMaxCop × 1.10` when a budget was provided | ADR-008 (10% tolerance) |
 
-- **All pass →** `reviewStatus = auto_approved`, `reviewedAt = now`; emit `render_auto_published`; **trigger cart auto-population** (FR-031 — note this trigger currently lives, as a comment, in the operator approve endpoint and must move here, §3.3).
+- **All pass →** `reviewStatus = auto_approved`, `reviewedAt = now`; emit `render_auto_published`; **trigger cart auto-population** (FR-031 — `populateCartFromRender` in `services/cart.ts` exists since #31 but is called from the operator approve endpoint; the call must move here, §3.3).
 - **Any fail →** `reviewStatus = rejected` with a machine-readable `rejectionReason`; `RenderRequest.status = failed`; emit `render_validation_failed`. The client is told the render failed and may retry — no human intervention, no silent limbo.
 
 The pending gate itself is kept: `GET /renders/:id` still hides anything not (auto-)approved, so TC-053's protection ("a not-yet-validated render is never shown") survives — the *decider* changes from a person to the validator.
@@ -118,7 +120,8 @@ model RenderReport {
 }
 ```
 
-- `Render`: add `rejectionReason String?` and `reports RenderReport[]`; `reviewedAt` semantics widen to "validated/reviewed at".
+- `Render`: add `rejectionReason String?` and `reports RenderReport[]`; `reviewedAt` semantics widen to "validated/reviewed at". `reviewedById` (added in #27) stays: `null` for auto-approved renders, set on remediation actions — a free audit trail distinguishing machine from human decisions.
+- The `Operator` model added in #27 is kept as-is: remediation (§2.2) and the v2 human path (§7) already have their identity model.
 - `PurchaseOrderStatus`: add `forward_failed`.
 - Migration: `npm run db:migrate` (dev migration; enum additions are additive, no data backfill needed — nothing is deployed).
 
@@ -128,12 +131,11 @@ Pure function `validateRenderResult(result, input, products, storage): { ok: tru
 
 ### 3.3 `src/jobs/renderWorker.ts`
 
-Today the worker calls the pipeline, saves `imageKey`, marks the request `completed`, and leaves the render `pending_review` forever (the scaffold's deferred matching passes `candidateProductIds: []`). Change the post-pipeline block to:
+Since #31 the worker already does most of the mechanical work this proposal needs: it matches real SKUs (`services/matching.ts`), passes them as `candidateProductIds`, persists `RenderItem` rows with price snapshots from the real `Product` rows, and applies a **fabrication guard** that drops any pipeline item not in the matched set — i.e., check V1 is effectively implemented in-line. What remains is the decision step: the worker still parks every render in `pending_review`. Change the post-persistence block to:
 
-1. Persist `RenderItem` rows from `result.items` (price snapshots read from the real `Product` rows — the pipeline returns `0` placeholders by contract, see `FakeRenderPipeline`).
-2. Run `validateRenderResult`.
-3. Pass → `reviewStatus: "auto_approved"`, `reviewedAt: now`; emit `render_auto_published`; populate the cart (FR-031). **The cart-population trigger moves here from `routes/operator/renders.ts`**, where it currently exists only as a comment on the approve endpoint — with no mandatory approval, approval can no longer be the trigger.
-4. Fail → `reviewStatus: "rejected"`, `rejectionReason`; `RenderRequest.status: "failed"`; emit `render_validation_failed`.
+1. Run `validateRenderResult` (V1 stays in the worker's guard; the validator re-asserts it plus V2–V5).
+2. Pass → `reviewStatus: "auto_approved"`, `reviewedAt: now`, `reviewedById: null`; emit `render_auto_published`; call `populateCartFromRender` (FR-031). **The cart-population call moves here from the approve endpoint in `routes/operator/renders.ts`** — with no mandatory approval, approval can no longer be the trigger.
+3. Fail → `reviewStatus: "rejected"`, `rejectionReason`; `RenderRequest.status: "failed"`; emit `render_validation_failed`.
 
 ### 3.4 `src/routes/client/renders.ts`
 
@@ -163,8 +165,9 @@ export class FakeSupplierNotifier implements SupplierNotifier { /* deterministic
 
 ### 3.8 `src/routes/operator/*` — repurposed as remediation, kept as fallback
 
-- `renders.ts`: extend the status filter with `reported`; approve/reject stay for remediation (approve after manual fix keeps emitting `render_approved`); add `POST /renders/:id/reports/:reportId/resolve`.
+- `renders.ts`: extend the status filter with `reported`; approve/reject stay for remediation (approve after manual fix keeps emitting `render_approved` and recording `reviewedById`, as it does since #27); add `POST /renders/:id/reports/:reportId/resolve`.
 - `orders.ts`: unchanged — `forward` is now the documented manual fallback for `forward_failed`.
+- The console shell (`operator/`) gains a "Reported" tab instead of a "Pending review" firehose — its queue shrinks from *every render* to *only renders users flagged*.
 
 ### 3.9 `src/events.ts`
 
@@ -200,7 +203,7 @@ Per CLAUDE.md §3 / `11_implementation_flow.md`:
 - `07_data_model.md` — `RenderReport`, enum additions, `rejectionReason`.
 - `08_test_plan.md` — table in §3.10.
 - `docs_en/features/FEAT-006_render-review-moderation.md` — superseded by a new FEAT doc ("Automated render QA & post-hoc moderation") on acceptance.
-- ADR-002 — add an amendment note ("mandatory operator QA" clause superseded by ADR-023 if accepted).
+- ADR-002 — add an amendment note ("mandatory operator QA" clause superseded by ADR-025 if accepted).
 
 ## 5. What this buys (tied back to §1)
 
@@ -208,7 +211,7 @@ Per CLAUDE.md §3 / `11_implementation_flow.md`:
 |---|---|
 | 1.1 Privacy | No human sees any render unless its owner reports it; reporting **is** the consent. |
 | 1.2 Latency | User-visible latency = pipeline time; the ADR-013 target becomes real. Orders forwarded in seconds. |
-| 1.3 Missing infra | Operator console/notifications stop being launch dependencies; the remediation queue is served by the *existing* operator API. |
+| 1.3 Missing infra | The unbuilt notification system stops being a launch dependency; the remediation queue is served by the *existing* console shell and operator API. |
 | 1.4 Availability | Nothing in the happy path blocks on a person; humans handle exceptions asynchronously. |
 
 ## 6. Risks and mitigations
@@ -226,8 +229,8 @@ The end-state this team actually believes in, cut from v1 purely for schedule:
 - The pipeline returns a **confidence score** per render (vendor signal, and/or checks like product-crop similarity between catalog photo and rendered region).
 - `confidence ≥ τ` → auto-publish (v1 path); `confidence < τ` → human review queue (FEAT-006's flow, now for a small minority of renders).
 - **τ is calibrated from v1's own data:** reports (§2.2) and remediation decisions are labeled examples of "the validator passed it but a human/user would not have." v1 is not a detour from v2 — it is v2's data-collection phase.
-- Prerequisites v1 deliberately skips: a confidence signal, a real operator console, and a notification consumer for the `Event` trail.
+- Prerequisites v1 deliberately skips: a confidence signal, a production-grade review console (the #27 shell is the seed), and a notification consumer for the `Event` trail.
 
 ## 8. Traceability
 
-`ADR-023 → Issue #24 → branch docs/ADR-023-automated-render-qa-and-order-forwarding → this doc → (if accepted) FR-062/FR-063 + FR-061 amendment → implementation per §3 → TC-051-A…TC-111 → release notes.`
+`ADR-025 → Issue #24 → branch docs/ADR-025-automated-render-qa-and-order-forwarding → this doc → (if accepted) FR-062/FR-063 + FR-061 amendment → implementation per §3 → TC-051-A…TC-111 → release notes.`
