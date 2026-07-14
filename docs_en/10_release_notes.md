@@ -182,6 +182,21 @@ below).
   stand. Recording a decision is not building it: the wiring work follows the
   normal plan-approval flow.
 
+- **Render-to-purchase loop wired end-to-end (#31, PR #32/#33).** The web app
+  now drives the real backend over `/api/v1` (Next.js rewrite): project
+  bootstrap + photo + inputs (§0.1#3, FR-005/007–009/011), render submit →
+  poll gated by real operator approval (FR-015/027), minimal SKU matching
+  within budget +10% with a fabrication guard (FR-014/016/018/021), cart
+  auto-populate/review/confirm (FR-031/032/035), per-item estimates (FR-036),
+  single COP capture with recorded 10% commission plus one PO per supplier
+  (FR-042, §0.1#1), and operator forwarding (FR-061). Catalog seeded: 3 styles,
+  3 Bogotá suppliers, 11 BR-1-complete SKUs (`prisma/seed.ts`); initial Prisma
+  migration committed; `.env` now loads natively. Verified by a 22-step
+  end-to-end run on a local Postgres stack with the full NFR-006 event trail
+  (`render-to-purchase` queryable). **Still not a release:** image-gen and
+  payments are fake drivers (ADR-002/003 vendors open), per-action role
+  enforcement and most TC automation are pending, and nothing is deployed.
+
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
   class-project demo is delivered. **For the demo scope only** it supersedes

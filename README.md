@@ -13,7 +13,15 @@ Core principle: **the AI never invents furniture.** Every rendered item maps to 
 
 ## Class demo (web)
 
-The [`web-demo/`](./web-demo/) folder holds a **time-boxed, 2-day academic class-project demo** of the render-to-purchase happy path: a Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4 web app with **no database** (in-memory state), a seeded in-code catalog (11 SKUs, 3 Bogotá suppliers), a fallback-first cached render, and a **mock** checkout — it is a scoped visual demo, **not** production, not real payments, and not the full pilot. It walks landing → room → style + budget (COP) → simulated render with tappable product hotspots → cart → mock checkout → confirmation. Scope, feature mapping, and what is deliberately left out are documented in [`docs_en/13_class_demo_scope.md`](./docs_en/13_class_demo_scope.md); the full run/deploy guide is in [`web-demo/README.md`](./web-demo/README.md). Quick run: **Node 20+**, then `cd web-demo`, `npm install`, `npm run dev` → http://localhost:3000. For the **demo scope only** this superseded the native-iOS decision by delivering on the web ([`ADR-023`](./docs_en/decisions/)). **Update ([`ADR-024`](./docs_en/decisions/ADR-024_web-app-platform-pivot.md), 2026-07-14):** the web app is now the **product platform** — its mock pieces (in-memory state, mock checkout, seeded catalog) are slated for replacement by the real backend, in class-demo-scale increments.
+The [`web-demo/`](./web-demo/) folder holds a **time-boxed, 2-day academic class-project demo** of the render-to-purchase happy path: a Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4 web app with **no database** (in-memory state), a seeded in-code catalog (11 SKUs, 3 Bogotá suppliers), a fallback-first cached render, and a **mock** checkout — it is a scoped visual demo, **not** production, not real payments, and not the full pilot. It walks landing → room → style + budget (COP) → simulated render with tappable product hotspots → cart → mock checkout → confirmation. Scope, feature mapping, and what is deliberately left out are documented in [`docs_en/13_class_demo_scope.md`](./docs_en/13_class_demo_scope.md); the full run/deploy guide is in [`web-demo/README.md`](./web-demo/README.md). For the **demo scope only** this superseded the native-iOS decision by delivering on the web ([`ADR-023`](./docs_en/decisions/)). **Update ([`ADR-024`](./docs_en/decisions/ADR-024_web-app-platform-pivot.md), 2026-07-14 + #31):** the web app is now the **product platform**, wired to the real backend — the wizard persists to Postgres, renders wait for operator approval, and checkout creates real orders on a fake gateway. Full-stack quick run (Node 22+, Docker):
+
+```bash
+cd backend && docker compose up -d db && cp .env.example .env   # set PORT=3001
+npm install && npm run db:generate && npx prisma migrate dev && npm run db:seed
+npm run operator:create -- --email you@example.com --name "You" --role render_reviewer
+npm run dev &                    # backend on :3001 (+ console at /operator/console)
+cd ../web-demo && npm install && npm run dev                    # web on :3000
+```
 
 ## Status
 

@@ -21,6 +21,13 @@
 > `/operator/*` route, and the three §0.1#5 operator queue reads
 > (`GET /operator/renders?status=…`, `GET /operator/catalog/products?filter=…`,
 > `GET /operator/orders?status=…`) drive the console shell at `/operator/console`.
+> **Update (#31, PR #32/#33):** the pilot loop is now implemented and verified
+> end-to-end on a local stack (web app → these endpoints → Postgres): `GET
+> /styles` exists (FR-007); `GET /renders/{id}/items` and `GET /cart` carry a
+> product summary (name, price, supplier — FR-028/032); `GET /cart/estimates` is
+> live (FR-036); matching + cart auto-populate + checkout with commission run
+> against seeded catalog data. Image-gen and payments remain FAKE drivers —
+> vendor picks are still open ADR-002/003 tasks.
 
 ## How to read this document
 

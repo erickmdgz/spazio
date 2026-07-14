@@ -1,16 +1,22 @@
-# Spazio — CLASS-DEMO web app
+# Spazio — web app (the product platform since ADR-024)
 
 **See your room furnished with real, purchasable furniture.**
 
-This is a polished, self-contained **class demo** of the Spazio product loop:
-a step wizard that takes a room → style → budget and produces a photorealistic
-render whose furniture is real, tappable, and purchasable, ending in a
-(simulated) checkout grouped by supplier.
+A step wizard that takes a room → style → budget and produces a render whose
+furniture is real, tappable, and purchasable, ending in a checkout grouped by
+supplier.
 
-It is built to **look real and run flawlessly on the happy path**. It is **not**
-production software: there is no database, no accounts, no real payments, and no
-robustness/error hardening beyond the demo flow. State lives in memory and resets
-on refresh.
+> **Update (ADR-024 + #31):** this started as the 2-day class demo and is now the
+> **product platform**, wired to the real backend. The wizard runs over `/api/v1`
+> (Next.js rewrite → `../backend`, Fastify + Prisma + Postgres): the project,
+> render, cart and order are real rows; renders wait for **operator approval**
+> (approve them in the backend's console at `/operator/console`); checkout
+> captures on a **fake gateway** (no real money — ADR-003 vendor open) and the
+> composite image is still a cached local asset (ADR-002 vendor open).
+> **Run the backend first** — see `../backend/README.md` (Postgres via Docker,
+> migrate, seed, operator account, `PORT=3001 npm run dev`), or set
+> `BACKEND_ORIGIN` if it runs elsewhere. The offline, in-memory demo described
+> below is preserved in git history (tag: the PR #22 merge).
 
 ---
 

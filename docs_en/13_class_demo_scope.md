@@ -20,6 +20,8 @@ This document describes **`web-demo/`**, a time-boxed **2-day academic class-pro
 > **Framing that applies to this whole document:** the choices below change **nothing** about the real product decisions. They only record **how the class demo is delivered**. The production plan and the ADRs remain unchanged and authoritative.
 >
 > **Update (ADR-024, 2026-07-14):** the product direction has since changed — the web app recorded here **is now the product platform** (no native iOS will be built), to be wired to the real backend in small increments. This document stays as the accurate record of the 2-day demo as delivered; ADR-024 records the pivot.
+>
+> **Update (#31, PR #32/#33):** the wiring happened. The app now runs the REAL loop against `backend/` (`/api/v1` via a Next.js rewrite): project + photo + inputs persist in Postgres, renders wait for real operator approval (no more fake instant render), the cart auto-populates from the approved render, and checkout captures on the fake gateway with a real `Order`/`PurchaseOrder`/commission trail. Still demo-scoped: the composite image remains a cached local asset (ADR-002 vendor open) and no real money moves (ADR-003 vendor open). The "no database / in-memory state" description below records the demo **as originally delivered**.
 
 ---
 
