@@ -1,7 +1,7 @@
 # Data model
 
 > **Draft - proposed data model; architecture decided for the pilot (see `ADR-001`).**
-> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`). Treat every table below as a specification to review, not a settled design.
+> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. **Update (PR #21):** the pilot entity subset is now expressed as a Prisma schema in `backend/prisma/schema.prisma` (not deployed); this document remains the full-product draft. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`; the client has since changed to the **web app** — `ADR-024`, 2026-07-14). Treat every table below as a specification to review, not a settled design.
 
 ## How to read this document
 
@@ -75,6 +75,8 @@ A homeowner/renter with profile, preferences, and order history; may also transa
 ## Entity: Operator
 
 Spazio staff who curate the catalog, maintain the style taxonomy, review renders, and (in the pilot) forward orders manually (PRD §5, pilot "human's role").
+
+> **Update (PR #27):** built in the pilot schema (`backend/prisma/schema.prisma`) — scrypt-hashed `password_hash`, optional single `role` (enum below), `status` `active`/`inactive`. Console sign-in is implemented (build plan §1.7 — nothing is deployed); per-action role gating arrives with FEAT-006/011/015.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -223,8 +225,8 @@ A generated photorealistic image of the furnished room, private by default, pend
 | project_id | UUID (FK) | Yes | Source session **(proposed)** → `Project`. |
 | image_ref | URL / String | Yes | Storage reference for the generated image (PRD FR-06). |
 | status | Enum | Yes | `pending_review` / `approved` / `rejected` **(proposed values)**; an operator approves each render before it is shown to the user (pilot; FR-027). |
-| reviewed_by | UUID (FK) | No | Reviewing operator **(proposed)** → `Operator` (FR-027). |
-| reviewed_at | DateTime | No | Review timestamp **(proposed)** (FR-027). |
+| reviewed_by | UUID (FK) | No | Reviewing operator → `Operator` (FR-027). *(Pilot: built, PR #27 — stamped from the operator session.)* |
+| reviewed_at | DateTime | No | Review timestamp (FR-027). *(Pilot: built, PR #27.)* |
 | total_product_cost | Decimal | No | Sum of rendered products **(proposed / derived)**; must stay within budget plus tolerance (PRD BR-9). |
 | within_budget | Boolean | No | Whether total is within budget + tolerance **(proposed)** (PRD BR-9, FR-14). Tolerance decided (pilot): 10% - see ADR-008. |
 | is_private | Boolean | Yes | Private by default (PRD BR-33, NFR-007). Default `true`. |
@@ -331,8 +333,8 @@ One per supplier, generated from an Order and forwarded to the supplier for fulf
 | currency | String | Yes | Currency (PRD BR-27). |
 | production_estimate | String / Integer | No | Aggregated supplier production estimate (PRD BR-17). |
 | delivery_estimate | String / Integer | No | Aggregated supplier delivery estimate (PRD BR-17). |
-| forwarded_by | UUID (FK) | No | Operator who forwarded the PO in the pilot **(proposed)** → `Operator` (pilot; FR-061). |
-| forwarded_at | DateTime | No | Manual forward timestamp **(proposed)** (pilot; FR-061). |
+| forwarded_by | UUID (FK) | No | Operator who forwarded the PO in the pilot → `Operator` (pilot; FR-061). *(Pilot: built, PR #27 — stamped from the operator session.)* |
+| forwarded_at | DateTime | No | Manual forward timestamp (pilot; FR-061). *(Pilot: built, PR #27.)* |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
 Note: automated split settlement and one-PO-per-supplier automation are **excluded from the pilot** (handled manually by the operator).

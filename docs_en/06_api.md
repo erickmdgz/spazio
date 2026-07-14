@@ -6,12 +6,28 @@
 > contract (base URL, verbs, auth scheme, payload fields, status codes, pagination,
 > async model) is still draft, but the decisions that gate it are now **Accepted for
 > the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
-> backend service + Postgres + object storage (**ADR-001**), the rendering/AI
+> backend service + Postgres + object storage (**ADR-001**; client since changed
+> to the **web app** by **ADR-024**, 2026-07-14), the rendering/AI
 > pipeline is a hosted generative image API with mandatory operator QA of every
 > render (**ADR-002**), and checkout is a single PCI-compliant COP capture with **no
 > split settlement**, the operator paying suppliers manually (**ADR-003**,
 > **ADR-004**). Treat every path, verb, and JSON body below as *illustrative
-> structuring*, not a committed interface.
+> structuring*, not a committed interface. **Update (PR #21):** the pilot subset
+> of this surface now exists as typed stub routes in `backend/` under `/api/v1`
+> (business logic stubbed, 501); where they differ, the pilot build plan §0.1
+> boundaries govern the pilot code. **Update (PR #27):** operator access is now
+> session-based — `POST/GET/DELETE /api/v1/operator/session` (sign-in / whoami /
+> sign-out against the `Operator` table, httpOnly cookie) guards every
+> `/operator/*` route, and the three §0.1#5 operator queue reads
+> (`GET /operator/renders?status=…`, `GET /operator/catalog/products?filter=…`,
+> `GET /operator/orders?status=…`) drive the console shell at `/operator/console`.
+> **Update (#31, PR #32/#33):** the pilot loop is now implemented and verified
+> end-to-end on a local stack (web app → these endpoints → Postgres): `GET
+> /styles` exists (FR-007); `GET /renders/{id}/items` and `GET /cart` carry a
+> product summary (name, price, supplier — FR-028/032); `GET /cart/estimates` is
+> live (FR-036); matching + cart auto-populate + checkout with commission run
+> against seeded catalog data. Image-gen and payments remain FAKE drivers —
+> vendor picks are still open ADR-002/003 tasks.
 
 ## How to read this document
 
@@ -31,12 +47,15 @@ the cart-hold duration and the budget tolerance appear in the PRD only as
 ## Conventions (all PROPOSED / DRAFT)
 
 - **Base path:** a placeholder `/api/v1` is used only for readability. The stack is
-  decided — native iOS app + one managed backend service (**ADR-001**); the concrete
+  decided — one managed backend service (**ADR-001**) with the web app as the client
+  (**ADR-024**); the concrete
   base path, versioning scheme and host are an implementation detail left to build.
 - **Auth:** endpoints that touch account or order data assume an authenticated
   session; the stack is decided (**ADR-001**) and the concrete scheme (token type,
   header) is an implementation detail. This satisfies the *intent* of NFR-008 but
-  does not specify it.
+  does not specify it. *(As built for the **operator** surface — PR #27: cookie-session
+  sign-in against the `Operator` table; see the operator session endpoints in §5.
+  Client endpoints stay unauthenticated in the pilot — ADR-022.)*
 - **Rendering is asynchronous.** A render is expected to take on the order of
   minutes (PRD target ~2–5 min, adopted for the pilot as a soft target with no hard
   SLA via **ADR-013**), so render creation is modelled as *submit → poll*, not a
@@ -314,7 +333,13 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 ### `POST /api/v1/operator/renders/{renderId}/approve` · `.../reject`
 
 - **Purpose (VERIFIED):** Operator reviews each render and approves (or rejects) it before it is shown to the user (Pilot; PRD §5 render-quality monitoring). Actor: **Operator**.
-- **Related requirements:** FR-027. **Pilot core.**
+- **Related requirements:** FR-027. **Pilot core.** *(As built — PR #27: stamps `reviewed_by` from the operator session. #31 increment 1: approval auto-populates the project cart from the render's items, FR-031.)*
+
+### `POST /api/v1/operator/session` · `GET` · `DELETE` *(as built, pilot — PR #27)*
+
+- **Purpose:** Operator sign-in (email + password against the `Operator` table, hashed credentials), whoami, and sign-out. Sets/clears the HMAC-signed httpOnly session cookie that guards every other `/operator/*` route — the pilot's only authenticated surface (build plan §1.7; NFR-008 intent). Actor: **Operator**.
+- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
+- **Related requirements:** FR-027, FR-056–FR-059, FR-061; NFR-008. **Pilot core.**
 
 ### `GET /api/v1/renders/quota`
 
@@ -381,6 +406,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 
 - **Purpose (VERIFIED):** Show supplier-sourced production and delivery estimates per item (BR-17), aggregated estimates for the full order, and supplier-declared warranty terms per item (BR-18) — all before checkout.
 - **Related requirements:** FR-036 (per-item estimate — **pilot core**), FR-037 (aggregated — not in pilot), FR-038 (warranty display — **excluded from the pilot**); NFR-015.
+- **As built (#31 increment 1):** per-item lead times straight from the `Product` row (`deliveryLeadTimeDays`; `productionLeadTimeDays` for made-to-order), null = `missing-estimate` placeholder, never fabricated. FR-037 aggregation and FR-038 warranty stay out.
 
 ---
 
@@ -543,7 +569,7 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 
 All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-10; see the ADR registry). Each shapes part of the surface above; the concrete contract shapes remain DRAFT:
 
-- **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation).
+- **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation). *Client choice superseded by **ADR-024** (web app).*
 - **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA of every render, no custom-trained model. Shapes the render section (§5).
 - **ADR-003 / ADR-004** payment & merchant of record — Accepted: a single PCI-compliant hosted COP capture with **no split settlement**, the operator paying suppliers manually (**ADR-003**); the Spazio operating entity is the merchant of record for the pilot (**ADR-004**, revisit before scale). Shapes checkout & payment (§9).
 - **ADR-005** style taxonomy — Accepted: 1–2 predefined visual styles + free-text, no taxonomy engine. Shapes `GET /styles`, catalog style mapping.

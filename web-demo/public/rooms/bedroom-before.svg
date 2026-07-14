@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" width="560" height="380" role="img" aria-label="Empty bedroom">
+  <defs>
+    <linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECE8DF"/><stop offset="1" stop-color="#E2DCD0"/></linearGradient>
+    <linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D8C6AC"/><stop offset="1" stop-color="#C4AE8E"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EDE7DA"/><stop offset="1" stop-color="#D9E0DA"/></linearGradient>
+  </defs>
+  <rect width="560" height="380" fill="url(#w)"/>
+  <rect y="250" width="560" height="130" fill="url(#f)"/>
+  <rect y="248" width="560" height="3" fill="#14342B" opacity="0.10"/>
+  <ellipse cx="280" cy="110" rx="240" ry="120" fill="#ffffff" opacity="0.12"/>
+  
+  <g>
+    <rect x="314" y="54" width="192" height="142" rx="8" fill="#B08968" opacity="0.9"/>
+    <rect x="320" y="60" width="180" height="130" rx="4" fill="url(#sky)"/>
+    <line x1="410" y1="60" x2="410" y2="190" stroke="#ffffff" stroke-width="4" opacity="0.7"/>
+    <line x1="320" y1="125" x2="500" y2="125" stroke="#ffffff" stroke-width="4" opacity="0.7"/>
+    <circle cx="480" cy="82" r="12" fill="#ffffff" opacity="0.55"/>
+  </g>
+  
+  <g>
+    <ellipse cx="90" cy="348" rx="23.799999999999997" ry="6.3" fill="#14342B" opacity="0.14"/>
+    <path d="M 74.6 342 Q 69 293 85.8 277.6" fill="none" stroke="#4E6B5A" stroke-width="6.3" stroke-linecap="round"/>
+    <path d="M 90 342 Q 92.8 280.4 92.8 263.6" fill="none" stroke="#4E6B5A" stroke-width="6.3" stroke-linecap="round"/>
+    <path d="M 104 342 Q 112.4 295.8 99.8 274.8" fill="none" stroke="#4E6B5A" stroke-width="6.3" stroke-linecap="round"/>
+    <ellipse cx="84.4" cy="274.8" rx="11.2" ry="6.3" fill="#4E6B5A" transform="rotate(-30 84.4 274.8)"/>
+    <ellipse cx="94.2" cy="260.8" rx="11.2" ry="6.3" fill="#4E6B5A"/>
+    <ellipse cx="101.2" cy="273.4" rx="11.2" ry="6.3" fill="#4E6B5A" transform="rotate(28 101.2 273.4)"/>
+    <path d="M 73.2 337.8 L 77.4 363 L 102.6 363 L 106.8 337.8 Z" fill="#B08968"/>
+  </g>
+  <text x="20" y="360" font-family="Georgia, serif" font-size="13" fill="#14342B" opacity="0.4">Your bedroom — before</text>
+</svg>

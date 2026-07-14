@@ -1,5 +1,7 @@
 # Spazio — One-Week iOS Pilot
 
+> **Update (ADR-024, 2026-07-14):** this document is the original first-milestone spec, kept unchanged as source material. The platform decision has since changed — the product continues on the **web app** (`web-demo/`) at class-demo scale, and **no native iOS app will be built**. The loop this document defines (render-to-purchase, one city, human in the loop) still governs. See `docs_en/decisions/ADR-024_web-app-platform-pivot.md`.
+
 **Pilot Product Requirements — the smallest version we can put in a real person’s hands**
 
 **Target:** Live on iOS, one city, in one week  

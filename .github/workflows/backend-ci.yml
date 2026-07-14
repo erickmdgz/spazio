@@ -5,6 +5,7 @@ on:
     branches: [develop, main]
     paths:
       - "backend/**"
+      - "operator/**" # console shell is served + tested by the backend
       - ".github/workflows/backend-ci.yml"
 
 defaults:

@@ -1,6 +1,10 @@
 # Spazio — One-Week iOS Pilot · Build Plan
 
-**Status: APPROVED 2026-07-13. Nothing is built yet.** Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
+> **Update (ADR-024, 2026-07-14) — read before anything else:** the native-iOS client and the one-week pilot *program* are **superseded** — the product continues on the **web app** (`web-demo/`) at class-demo scale, wired to the real backend. This plan remains the reference for the loop's design (data model §1.3, API §1.4, render pipeline §1.5, operator console §1.7, scope boundaries §0.1, build order §2.1). Read iOS-specific items (the `ios/` scaffold, TestFlight/Apple enrollment, SwiftUI screens in FEAT-002/003/007) as void or as their web equivalents.
+
+**Status: APPROVED 2026-07-13. Build started.** Since approval, the backend §1 foundation scaffold landed on `develop` via **PR #21** (typed route stubs + Prisma schema + CI — no feature logic), the class demo via **PR #22** (`web-demo/`), and the operator console shell + operator session auth via **PR #27** (see the §1.7 as-built note). Per **#31** (post-ADR-024), the render-to-purchase loop now runs end-to-end — matching → render → operator QA → cart → estimates → checkout → forwarding — with the web app as the client over `/api/v1` and a seeded catalog (PR #32/#33), verified on a local Postgres stack; the ADR-002 image-gen and ADR-003 payment vendors remain fake drivers, and nothing is deployed. Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
+
+> **Class-demo note —** A **time-boxed, 2-day academic class-project demo** — a *scoped subset* of this plan covering the render-to-purchase happy path — is delivered **separately** as a web app (`web-demo/`; see `docs_en/13_class_demo_scope.md` and **ADR-023**). It is a scoped visual demo, **not** production and **not** the full pilot: a Next.js 15 (App Router) + React 19 + TypeScript app with **no database** (in-memory state), a **mock** checkout (no real payment, no settlement), a **faked/cached** render, and a **seeded in-code catalog**. **For the demo scope only**, this supersedes ADR-001 (web app instead of native iOS), ADR-003/ADR-004 (mock checkout), and ADR-006/ADR-012/ADR-015 (seeded catalog instead of operator/self-service ingestion). This changes **nothing** about the real product decisions — the production plan and ADRs are unchanged; it only records how the class demo is delivered. **This document remains the full, production-oriented pilot build plan.**
 
 **The one loop to prove:** a real user in Bogotá sees their own room photorealistically furnished with **real, purchasable** SKUs and buys ≥1 shown item in-session — *render-to-purchase* — operator-in-the-loop, manual fulfilment.
 
@@ -60,7 +64,9 @@ CI/CD, and the cross-cutting concerns (currency, instrumentation, privacy). It b
 strictly to the accepted ADRs (ADR-001, ADR-002, ADR-003/004, ADR-019, ADR-022) and does
 not reopen them. Where an ADR fixed an *approach* but not a *vendor* (hosted image-gen API,
 hosted PCI checkout), the vendor pick is called out as an explicit implementation task and
-the capability is named by role. Nothing here is built yet; this is a plan for human approval.
+the capability is named by role. This section was written as a plan for human approval; since
+approval, its backend scaffold landed via PR #21 (stubs only — see §1.2) and the operator console
+shell + auth via PR #27 (see §1.7), while the iOS app and all feature logic remain unbuilt.
 
 Scope discipline: this section only wires the pilot-included FRs. The detailed behaviour of
 each feature (matching rules, tag layout, cart edits, checkout screens) lives in its own plan
@@ -107,7 +113,8 @@ Two runtime components plus three managed dependencies, per ADR-001:
 
 ### 1.2 Repository layout
 
-The repo is currently **docs-only** (`/docs_en`, ADRs, CLAUDE.md). Proposal: keep **one repository**
+At planning time the repo was **docs-only** (`/docs_en`, ADRs, CLAUDE.md); `backend/` (PR #21) and
+`web-demo/` (PR #22) now exist on `develop`. Proposal: keep **one repository**
 (the existing one) and add app subfolders, so the `main` + `develop` workflow, branch protection,
 Issues and traceability defined in CLAUDE.md continue to govern all code in one place. A monorepo
 also keeps the iOS app, the backend and the shared API contract versioned together for a one-week
@@ -131,6 +138,8 @@ build with one team.
 ├── ops/               CI/CD workflows source, IaC/config, seed data (catalog CSV template)
 └── docs_en/           (unchanged; architecture rule: keep code tied to FR/ADR/TC)
 ```
+
+> **As-built note (PR #21):** the backend landed with `backend/src/routes | services | jobs | auth` plus `prisma/` (schema + migrations), which supersedes the proposed `backend/` internal layout above. **PR #27** added `operator/` (static console shell, served by the backend — see §1.7); the rest of this layout (`ios/`, `ops/`) remains the plan.
 
 Architecture rule from `02_architecture.md` is honoured by this split: frontend, backend and data
 concerns are separated; the frontend never queries the database directly; business logic lives in
@@ -193,11 +202,12 @@ illustrative `/api/v1/...` shapes; final contract shape is an implementation tas
 | Client | `GET /renders/{id}/items` | List tagged products on the render | FR-028 | TC-054 |
 | Client | `GET /renders/{id}/items/{itemId}` | Tap a tag → product detail | FR-029 | TC-055 |
 | Client | `GET /cart` | Auto-populated cart contents | FR-031, FR-032 | TC-058, TC-059 |
-| Client | `POST /cart/items` | Add a tagged product (no stock hold in pilot) | FR-030 | TC-056, TC-057 |
+| Client | ~~`POST /cart/items`~~ | **Struck per §0.1#2** — no manual add in the pilot; the cart is auto-populated from the render (FR-031) | ~~FR-030~~ | ~~TC-056, TC-057~~ |
 | Client | `DELETE /cart/items/{id}` | Remove a cart item | FR-033 | TC-060 |
 | Client | `POST /cart/confirm` | Explicit cart confirmation (gate to pay) | FR-035 | TC-063, TC-064 |
 | Client | `GET /cart/estimates` | Per-item production/delivery estimate | FR-036 | TC-065, TC-066 |
-| Client | `POST /checkout` | Revalidate price/stock → create Order + one PO/supplier + COP payment intent | FR-041, FR-042, FR-044, FR-045, FR-046 | TC-072–TC-075, TC-078, TC-080 |
+| Client | `GET /localization/resolve` | Thin resolver: returns the fixed Bogotá/COP zone + deliverable curated suppliers (§0.1#6) | FR-012, FR-013 | TC-022, TC-024 |
+| Client | `POST /checkout` | FR-042 single COP capture + ADR-022 contact + recorded 10% commission; creates Order + PurchaseOrder scaffolding (§0.1#1/#4) | FR-042, FR-046 | TC-074, TC-075, TC-080 |
 | Client | `POST /payments/{id}/confirm` | Finalize the single COP capture | FR-042 | TC-074, TC-075 |
 | Client | `GET /orders/{id}` | Order + per-PO status (minimal) | FR-047 | TC-081, TC-082 |
 | Operator | `POST /operator/catalog/products` · `PATCH .../{sku}` | Curate/approve SKUs; store BR-1 attributes; classify; map style | FR-056, FR-057, FR-058, FR-059 | TC-095–TC-103 |
@@ -208,10 +218,11 @@ illustrative `/api/v1/...` shapes; final contract shape is an implementation tas
 **Endpoints intentionally NOT built in the pilot** (present in `06_api.md`, deferred): accounts/auth
 (`/auth/*`, FR-001–003), guest-contact feature endpoint (FR-004 — pilot instead embeds contact on the
 order), camera capture (`/photos/capture`, FR-006), localization/delivery-coverage endpoints
-(FR-012/013/020/053 — replaced by the single seeded Bogotá zone), render edits/quota (FR-048–052),
-cart swap (`PATCH /cart/items`, FR-034), supplier self-ingest (FR-055), automated sync (FR-060).
-Localization is a constant in the pilot, so `GET /localization/resolve` is not exposed; the app assumes
-Bogotá/COP.
+beyond the thin resolver (dynamic FR-020 coverage logic and FR-053 fallback — replaced by the single
+seeded Bogotá zone), render edits/quota (FR-048–052), cart swap (`PATCH /cart/items`, FR-034), supplier
+self-ingest (FR-055), automated sync (FR-060).
+Per **§0.1#6**, localization is *not* on this deferred list: one thin `GET /localization/resolve` is
+exposed and returns the fixed Bogotá/COP zone + deliverable curated suppliers, satisfying TC-022/TC-024.
 
 ### 1.5 Rendering integration (ADR-002)
 
@@ -247,10 +258,11 @@ must be picked on Day 1.
 
 - **Single COP capture** through a hosted PCI-compliant checkout (NFR-009). The gateway/provider is an
   **implementation task** (approach fixed, vendor not — must support COP + PCI + an iOS flow).
-- **Flow:** `POST /checkout` revalidates price and availability (FR-041, TC-072/73), creates the `Order`
-  with the embedded contact (ADR-022), fans out **one `PurchaseOrder` per supplier** (FR-044, TC-078),
-  computes totals and records a **10% commission value** for manual reconciliation (FR-045, ADR-007), and
-  returns a payment-intent placeholder from the hosted checkout. The app completes payment through the
+- **Flow:** `POST /checkout` creates the `Order` with the embedded contact (ADR-022), creates **one
+  `PurchaseOrder` per supplier** as pilot fulfilment scaffolding (§0.1#1 — not the deferred FR-044
+  fan-out), computes totals and records a **10% commission value** for manual reconciliation (ADR-007),
+  and returns a payment-intent placeholder from the hosted checkout. Per §0.1#4, FR-041 revalidation
+  and FR-045 retention are out of the pilot. The app completes payment through the
   gateway's hosted flow; `POST /payments/{id}/confirm` (plus a provider webhook) marks `Payment.status =
   captured` and the order paid (FR-042, TC-074/75).
 - **No split settlement** (FR-043 out). The Spazio operating entity is merchant of record and **pays
@@ -275,6 +287,16 @@ backend). Three jobs, all pilot-core:
 **Auth:** the console is the pilot's **only authenticated surface** — operators sign in against the
 `Operator` table (hashed credentials), satisfying the intent of NFR-008 for catalog/render/order
 operations. End users have no accounts (ADR-022).
+
+> **As-built note (PR #27):** the console shell + auth land with this PR. A static three-queue
+> shell (`operator/public`) is served by the backend at `/operator/console` (no second backend);
+> operators sign in via `POST /api/v1/operator/session` against the `Operator` table
+> (scrypt-hashed credentials; HMAC-signed httpOnly session cookie keyed by
+> `OPERATOR_SESSION_SECRET` — §1.8), replacing PR #21's interim shared-secret header. Approve /
+> reject / forward stamp `reviewed_by` / `forwarded_by` from the session, and the three §0.1#5
+> queue reads drive the shell. Roles are stored but not yet enforced per action — that, plus the
+> §2.4 NFR-008 security TCs and the full curation/review/forwarding UX (CSV import, signed-URL
+> image review), lands with FEAT-015/006/011.
 
 ### 1.8 Storage, auth, config, environments
 
@@ -332,9 +354,9 @@ Matches the `main` + `develop` model and branch protection already defined in CL
 | Async render job + poll, operator QA gate | FR-015, FR-027 | TC-028, TC-051, TC-052, TC-053 |
 | Real-SKU-only / no fabrication guard | FR-016, FR-018, FR-019 | TC-030, TC-031, TC-034–TC-037 |
 | Private photo/render storage | FR-005, (NFR-007) | TC-011, TC-047 |
-| Single COP checkout + one PO/supplier + commission value | FR-041, FR-042, FR-044, FR-045, FR-046 | TC-072–TC-075, TC-078, TC-079, TC-080 |
+| Single COP checkout + PO scaffolding (§0.1#1) + commission value | FR-042, FR-046 | TC-074, TC-075, TC-080 |
 | Operator console: curation / QA / forwarding | FR-027, FR-056–FR-059, FR-061 | TC-051, TC-052, TC-095–TC-103, TC-106 |
-| Cart plumbing (auto-populate, review, confirm) | FR-030–FR-033, FR-035 | TC-056–TC-060, TC-063, TC-064 |
+| Cart plumbing (auto-populate, review, confirm) | FR-031–FR-033, FR-035 | TC-058–TC-060, TC-063, TC-064 |
 
 ### 1.12 Deferred (not in this foundation, tracked elsewhere)
 
@@ -359,8 +381,9 @@ This section sequences the foundation plus the eleven pilot features into a buil
 order, maps that order onto the pilot's Day 1–7 structure (and states plainly where seven
 calendar days is or is not realistic), defines the milestone gates and the per-feature
 Definition of Done, consolidates the risks the feature sections raised, and restates the
-render-to-purchase go/no-go and the governance flow. It is a plan for human approval; nothing
-is built yet.
+render-to-purchase go/no-go and the governance flow. It was written as a plan for human approval;
+since approval, only the backend foundation scaffold (PR #21), the class demo (PR #22), and the
+operator console shell + auth (PR #27) exist — the iOS app and all feature logic remain unbuilt.
 
 ### 2.1 Dependency graph & critical path
 
@@ -1153,12 +1176,12 @@ Cross-cutting NFRs surfaced here: **NFR-015** (price/delivery visible before che
 
 **Deferred (out of pilot):**
 - **Warranty field on the tag** — the tag field list in FR-028/TC-054 includes *warranty terms*, but warranty display is out of pilot (ADR-020; FR-038 in FEAT-009). The **pilot tag subset carries name, price, supplier, and listing link**; the warranty portion of TC-054 is validated only when FR-038 ships. Schema keeps the `warranty_terms` column but the pilot iOS tag UI does not render it.
-- **Add / remove from the tagged render** — the add-to-cart action (FR-030) and remove (FR-033) live in **FEAT-008**, not here. FEAT-007 owns the tag overlay + detail view; the detail view's "Add to cart" affordance is a *hand-off entry point* wired to FEAT-008. (Note: in the pilot the cart is auto-populated on render approval — FR-031/FEAT-008 — so per-tag add is a convenience path, not the primary flow.)
+- **Add / remove from the tagged render** — cart actions live in **FEAT-008**, not here. FEAT-007 owns the tag overlay + detail view only. Per **§0.1#2**, manual add-to-cart (FR-030, `POST /cart/items`) is **deferred out of the pilot**: the cart is auto-populated on render approval (FR-031/FEAT-008), and the pilot detail sheet shows product details without an "Add to cart" affordance (remove/swap happen in the cart via FEAT-008).
 - **`is_kept_item` / kept-vs-purchased visual distinction** (NFR-014) — depends on keep-or-replace (FEAT-012), out of pilot; every tagged item in the pilot is a purchasable catalog SKU.
 
 ### iOS work (SwiftUI, ADR-001)
 - **`TaggedRenderView`** — the approved render image with an overlaid, interactive **tag hotspot layer**. Renders one tappable marker per `RenderItem` at its `tag_position`, mapping normalized/image-space coordinates onto the displayed (scaled/aspect-fit) image frame so hotspots track the image on resize and rotation. Includes accessible hit targets (min ~44pt) and a visible label chip (name + price in COP).
-- **`ProductTagDetailSheet`** — presented on tap; shows **name, price (COP), supplier, listing link** (opens externally), and the product photo. Renders gracefully when an optional field (e.g., `listing_url`) is missing/omitted (covers the TC-055 missing-optional-data case). Contains the "Add to cart" button that calls into FEAT-008 (`POST /api/v1/cart/items`).
+- **`ProductTagDetailSheet`** — presented on tap; shows **name, price (COP), supplier, listing link** (opens externally), and the product photo. Renders gracefully when an optional field (e.g., `listing_url`) is missing/omitted (covers the TC-055 missing-optional-data case). No "Add to cart" button in the pilot (manual add is deferred per §0.1#2; the cart is auto-populated — FR-031).
 - **`RenderTagsViewModel`** — fetches tag data for the approved render, holds the tag list, and drives the detail lookup. Reuses the app's networking layer and COP currency formatter from FEAT-004.
 - Guard: the tagged view is only reachable for a render whose status is `approved` (gate owned by FEAT-006); no tag layer is shown for pending/rejected renders.
 
@@ -1185,7 +1208,7 @@ No dedicated operator step in FEAT-007. Operator involvement is upstream and reu
 2. **Backend: tag-projection service + two GET endpoints**, with the `approved` + ownership authorization gate (NFR-007). Return `tag_position` for hotspot placement.
 3. **iOS: `RenderTagsViewModel`** to fetch the item list once the render is approved (consumes FEAT-006's approval state).
 4. **iOS: `TaggedRenderView`** overlay — map `tag_position` onto the displayed image frame; render tappable, accessible hotspots with name+COP price chips.
-5. **iOS: `ProductTagDetailSheet`** — populate from the item detail lookup; handle a missing optional field (e.g., no `listing_url`) without breaking layout; wire the "Add to cart" button to the FEAT-008 endpoint as a hand-off.
+5. **iOS: `ProductTagDetailSheet`** — populate from the item detail lookup; handle a missing optional field (e.g., no `listing_url`) without breaking layout. (No add-to-cart affordance in the pilot — §0.1#2.)
 6. **Currency + formatting** — reuse FEAT-004's COP formatter for all prices.
 7. **Test** TC-054 (tag generation/serving, pilot subset) and TC-055 (tap-to-view happy path + missing-optional case); verify the private-render/unauthorized-viewer guard (NFR-007) and that price is visible pre-checkout (NFR-015).
 
@@ -1200,7 +1223,7 @@ No dedicated operator step in FEAT-007. Operator involvement is upstream and reu
 - **FEAT-006** (Render review & moderation) — supplies the `approved` gate; tags are only served/shown for approved renders (FR-027).
 - **FEAT-015** (Supplier catalog management) — source of `Product`/`Supplier` fields shown in tags/details.
 - **FEAT-004** (currency/formatting) — COP price display.
-- Downstream (not a build dependency): **FEAT-008** (cart) — the detail sheet's "Add to cart" hands off to it.
+- Downstream (not a build dependency): **FEAT-008** (cart) — consumes the same `RenderItem` data to auto-populate the cart (FR-031); the pilot detail sheet has no add affordance (§0.1#2).
 
 ### Effort
 **M.** Two thin read endpoints plus a projection join are small; the real work is the iOS interactive tag overlay (coordinate mapping across image scaling/rotation, accessible hit targets) and the detail sheet with graceful optional-field handling.

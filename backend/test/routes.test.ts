@@ -9,6 +9,7 @@ const EXPECTED_ROUTES: Array<{ method: HTTPMethods; url: string }> = [
   { method: "POST", url: "/api/v1/projects" },
   { method: "POST", url: "/api/v1/projects/:id/photos" },
   { method: "PATCH", url: "/api/v1/projects/:id" },
+  { method: "GET", url: "/api/v1/styles" },
   { method: "GET", url: "/api/v1/localization/resolve" },
   { method: "POST", url: "/api/v1/renders" },
   { method: "GET", url: "/api/v1/renders/:id" },
@@ -20,6 +21,14 @@ const EXPECTED_ROUTES: Array<{ method: HTTPMethods; url: string }> = [
   { method: "GET", url: "/api/v1/cart/estimates" },
   { method: "POST", url: "/api/v1/checkout" },
   { method: "GET", url: "/api/v1/orders/:id" },
+  // Operator session (plan §1.7 auth)
+  { method: "POST", url: "/api/v1/operator/session" },
+  { method: "GET", url: "/api/v1/operator/session" },
+  { method: "DELETE", url: "/api/v1/operator/session" },
+  // Operator console shell (plan §1.7, served by the backend)
+  { method: "GET", url: "/operator/console" },
+  { method: "GET", url: "/operator/console/app.js" },
+  { method: "GET", url: "/operator/console/styles.css" },
   // Operator
   { method: "GET", url: "/api/v1/operator/catalog/products" },
   { method: "POST", url: "/api/v1/operator/catalog/products" },

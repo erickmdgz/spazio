@@ -34,13 +34,19 @@ npm install
 docker compose up db          # add -d to run detached
 
 # 3. copy env and generate the Prisma client
-cp .env.example .env
+cp .env.example .env          # set PORT=3001 when running the web app alongside
 npm run db:generate
 
 # 4. apply the schema to the local database
 npm run db:migrate
 
-# 5. run the dev server (http://localhost:3000)
+# 5. seed the pilot catalog (3 styles, 3 suppliers, 11 BR-1-complete SKUs)
+npm run db:seed
+
+# 6. create an operator console account (password prompted, hidden input)
+npm run operator:create -- --email you@example.com --name "You" --role render_reviewer
+
+# 7. run the dev server (loads ./.env natively)
 npm run dev
 ```
 
@@ -57,22 +63,45 @@ Health check: `curl http://localhost:3000/health` → `{"status":"ok","service":
 | `npm run lint`      | ESLint over `src/` and `test/`                |
 | `npm run db:generate` | Generate the Prisma client                  |
 | `npm run db:migrate`  | Create/apply a dev migration                 |
+| `npm run db:seed`     | Seed the pilot catalog (idempotent)          |
+| `npm run operator:create` | Create/update an operator console account |
+
+## Operator console (plan §1.7)
+
+The operator console shell lives in `../operator/public` and is served by this
+backend at **`/operator/console`** (no second backend). Operators sign in with
+email + password against the `Operator` table (scrypt-hashed credentials); the
+session is an HMAC-signed, httpOnly cookie signed with `OPERATOR_SESSION_SECRET`.
+Create the first account (the password is prompted with hidden input, so it never
+lands in shell history; for non-interactive use, export `OPERATOR_PASSWORD` from a
+hidden read — see `scripts/create-operator.ts`):
+
+```bash
+npm run operator:create -- --email ana@spazio.example --name "Ana" --role render_reviewer
+```
+
+Roles (`catalog_curator` / `render_reviewer` / `order_handler`) are stored but not
+yet enforced per action — that arrives with FEAT-006/011/015 (see the DoD
+carve-outs in the build plan §2.4).
 
 ## API surface
 
 Versioned prefix `/api/v1`. Client endpoints are public in the pilot (no accounts,
-ADR-022). Operator endpoints live under `/api/v1/operator` behind a shared-secret
-guard (`x-operator-secret`, see `src/auth/operator.ts` — hardens later).
+ADR-022). Operator endpoints live under `/api/v1/operator` behind the session
+guard (`src/auth/operator.ts`); `POST/GET/DELETE /operator/session` (login /
+whoami / logout) are the unauthenticated exceptions.
 
 - Client: `POST /projects`, `POST /projects/:id/photos`, `PATCH /projects/:id`,
   `GET /localization/resolve`, `POST /renders`, `GET /renders/:id`,
   `GET /renders/:id/items`, `GET /cart`, `PUT /cart/items/:id`,
   `DELETE /cart/items/:id`, `POST /cart/confirm`, `GET /cart/estimates`,
   `POST /checkout`, `GET /orders/:id`.
-- Operator: `GET/POST/PATCH /operator/catalog/products`,
+- Operator: `POST/GET/DELETE /operator/session`,
+  `GET/POST/PATCH /operator/catalog/products`,
   `POST /operator/catalog/products/:id/approve|reject`,
   `GET /operator/renders`, `POST /operator/renders/:id/approve|reject`,
   `GET /operator/orders`, `POST /operator/orders/:id/forward`.
+- Console shell (static, unversioned): `GET /operator/console` (+ `app.js`, `styles.css`).
 
 `POST /cart/items` (manual add-to-cart, FR-030) is intentionally **not** registered.
 

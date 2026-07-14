@@ -1,3 +1,4 @@
+import { loadDotEnv } from "./env.js";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { getPrisma } from "./db.js";
@@ -9,6 +10,7 @@ import { registerRenderWorker } from "./jobs/renderWorker.js";
 import type { AppDeps } from "./types.js";
 
 async function main(): Promise<void> {
+  loadDotEnv();
   const config = loadConfig();
 
   const prisma = getPrisma();

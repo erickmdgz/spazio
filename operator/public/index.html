@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Spazio — Operator console</title>
+  <link rel="stylesheet" href="/operator/console/styles.css" />
+</head>
+<body>
+  <!-- Login -->
+  <section id="login-view" hidden>
+    <form id="login-form" class="login-card" autocomplete="off">
+      <h1>Spazio operator console</h1>
+      <p class="muted">Internal pilot tool — staff sign-in (no end-user accounts, ADR-022).</p>
+      <label for="login-email">Email</label>
+      <input id="login-email" name="email" type="email" required autocomplete="username" />
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" required autocomplete="current-password" />
+      <button type="submit">Sign in</button>
+      <p id="login-error" class="error" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- Shell -->
+  <section id="shell-view" hidden>
+    <header class="topbar">
+      <span class="brand">Spazio · Operator console</span>
+      <nav id="tabs">
+        <button data-tab="renders" class="tab active">Render review</button>
+        <button data-tab="catalog" class="tab">Catalog</button>
+        <button data-tab="orders" class="tab">Orders</button>
+      </nav>
+      <span class="spacer"></span>
+      <span id="operator-name" class="muted"></span>
+      <button id="logout">Sign out</button>
+    </header>
+
+    <main>
+      <!-- Render review queue (§1.7 job 2, FR-027) -->
+      <section id="tab-renders" class="tab-panel">
+        <div class="panel-head">
+          <h2>Render review queue</h2>
+          <label class="muted">Status
+            <select id="renders-status">
+              <option value="pending_review" selected>pending_review</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </label>
+          <button class="refresh" data-refresh="renders">Refresh</button>
+        </div>
+        <p class="muted">Oldest first. A render stays invisible to the user until it is approved here (FR-027). Full review UX (room photo + composite + SKU list) arrives with FEAT-006.</p>
+        <div id="renders-list" class="list"></div>
+      </section>
+
+      <!-- Catalog curation (§1.7 job 1, FR-056–059) -->
+      <section id="tab-catalog" class="tab-panel" hidden>
+        <div class="panel-head">
+          <h2>Catalog curation</h2>
+          <label class="muted">Filter
+            <select id="catalog-filter">
+              <option value="" selected>all</option>
+              <option value="pending">pending approval</option>
+              <option value="incomplete">incomplete (BR-1)</option>
+              <option value="unmapped">unmapped style</option>
+            </select>
+          </label>
+          <button class="refresh" data-refresh="catalog">Refresh</button>
+        </div>
+        <p class="muted">Only complete (BR-1 / ADR-014), approved SKUs are renderable. Spreadsheet load and full curation UX arrive with FEAT-015.</p>
+        <div id="catalog-list" class="list"></div>
+      </section>
+
+      <!-- Order forwarding (§1.7 job 3, FR-061) -->
+      <section id="tab-orders" class="tab-panel" hidden>
+        <div class="panel-head">
+          <h2>Paid orders — forward to suppliers</h2>
+          <label class="muted">Status
+            <select id="orders-status">
+              <option value="paid_unforwarded" selected>paid_unforwarded</option>
+              <option value="forwarded">forwarded</option>
+              <option value="pending">pending</option>
+              <option value="completed">completed</option>
+            </select>
+          </label>
+          <button class="refresh" data-refresh="orders">Refresh</button>
+        </div>
+        <p class="muted">Forwarding is out-of-band (email/phone to the supplier); the button records it (FR-061). Full fulfilment UX arrives with FEAT-011.</p>
+        <div id="orders-list" class="list"></div>
+      </section>
+    </main>
+
+    <footer class="muted">
+      Pilot-internal foundation shell (build plan §1.7). Not deployed; not a public surface.
+    </footer>
+  </section>
+
+  <script src="/operator/console/app.js"></script>
+</body>
+</html>

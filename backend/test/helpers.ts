@@ -2,6 +2,11 @@ import { vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 import { buildApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
+import {
+  OPERATOR_SESSION_COOKIE,
+  issueSessionToken,
+  type OperatorSession,
+} from "../src/auth/operator.js";
 import { LocalDiskStorage } from "../src/services/storage.js";
 import { FakeRenderPipeline } from "../src/services/render/pipeline.js";
 import { FakePaymentGateway } from "../src/services/payments.js";
@@ -13,8 +18,21 @@ export function testConfig() {
   return loadConfig({
     NODE_ENV: "test",
     DATABASE_URL: "postgresql://test:test@localhost:5432/test",
-    OPERATOR_API_SECRET: "test-secret",
+    OPERATOR_SESSION_SECRET: "test-session-secret-0123456789",
   });
+}
+
+/** A valid operator session cookie for authenticated operator-route tests. */
+export function operatorSessionCookie(overrides: Partial<OperatorSession> = {}): string {
+  const session: OperatorSession = {
+    operatorId: "op_test_1",
+    name: "Test Operator",
+    role: null,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    ...overrides,
+  };
+  const token = issueSessionToken(session, testConfig().OPERATOR_SESSION_SECRET);
+  return `${OPERATOR_SESSION_COOKIE}=${token}`;
 }
 
 /**
