@@ -75,3 +75,21 @@ export function makeOperatorSessionGuard(secret: string) {
     request.operator = session;
   };
 }
+
+/**
+ * Per-action role gate (NFR-008; plan §2.4 DoD carve-outs). Runs after the
+ * session guard. A role-less operator is all-purpose (the pilot's 2-3 staff
+ * usually wear every hat); an operator WITH a role is limited to it.
+ */
+export function requireOperatorRole(role: OperatorRole) {
+  return async function operatorRoleGuard(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const operator = request.operator;
+    if (operator && (operator.role === null || operator.role === role)) return;
+    await reply
+      .code(403)
+      .send({ error: "forbidden", message: `This action requires the ${role} role.` });
+  };
+}

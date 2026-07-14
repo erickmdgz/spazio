@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
 import { PILOT } from "../../config.js";
+import { requireDeviceToken } from "./deviceScope.js";
 
 interface CheckoutBody {
   cartId: string;
@@ -61,11 +62,16 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const { cartId, contact } = request.body;
 
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
       const cart = await prisma.cart.findUnique({
         where: { id: cartId },
-        include: { items: { include: { product: true } } },
+        include: {
+          items: { include: { product: true } },
+          project: { select: { deviceToken: true } },
+        },
       });
-      if (!cart) {
+      if (!cart || cart.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Cart not found." });
       }
       if (cart.status !== "confirmed") {
@@ -174,11 +180,18 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
       const order = await prisma.order.findUnique({
         where: { id: request.params.id },
-        include: { purchaseOrders: true, payment: true },
+        include: {
+          purchaseOrders: true,
+          payment: true,
+          project: { select: { deviceToken: true } },
+        },
       });
-      if (!order) {
+      // A buyer cannot read another buyer's order (§2.4 carve-out, NFR-008).
+      if (!order || order.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Order not found." });
       }
       return reply.code(200).send({

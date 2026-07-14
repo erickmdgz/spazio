@@ -26,7 +26,7 @@ PR #27), all described under *Added* and *Technical changes* below. Even so,
 satisfied in a shipped build**: the demo was only built and smoke-verified in an
 authoring sandbox, the backend is a foundation scaffold (typed route stubs and
 pilot schema; minimal business logic), and the operator console is a foundation
-shell (sign-in + three queue views; no feature UX, no role enforcement). This entry stays under
+shell (sign-in + three queue views; no feature UX; role enforcement arrived later — #34). This entry stays under
 `[Unreleased]` until the first `vX.Y.Z` tag is cut (see *First tagged release*
 below).
 
@@ -196,6 +196,15 @@ below).
   (`render-to-purchase` queryable). **Still not a release:** image-gen and
   payments are fake drivers (ADR-002/003 vendors open), per-action role
   enforcement and most TC automation are pending, and nothing is deployed.
+
+- **Loop hardened (#34).** The §2.4 DoD security carve-outs closed: per-action
+  operator role enforcement (curator / reviewer / handler; role-less staff are
+  all-purpose), status-machine preconditions (approve/reject only from
+  `pending_review` with no duplicate `render_approved` events, forward only
+  from `paid_unforwarded`, catalog approval requires BR-1 completeness, PATCH
+  recomputes completeness — FR-057), and NFR-007 device scoping on every
+  client read/write (`x-device-token`; foreign resources answer 404).
+  Automated as **TC-107..109** (`08_test_plan.md`).
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the

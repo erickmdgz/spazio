@@ -294,9 +294,9 @@ operations. End users have no accounts (ADR-022).
 > (scrypt-hashed credentials; HMAC-signed httpOnly session cookie keyed by
 > `OPERATOR_SESSION_SECRET` — §1.8), replacing PR #21's interim shared-secret header. Approve /
 > reject / forward stamp `reviewed_by` / `forwarded_by` from the session, and the three §0.1#5
-> queue reads drive the shell. Roles are stored but not yet enforced per action — that, plus the
-> §2.4 NFR-008 security TCs and the full curation/review/forwarding UX (CSV import, signed-URL
-> image review), lands with FEAT-015/006/011.
+> queue reads drive the shell. Per-action role enforcement and the §2.4 NFR-008 security TCs landed
+> with **#34** (TC-107..109); the full curation/review/forwarding UX (CSV import, signed-URL image
+> review) remains with FEAT-015/006/011.
 
 ### 1.8 Storage, auth, config, environments
 
@@ -580,6 +580,12 @@ NFR-008), and non-operator cannot forward / a buyer cannot read another buyer's 
 NFR-008). For the 7-day loop, "Done" for a feature means its **core loop TCs** pass in TestFlight;
 non-core TC automation and full doc backfill may trail into the following days but block the tagged
 release, not the go/no-go demo.
+
+> **Update (#34):** the three carve-outs are closed — per-action role gating (curator / reviewer /
+> handler; role-less staff stay all-purpose), status-machine preconditions (approve/reject only from
+> `pending_review`, forward only from `paid_unforwarded`, approve only BR-1-complete SKUs), and
+> NFR-007 device scoping on every client read/write are implemented and automated as **TC-107..109**
+> (`08_test_plan.md`).
 
 ### 2.5 Pilot go / no-go
 

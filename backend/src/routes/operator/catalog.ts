@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { Prisma, ProductClassification } from "@prisma/client";
 import { completenessOf } from "../../services/completeness.js";
+import { requireOperatorRole } from "../../auth/operator.js";
 
 type CatalogFilter = "incomplete" | "unmapped" | "pending";
 
@@ -73,6 +74,9 @@ const productBodySchema = {
  */
 export const operatorCatalogRoutes: FastifyPluginAsync = async (app) => {
   const { prisma } = app.deps;
+  // Create/edit/approve/reject are curator actions (NFR-008); queue reads stay
+  // open to any signed-in operator.
+  const curatorOnly = requireOperatorRole("catalog_curator");
 
   app.get<{ Querystring: { filter?: CatalogFilter } }>(
     "/catalog/products",
@@ -108,7 +112,7 @@ export const operatorCatalogRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Body: UpsertProductBody }>(
     "/catalog/products",
-    { schema: { body: productBodySchema } },
+    { preHandler: curatorOnly, schema: { body: productBodySchema } },
     async (request, reply) => {
       const b = request.body;
       const product = await prisma.product.create({
@@ -141,48 +145,79 @@ export const operatorCatalogRoutes: FastifyPluginAsync = async (app) => {
   app.patch<{ Params: { id: string }; Body: Partial<UpsertProductBody> }>(
     "/catalog/products/:id",
     {
+      preHandler: curatorOnly,
       schema: {
         params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
       },
     },
     async (request, reply) => {
+      const existing = await prisma.product.findUnique({ where: { id: request.params.id } });
+      if (!existing) {
+        return reply.code(404).send({ error: "not_found", message: "Product not found." });
+      }
+      // Recompute BR-1 completeness from the merged row (FR-057) so fixing a
+      // missing field actually flips the SKU to complete.
+      const merged = { ...existing, ...request.body };
       const product = await prisma.product.update({
-        where: { id: request.params.id },
-        data: request.body as Prisma.ProductUpdateInput,
+        where: { id: existing.id },
+        data: {
+          ...(request.body as Prisma.ProductUpdateInput),
+          completenessStatus: completenessOf(merged),
+        },
       });
-      return reply.code(200).send({ id: product.id });
+      return reply
+        .code(200)
+        .send({ id: product.id, completenessStatus: product.completenessStatus });
     },
   );
 
   app.post<{ Params: { id: string } }>(
     "/catalog/products/:id/approve",
     {
+      preHandler: curatorOnly,
       schema: {
         params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
       },
     },
     async (request, reply) => {
-      const product = await prisma.product.update({
-        where: { id: request.params.id },
+      const product = await prisma.product.findUnique({ where: { id: request.params.id } });
+      if (!product) {
+        return reply.code(404).send({ error: "not_found", message: "Product not found." });
+      }
+      // Only BR-1-complete SKUs are approvable into the renderable catalog
+      // (ADR-014; operator-enforced completeness, §0.1#7).
+      if (product.completenessStatus !== "complete") {
+        return reply.code(409).send({
+          error: "invalid_state",
+          message: "SKU is incomplete (BR-1/ADR-014) — complete it before approving.",
+        });
+      }
+      const updated = await prisma.product.update({
+        where: { id: product.id },
         data: { approvalStatus: "approved" },
       });
-      return reply.code(200).send({ id: product.id, approvalStatus: product.approvalStatus });
+      return reply.code(200).send({ id: updated.id, approvalStatus: updated.approvalStatus });
     },
   );
 
   app.post<{ Params: { id: string } }>(
     "/catalog/products/:id/reject",
     {
+      preHandler: curatorOnly,
       schema: {
         params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
       },
     },
     async (request, reply) => {
-      const product = await prisma.product.update({
-        where: { id: request.params.id },
+      const product = await prisma.product.findUnique({ where: { id: request.params.id } });
+      if (!product) {
+        return reply.code(404).send({ error: "not_found", message: "Product not found." });
+      }
+      const updated = await prisma.product.update({
+        where: { id: product.id },
         data: { approvalStatus: "rejected" },
       });
-      return reply.code(200).send({ id: product.id, approvalStatus: product.approvalStatus });
+      return reply.code(200).send({ id: updated.id, approvalStatus: updated.approvalStatus });
     },
   );
 };

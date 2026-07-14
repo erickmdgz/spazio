@@ -30,6 +30,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     response = await fetch(`/api/v1${path}`, {
       ...init,
       headers: {
+        // Scopes every call to this device's project data (NFR-007).
+        "x-device-token": deviceToken(),
         ...(init?.body ? { "content-type": "application/json" } : {}),
         ...init?.headers,
       },

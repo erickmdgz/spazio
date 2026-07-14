@@ -23,6 +23,7 @@ describe("POST /checkout", () => {
           id: "crt_1",
           projectId: "prj_1",
           status: "confirmed",
+          project: { deviceToken: "dev_1" },
           items: [
             {
               id: "ci_1",
@@ -51,6 +52,7 @@ describe("POST /checkout", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/checkout",
+      headers: { "x-device-token": "dev_1" },
       payload: {
         cartId: "crt_1",
         contact: { email: "buyer@example.com", phone: "+57 300 000 0000" },
@@ -75,6 +77,7 @@ describe("POST /checkout", () => {
           id: "crt_2",
           projectId: "prj_2",
           status: "draft",
+          project: { deviceToken: "dev_2" },
           items: [],
         }),
       },
@@ -83,6 +86,7 @@ describe("POST /checkout", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/checkout",
+      headers: { "x-device-token": "dev_2" },
       payload: { cartId: "crt_2", contact: { email: "a@b.com", phone: "+57" } },
     });
     expect(res.statusCode).toBe(400);

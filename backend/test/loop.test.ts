@@ -178,9 +178,10 @@ describe("operator approval triggers auto-populate end-to-end", () => {
     };
     ({ app } = await buildTestApp({
       render: {
-        update: vi
+        findUnique: vi
           .fn()
-          .mockResolvedValue({ id: "r1", projectId: "proj_1", reviewStatus: "approved" }),
+          .mockResolvedValue({ id: "r1", projectId: "proj_1", reviewStatus: "pending_review" }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       renderItem: {
         findMany: vi.fn().mockResolvedValue([{ productId: "prod_a", priceCopSnapshot: 1 }]),
@@ -215,6 +216,7 @@ describe("cart estimates (FR-036, FEAT-009)", () => {
       cart: {
         findUnique: vi.fn().mockResolvedValue({
           id: "cart_1",
+          project: { deviceToken: "dev_1" },
           items: [
             {
               id: "ci_1",
@@ -245,6 +247,7 @@ describe("cart estimates (FR-036, FEAT-009)", () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/cart/estimates?cartId=cart_1",
+      headers: { "x-device-token": "dev_1" },
     });
     expect(response.statusCode).toBe(200);
     const body = response.json();
@@ -267,6 +270,7 @@ describe("cart estimates (FR-036, FEAT-009)", () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/cart/estimates?cartId=nope",
+      headers: { "x-device-token": "dev_1" },
     });
     expect(response.statusCode).toBe(404);
   });
