@@ -194,3 +194,49 @@ All of the following are **Accepted** for the one-week iOS pilot (Status: Accept
 | ADR-022 | Pilot checkout identity model | Identity & Checkout | Minimal contact capture at checkout (email + phone + shipping, per BR-26) stored with the order; no login, no password, no account system, and not the full guest-checkout feature. |
 
 See the `/docs_en/decisions` folder for the individual ADR records.
+
+---
+
+## Class-demo architecture (web)
+
+> **Scope of this section.** This describes a **time-boxed, 2-day academic class-project demo**, not the production system. It **supersedes the production iOS + managed-backend + Postgres architecture described above FOR THE DEMO ONLY**: the production plan and every ADR (ADR-001 through ADR-022) remain unchanged, and this framing changes **nothing** about the real product decisions — it only records how the class demo is delivered. See **ADR-023** and `docs_en/13_class_demo_scope.md`.
+
+The demo is a scoped **visual** walkthrough of the render-to-purchase happy path. It is **not** production, **not** real payments, and **not** the full pilot.
+
+**Deliverable.** `web-demo/` — a **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app. **No database**; in-memory state only (`src/lib/store.tsx`).
+
+**Purpose.** A time-boxed 2-day academic class-project demo of the render-to-purchase happy path — a scoped visual demo, not production and not the full pilot.
+
+**Supersedes for the demo scope only** (the production plan/ADRs are unchanged; this changes nothing about the real product decisions — it only records how the class demo is delivered):
+
+- **ADR-001** — a web app instead of the native iOS app.
+- **ADR-003 / ADR-004** — **MOCK** checkout: no real payment and no settlement.
+- **ADR-006 / ADR-012 / ADR-015** — a seeded in-code catalog instead of operator/self-service ingestion.
+- **Database** — no database at all (vs. managed Postgres).
+
+**Render pipeline (fallback-first).** `CachedRenderProvider` is the default: offline, backed by local SVG assets, and it always works. `OpenAIRenderProvider` is an isolated stub used only if `IMAGE_API_KEY` is set (invoked server-side via `src/app/actions.ts`), with silent fallback to the cached provider. In the demo the render is **faked/cached** and there is **no operator QA**, so ADR-002 is only partially realized.
+
+**Routes / flow.**
+
+1. `/` (landing)
+2. `/room` — pick a sample living room / bedroom, or upload to a prepared result; approximate dimensions.
+3. `/style` — Modern Mediterranean / Warm Minimalist / Scandinavian + free-text, plus a COP budget slider (2,000,000–12,000,000).
+4. `/render` — simulated generate, then a furnished render with tappable product hotspots and a budget indicator (10% tolerance).
+5. **Product detail sheet** (`ProductSheet.tsx`).
+6. `/cart` — items, per-item and total COP, budget-vs-total, remove/swap.
+7. `/checkout` — minimal contact capture (email / phone / address, per ADR-022 — **no accounts**); order grouped by supplier, one PO each; **MOCK** "Pay COP $X".
+8. `/confirmation` — order number, per-supplier breakdown, per-item delivery/production dates, and an operator-in-the-loop message.
+
+**Catalog.** `src/lib/catalog.ts` — 11 SKUs across 3 Bogotá suppliers (Maderos del Norte, Textiles Bacatá, Lumina Bogotá); 2 made-to-order and 9 ready-made.
+
+**Feature mapping (demo fidelity — exercised at the UI level only, backed by fakes).**
+
+- **Present:** FEAT-002 (room + dimensions via sample rooms), FEAT-003 (style + budget), FEAT-005 (render — **faked/cached**), FEAT-007 (product tagging), FEAT-008 (cart), FEAT-009 (estimates display), FEAT-010 (checkout — **MOCK** payment), FEAT-011 (confirmation / order message).
+- **Simplified / hardcoded:** FEAT-004 (localization fixed to Bogotá / COP).
+- **Not in the demo:** FEAT-006 (operator render review), FEAT-015 (catalog management — replaced by the seeded catalog), FEAT-001 / FEAT-012 / FEAT-013 / FEAT-014 (accounts, keep-or-replace, metering, targeted edits).
+
+**Run.** Node 20+; `cd web-demo`, `npm install`, optionally set `IMAGE_API_KEY` in `.env.local`, then `npm run dev` → `http://localhost:3000`. **Deploy:** Vercel (import the repo, project root = `web-demo`). The full guide is in `web-demo/README.md`.
+
+**Status.** Built and verified in the authoring sandbox (`npm run build` ok, lint clean, runtime smoke HTTP 200 on all routes). **Not deployed; nothing is production.**
+
+**Related recent work (on `develop`).** A `backend/` foundation scaffold (Node / TS / Fastify / Prisma) was merged via PR #21, and the pilot build plan (`docs_en/12_pilot_build_plan.md`) via PR #19.

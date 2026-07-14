@@ -17,10 +17,15 @@ Each release block keeps the same four sections: **Added**, **Fixed**,
 ## [Unreleased]
 
 **Current state.** The repository has been bootstrapped and the product
-documentation has been seeded from **PRD v0.7** (`Spazio_PRD_v0.7.md`) in this
-documentation pass. There is **no application code** in this release: nothing has
-been implemented, tested, or shipped. This entry stays under `[Unreleased]` until
-the first `vX.Y.Z` tag is cut (see *First tagged release* below).
+documentation has been seeded from **PRD v0.7** (`Spazio_PRD_v0.7.md`). Since that
+documentation pass, some code has begun landing on `develop`: a **class-project
+demo web app** (`web-demo/`) and a **backend foundation scaffold** (`backend/`),
+both described under *Added* and *Technical changes* below. Even so, **nothing has
+been released, deployed, or run in production, and no requirement is satisfied in a
+shipped build**: the demo was only built and smoke-verified in an authoring
+sandbox, and the backend is an empty foundation scaffold. This entry stays under
+`[Unreleased]` until the first `vX.Y.Z` tag is cut (see *First tagged release*
+below).
 
 ### Added
 
@@ -47,12 +52,50 @@ the first `vX.Y.Z` tag is cut (see *First tagged release* below).
   `FEAT-015`. They describe intended behavior; they are not built.
 - **Authoring templates.** The `docs_en/templates/` set (feature, ADR,
   requirement, bug, and AI-prompt templates) for downstream authoring.
+- **New numbered docs, seeded.** The **pilot build plan**
+  (`docs_en/12_pilot_build_plan.md`, landed via **PR #19**) sequencing the
+  one-week iOS pilot, and the **class-demo scope** (`docs_en/13_class_demo_scope.md`)
+  bounding the class-project demo below and how it relates to the pilot. These
+  describe planned and scoped work; the pilot itself is not built.
 
 > **These are documentation artifacts, not product features.** The requirement
 > and test catalog, the ADR records, and the feature specs listed above are
 > *written down*, not *built*. Adding a spec to `/docs_en` is not the same as
 > adding a feature to the product, so none of them is listed here as a shipped
 > capability.
+
+- **Class-project demo web app, built (`web-demo/`).** A **time-boxed, 2-day
+  academic class-project demo** of the render-to-purchase happy path — a
+  **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app with
+  **no database** and in-memory state (`src/lib/store.tsx`). It is a **scoped
+  visual demo, not production and not the full pilot**. Render is
+  **fallback-first**: a `CachedRenderProvider` (default, offline, local SVG
+  assets, always works) with an isolated `OpenAIRenderProvider` stub used only if
+  `IMAGE_API_KEY` is set (server-side via `src/app/actions.ts`) and silently
+  falling back to cached — so the render is **faked/cached** and there is **no
+  operator QA** (`ADR-002` only partially realized). Flow: `/` (landing) →
+  `/room` (sample or uploaded room, approximate dimensions) → `/style` (style +
+  free-text + COP budget slider) → `/render` (simulated generate, then a furnished
+  render with tappable product hotspots and a budget indicator, 10% tolerance) →
+  product detail sheet (`ProductSheet.tsx`) → `/cart` (per-item and total COP,
+  budget-vs-total, remove/swap) → `/checkout` (**mock** payment; minimal contact
+  per `ADR-022`, no accounts; order grouped by supplier, one PO each) →
+  `/confirmation` (order number, per-supplier breakdown, per-item dates,
+  operator-in-the-loop message). Catalog is a seeded in-code file
+  (`src/lib/catalog.ts`): 11 SKUs across 3 Bogotá suppliers (Maderos del Norte,
+  Textiles Bacatá, Lumina Bogotá), 2 made-to-order and 9 ready-made. Scope and
+  framing are recorded in **`ADR-023`** and **`docs_en/13_class_demo_scope.md`**;
+  a run/deploy guide lives in `web-demo/README.md`.
+
+> **The demo is built but not shipped, and it changes no product decision.** The
+> app above is real code that was built and smoke-verified in an authoring sandbox
+> (`npm run build` ok, lint clean, runtime smoke HTTP 200 on all routes), but it is
+> **not deployed and nothing is in production**. It exercises features at the UI
+> level over fakes (see *Requirements covered*), which is **not** the same as
+> implementing and testing them, so it is **not** listed as a shipped capability
+> and it satisfies **no** requirement. Its demo-scope substitutions (`ADR-023`)
+> **change nothing about the real product decisions** — the pilot ADRs stay
+> **Accepted (pilot)** exactly as recorded below.
 
 ### Fixed
 
@@ -106,6 +149,23 @@ the first `vX.Y.Z` tag is cut (see *First tagged release* below).
   decided pilot setting recorded in its ADR, not a value implemented in this
   release.
 
+- **Backend foundation scaffold landed (`backend/`).** A minimal **Node /
+  TypeScript / Fastify / Prisma** scaffold merged to `develop` via **PR #21**,
+  refining the `ADR-001` technology stack for server-side work. It is a
+  **foundation scaffold only** — no endpoints, no data, nothing deployed — so it
+  covers no requirement.
+
+- **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
+  **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
+  class-project demo is delivered. **For the demo scope only** it supersedes
+  `ADR-001` (a web app instead of native iOS), `ADR-003` / `ADR-004` (a **mock**
+  checkout — no real payment, no settlement, no merchant-of-record flow), and
+  `ADR-006` / `ADR-012` / `ADR-015` (a seeded in-code catalog instead of
+  operator/self-service ingestion), and it uses **no database** (vs the pilot's
+  managed Postgres). This **changes nothing about the real product decisions**:
+  the pilot ADRs above remain **Accepted (pilot)** exactly as recorded, and
+  `ADR-023` only documents how the time-boxed class demo is built.
+
 ### Requirements covered
 
 - **None.** No functional or non-functional requirement is implemented in this
@@ -113,6 +173,19 @@ the first `vX.Y.Z` tag is cut (see *First tagged release* below).
   requirement will appear here as *covered* in the first release that actually
   implements and tests it, per the traceability chain
   (`FEAT → FR/NFR → feature doc → Issue → branch → commits → PR → TC → release notes`).
+- **The class demo maps to features at the UI level only, over fakes — this is
+  not requirement coverage.** As *demo fidelity*, `web-demo/` exercises the
+  interface of **FEAT-002** (room + dimensions via sample rooms), **FEAT-003**
+  (style + budget), **FEAT-005** (render — **faked/cached**), **FEAT-007**
+  (product tagging), **FEAT-008** (cart), **FEAT-009** (estimate display),
+  **FEAT-010** (checkout — **mock** payment), and **FEAT-011** (confirmation),
+  with **FEAT-004** simplified/hardcoded to Bogotá/COP. It does **not** include
+  **FEAT-006** (operator render review), **FEAT-015** (catalog management, replaced
+  by the seeded catalog), or **FEAT-001** / **FEAT-012** / **FEAT-013** /
+  **FEAT-014** (accounts, keep-or-replace, metering, targeted edits). Driving a
+  feature's UI over fakes is **not** implementing and testing an `FR-` / `NFR-`,
+  so **no requirement is listed as covered**; a requirement appears above only in
+  the first release that genuinely implements and tests it.
 
 ---
 
