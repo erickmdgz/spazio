@@ -20,7 +20,7 @@ The full operational detail is in the sections below and in the imported documen
 
 ## 1. About this repository
 
-- **Spazio** — AI-generated space design and shoppable furniture marketplace. A user photographs a room, picks a style and budget, and gets a photorealistic render furnished **only with real, purchasable products** from local suppliers, with in-app checkout. The AI never invents furniture: every rendered item maps to a real, in-stock SKU. Product spec: `Spazio_PRD_v0.7.md`; first milestone: `Spazio_One_Week_iOS_Pilot.md`.
+- **Spazio** — AI-generated space design and shoppable furniture marketplace. A user photographs a room, picks a style and budget, and gets a photorealistic render furnished **only with real, purchasable products** from local suppliers, with in-app checkout. The AI never invents furniture: every rendered item maps to a real, in-stock SKU. Product spec: `Spazio_PRD_v0.7.md`; first-milestone source doc: `Spazio_One_Week_iOS_Pilot.md` (historical — per **ADR-024**, 2026-07-14, the product continues on the **web app** `web-demo/` at class-demo scale, wired to the real backend; **no native iOS app will be built**).
 - The living product documentation is in `/docs_en` (vision, architecture, requirements, backlog, API, data model, tests, AI usage, release notes) and in its subfolders `/docs_en/features`, `/docs_en/decisions`, and `/docs_en/templates`.
 - Identifier convention (always use): `FR-` functional requirement, `NFR-` non-functional requirement, `US-` user story, `ADR-` technical decision, `TC-` test case, `FEAT-` feature, `BUG-` bug.
 

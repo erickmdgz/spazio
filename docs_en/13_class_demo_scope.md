@@ -18,6 +18,8 @@ This document describes **`web-demo/`**, a time-boxed **2-day academic class-pro
 - **Not deployed.** Nothing here is running in production; nothing here is production-ready.
 
 > **Framing that applies to this whole document:** the choices below change **nothing** about the real product decisions. They only record **how the class demo is delivered**. The production plan and the ADRs remain unchanged and authoritative.
+>
+> **Update (ADR-024, 2026-07-14):** the product direction has since changed — the web app recorded here **is now the product platform** (no native iOS will be built), to be wired to the real backend in small increments. This document stays as the accurate record of the 2-day demo as delivered; ADR-024 records the pivot.
 
 ---
 

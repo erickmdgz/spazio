@@ -6,7 +6,8 @@
 > contract (base URL, verbs, auth scheme, payload fields, status codes, pagination,
 > async model) is still draft, but the decisions that gate it are now **Accepted for
 > the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
-> backend service + Postgres + object storage (**ADR-001**), the rendering/AI
+> backend service + Postgres + object storage (**ADR-001**; client since changed
+> to the **web app** by **ADR-024**, 2026-07-14), the rendering/AI
 > pipeline is a hosted generative image API with mandatory operator QA of every
 > render (**ADR-002**), and checkout is a single PCI-compliant COP capture with **no
 > split settlement**, the operator paying suppliers manually (**ADR-003**,
@@ -39,7 +40,8 @@ the cart-hold duration and the budget tolerance appear in the PRD only as
 ## Conventions (all PROPOSED / DRAFT)
 
 - **Base path:** a placeholder `/api/v1` is used only for readability. The stack is
-  decided — native iOS app + one managed backend service (**ADR-001**); the concrete
+  decided — one managed backend service (**ADR-001**) with the web app as the client
+  (**ADR-024**); the concrete
   base path, versioning scheme and host are an implementation detail left to build.
 - **Auth:** endpoints that touch account or order data assume an authenticated
   session; the stack is decided (**ADR-001**) and the concrete scheme (token type,
@@ -559,7 +561,7 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 
 All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-10; see the ADR registry). Each shapes part of the surface above; the concrete contract shapes remain DRAFT:
 
-- **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation).
+- **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation). *Client choice superseded by **ADR-024** (web app).*
 - **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA of every render, no custom-trained model. Shapes the render section (§5).
 - **ADR-003 / ADR-004** payment & merchant of record — Accepted: a single PCI-compliant hosted COP capture with **no split settlement**, the operator paying suppliers manually (**ADR-003**); the Spazio operating entity is the merchant of record for the pilot (**ADR-004**, revisit before scale). Shapes checkout & payment (§9).
 - **ADR-005** style taxonomy — Accepted: 1–2 predefined visual styles + free-text, no taxonomy engine. Shapes `GET /styles`, catalog style mapping.

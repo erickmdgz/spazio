@@ -4,6 +4,8 @@
 >
 > **Nothing here is built yet.** These are specifications, not delivered features.
 >
+> **Update (ADR-024, 2026-07-14):** the client platform decision changed — the product continues on the **web app** at class-demo scale; no native iOS app will be built. References below to the "one-week iOS pilot" describe the first-milestone source material and the decisions as originally scoped; ADR-024 records what changed.
+>
 > **Status labels used below:**
 > - **VERIFIED** — stated directly in the PRD or the pilot doc (cited).
 > - **DRAFT / PROPOSED** — reasonable structuring by the author, not a decision.

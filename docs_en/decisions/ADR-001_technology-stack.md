@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Client choice superseded by ADR-024 (2026-07-14):** the product client is the web app (`web-demo/`); no native iOS app will be built. The backend + Postgres + object-storage decision and the Node/TS implementation note below stand.
 
 ## Context
 

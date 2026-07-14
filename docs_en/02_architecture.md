@@ -1,6 +1,6 @@
 # System architecture
 
-> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section), the backend foundation scaffold (`backend/`, PR #21), and the operator console foundation shell + operator session auth (`operator/` + backend, PR #27). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`.
+> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section), the backend foundation scaffold (`backend/`, PR #21), and the operator console foundation shell + operator session auth (`operator/` + backend, PR #27). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`. **Update (ADR-024, 2026-07-14):** the production client is now the **web app** (no native iOS will be built) and the scope is class-demo scale — read the client boxes in the diagrams below as the web app.
 >
 > **How to read the labels used throughout:**
 >
