@@ -50,6 +50,14 @@ These are the **critical-path** features that must work end-to-end for the pilot
 
 > Note: within these features, only the pilot-included FRs are exercised in the one-week pilot (see the `pilotIncluded` flag per FR in the requirement registry / `03_requirements.md`). Non-pilot FRs grouped under the same feature (for example stock holds `FR-039`/`FR-040` in `FEAT-008`, or split settlement `FR-043` and per-supplier POs `FR-044` in `FEAT-010`) are part of the feature's full spec but out of the pilot's scope.
 
+## Proposals under discussion
+
+Design proposals awaiting a team decision. They are not scheduled work; each becomes backlog rows (new/amended FRs and TCs) only if accepted.
+
+| ID | Type | Name | Status | Issue | Documents |
+|---|---|---|---|---|---|
+| ADR-023 | Documentation | Automated render QA & order forwarding (remove human gates from the request path; amends FR-027/FR-061) | Proposed | [#24](https://github.com/erickmdgz/spazio/issues/24) | [`decisions/ADR-023_…`](decisions/ADR-023_automated-render-qa-and-order-forwarding.md) · [`proposals/ADR-023_…`](proposals/ADR-023_automated_pilot_build_plan.md) |
+
 ## Allowed types
 
 - `Feature`
