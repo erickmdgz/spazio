@@ -21,18 +21,18 @@ Early stage. The immediate goal is the one-week iOS pilot: prove the render-to-p
 
 ## Stack
 
-Not yet decided. The pilot targets **native iOS**; backend, database, rendering pipeline, and payment gateway are open architecture decisions to be recorded in [`docs_en/02_architecture.md`](./docs_en/02_architecture.md) and as ADRs under [`docs_en/decisions/`](./docs_en/decisions/).
+The pilot stack is decided and recorded as Accepted, pilot-scoped ADRs ([ADR-001..ADR-022](./docs_en/decisions/); the class demo is delivered as a web app per [ADR-023](./docs_en/decisions/)). Architecture detail lives in [`docs_en/02_architecture.md`](./docs_en/02_architecture.md).
 
 | Layer | Choice |
 |---|---|
-| Frontend | iOS (pilot) — TBD |
-| Backend | TBD |
-| Database | TBD |
-| Rendering / AI | TBD |
-| Payments | PCI-compliant gateway with split settlement — TBD |
-| Hosting | TBD |
+| Frontend | Native iOS (SwiftUI) — ADR-001 (class demo delivered as a web app, ADR-023) |
+| Backend | Node.js 22 + TypeScript (Fastify) + Prisma — ADR-001 implementation note; scaffold in [`backend/`](./backend/) (PR #21) |
+| Database | Managed Postgres + object storage — ADR-001 |
+| Rendering / AI | Hosted generative image API behind an interface, mandatory operator QA; vendor an implementation task — ADR-002 |
+| Payments | Single hosted PCI-compliant COP capture, no split settlement in the pilot (manual payout); vendor TBD — ADR-003/ADR-004 |
+| Hosting | TBD, single managed environment — ADR-001 |
 
-_This table and the sections below are filled in as decisions are made and recorded in the docs._
+_Decisions are recorded as ADRs under [`docs_en/decisions/`](./docs_en/decisions/); this table reflects them._
 
 ## How we work (team rules)
 
@@ -64,6 +64,10 @@ All living documentation is under [`docs_en/`](./docs_en/):
 | `09_ai_usage.md` | AI usage rules |
 | `10_release_notes.md` | Release notes per version |
 | `11_implementation_flow.md` | Mandatory implementation flow |
+| `12_pilot_build_plan.md` | Approved one-week iOS pilot build plan |
+| `13_class_demo_scope.md` | Class-demo scope and feature mapping |
+| `decisions/` | ADR-001..ADR-023 |
+| `features/` | FEAT specifications |
 | `templates/` | Feature / bug / ADR / requirement / prompt templates |
 
 ## Contributing

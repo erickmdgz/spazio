@@ -1,7 +1,7 @@
 # Data model
 
 > **Draft - proposed data model; architecture decided for the pilot (see `ADR-001`).**
-> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`). Treat every table below as a specification to review, not a settled design.
+> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. **Update (PR #21):** the pilot entity subset is now expressed as a Prisma schema in `backend/prisma/schema.prisma` (not deployed); this document remains the full-product draft. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`). Treat every table below as a specification to review, not a settled design.
 
 ## How to read this document
 

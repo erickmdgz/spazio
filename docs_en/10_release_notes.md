@@ -23,7 +23,8 @@ demo web app** (`web-demo/`) and a **backend foundation scaffold** (`backend/`),
 both described under *Added* and *Technical changes* below. Even so, **nothing has
 been released, deployed, or run in production, and no requirement is satisfied in a
 shipped build**: the demo was only built and smoke-verified in an authoring
-sandbox, and the backend is an empty foundation scaffold. This entry stays under
+sandbox, and the backend is a foundation scaffold (typed route stubs and pilot
+schema; minimal business logic). This entry stays under
 `[Unreleased]` until the first `vX.Y.Z` tag is cut (see *First tagged release*
 below).
 
@@ -41,9 +42,10 @@ below).
   (`NFR-001`–`NFR-018`, in `04_non_functional_requirements.md`), and test cases
   (`TC-001`–`TC-106`, in `08_test_plan.md`) are **authored as specifications** —
   not implemented and not executed.
-- **Architecture Decision Records, all Accepted (pilot).** Twenty-two ADR files
+- **Architecture Decision Records, all Accepted, scoped to the one-week iOS pilot.** Twenty-two ADR files
   (`ADR-001`–`ADR-022`) are authored in `docs_en/decisions/`, each carrying
-  **Status: Accepted (pilot)** with its decision recorded at the simplest
+  **Status: Accepted, explicitly scoped to the one-week iOS pilot**, with its
+  decision recorded at the simplest
   pilot-scoped value — see *Technical changes* below for the register. Recording
   a decision is not building it: nothing here is implemented or shipped.
 - **Feature specifications, seeded.** Authored feature docs in
@@ -95,7 +97,7 @@ below).
 > implementing and testing them, so it is **not** listed as a shipped capability
 > and it satisfies **no** requirement. Its demo-scope substitutions (`ADR-023`)
 > **change nothing about the real product decisions** — the pilot ADRs stay
-> **Accepted (pilot)** exactly as recorded below.
+> **Accepted**, with their one-week iOS pilot scope, exactly as recorded below.
 
 ### Fixed
 
@@ -106,7 +108,8 @@ below).
 - **Architecture decisions recorded (pilot-scoped).** The decisions reserved for
   humans in **PRD §12** have been made for the pilot and are recorded as ADR
   files in `docs_en/decisions/` (`ADR-001`–`ADR-022`), each with **Status:
-  Accepted (pilot)** and resolved at its simplest implementation consistent with
+  Accepted, explicitly scoped to the one-week iOS pilot**, and resolved at its
+  simplest implementation consistent with
   the PRD and the one-week iOS pilot. These values are decided and recorded, not
   built: nothing below is implemented or shipped in this release. Values marked
   *(revisit before scale)* stay Accepted for the pilot and carry an explicit
@@ -115,28 +118,28 @@ below).
 
   | ADR | Decision (Accepted for the pilot — reserved for humans) | Status |
   |---|---|---|
-  | ADR-001 | Technology stack | Accepted (pilot) |
-  | ADR-002 | Rendering / AI pipeline | Accepted (pilot) |
-  | ADR-003 | Payment gateway & split-settlement model | Accepted (pilot) |
-  | ADR-004 | Merchant-of-record model | Accepted (pilot) |
-  | ADR-005 | Style taxonomy | Accepted (pilot) |
-  | ADR-006 | Supplier catalog ingestion channels | Accepted (pilot) |
-  | ADR-007 | Commission percentage & marketplace fee model | Accepted (pilot) |
-  | ADR-008 | Budget tolerance | Accepted (pilot) |
-  | ADR-009 | Daily free-render limit | Accepted (pilot) |
-  | ADR-010 | Render-package pricing | Accepted (pilot) |
-  | ADR-011 | Cart-hold duration | Accepted (pilot) |
-  | ADR-012 | Catalog synchronization frequency | Accepted (pilot) |
-  | ADR-013 | Render-time target | Accepted (pilot) |
-  | ADR-014 | Minimum catalog completeness | Accepted (pilot) |
-  | ADR-015 | Initial launch markets | Accepted (pilot) |
-  | ADR-016 | Supplier partners & onboarding terms | Accepted (pilot) |
-  | ADR-017 | Sponsored-placement plan & pricing | Accepted (pilot) |
-  | ADR-018 | Taxes & multi-market compliance | Accepted (pilot) |
-  | ADR-019 | Data privacy & consumer protection | Accepted (pilot) |
-  | ADR-020 | Warranty & dispute-resolution rules | Accepted (pilot) |
-  | ADR-021 | Brand identity & visual design system | Accepted (pilot) |
-  | ADR-022 | Pilot checkout identity model | Accepted (pilot) |
+  | ADR-001 | Technology stack | Accepted — pilot scope |
+  | ADR-002 | Rendering / AI pipeline | Accepted — pilot scope |
+  | ADR-003 | Payment gateway & split-settlement model | Accepted — pilot scope |
+  | ADR-004 | Merchant-of-record model | Accepted — pilot scope |
+  | ADR-005 | Style taxonomy | Accepted — pilot scope |
+  | ADR-006 | Supplier catalog ingestion channels | Accepted — pilot scope |
+  | ADR-007 | Commission percentage & marketplace fee model | Accepted — pilot scope |
+  | ADR-008 | Budget tolerance | Accepted — pilot scope |
+  | ADR-009 | Daily free-render limit | Accepted — pilot scope |
+  | ADR-010 | Render-package pricing | Accepted — pilot scope |
+  | ADR-011 | Cart-hold duration | Accepted — pilot scope |
+  | ADR-012 | Catalog synchronization frequency | Accepted — pilot scope |
+  | ADR-013 | Render-time target | Accepted — pilot scope |
+  | ADR-014 | Minimum catalog completeness | Accepted — pilot scope |
+  | ADR-015 | Initial launch markets | Accepted — pilot scope |
+  | ADR-016 | Supplier partners & onboarding terms | Accepted — pilot scope |
+  | ADR-017 | Sponsored-placement plan & pricing | Accepted — pilot scope |
+  | ADR-018 | Taxes & multi-market compliance | Accepted — pilot scope |
+  | ADR-019 | Data privacy & consumer protection | Accepted — pilot scope |
+  | ADR-020 | Warranty & dispute-resolution rules | Accepted — pilot scope |
+  | ADR-021 | Brand identity & visual design system | Accepted — pilot scope |
+  | ADR-022 | Pilot checkout identity model | Accepted — pilot scope |
 
 - Where the PRD offered a working value only as an example or default, the
   relevant ADR now records the decided pilot setting: commission is **10%,
@@ -151,9 +154,12 @@ below).
 
 - **Backend foundation scaffold landed (`backend/`).** A minimal **Node /
   TypeScript / Fastify / Prisma** scaffold merged to `develop` via **PR #21**,
-  refining the `ADR-001` technology stack for server-side work. It is a
-  **foundation scaffold only** — no endpoints, no data, nothing deployed — so it
-  covers no requirement.
+  refining the `ADR-001` technology stack for server-side work. The scaffold
+  registers the **25 pilot routes as typed stubs** (unimplemented handlers
+  return `501`), defines the **15-model pilot Prisma schema**, vendor-neutral
+  service interfaces, the **6-point `NFR-006` event trail**, and a **10-test
+  DB-free suite** — business logic is intentionally minimal/stubbed, there is
+  no seed data, and nothing is deployed, so it still covers no requirement.
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
@@ -163,7 +169,7 @@ below).
   `ADR-006` / `ADR-012` / `ADR-015` (a seeded in-code catalog instead of
   operator/self-service ingestion), and it uses **no database** (vs the pilot's
   managed Postgres). This **changes nothing about the real product decisions**:
-  the pilot ADRs above remain **Accepted (pilot)** exactly as recorded, and
+  the pilot ADRs above remain **Accepted** with their one-week iOS pilot scope exactly as recorded, and
   `ADR-023` only documents how the time-boxed class demo is built.
 
 ### Requirements covered

@@ -6,7 +6,7 @@ This backlog lists the **features** that make up Spazio, derived from the PRD (`
 
 **Reading notes:**
 
-- **Status.** Every item is `Pending`. Nothing is built yet; these are specifications. Status here reflects **work progress**, not requirement validity (validity lives in `03_requirements.md`).
+- **Status.** Every item is `Pending` — no feature is implemented; these are specifications. The class demo (see **Class-demo coverage** below) exercises FEAT UIs over fakes, and the `backend/` scaffold is foundation-only; neither implements a feature. Status here reflects **work progress**, not requirement validity (validity lives in `03_requirements.md`).
 - **Priority.** Feature criticality (`High` / `Medium` / `Low`), carried from the requirement registry.
 - **Pilot.** `Yes` = in scope for the one-week iOS pilot; `No` = out of pilot scope, later phase. The critical-path subset of pilot features is listed again in the **Core pilot backlog** subsection below.
 - **Related requirement.** The functional requirements (`FR-`) each feature groups. The full FR text and acceptance criteria live in `03_requirements.md`; feature documents (`/docs_en/features/`) reference the FRs, they do not rewrite them.
@@ -64,7 +64,7 @@ Coverage legend: **Demo fidelity** = exercised at the UI level, backed by fakes;
 | FEAT-007 | Product tagging & interaction | Demo fidelity | Tappable product hotspots on the render → product detail sheet |
 | FEAT-008 | Shopping cart & stock holds | Demo fidelity | Cart items, per-item + total COP, budget-vs-total, remove/swap (no stock holds) |
 | FEAT-009 | Estimates & warranty display | Demo fidelity | Per-item delivery/production dates shown (no warranty display) |
-| FEAT-010 | Checkout & payments | Demo fidelity | Contact-only checkout; **mock** "Pay COP $X"; order grouped by supplier, one PO each |
+| FEAT-010 | Checkout & payments | Demo fidelity | Contact-only checkout; a **mock** "Pay $ X" button (amount in COP); order grouped by supplier, one PO each |
 | FEAT-011 | Order fulfillment & tracking | Demo fidelity | Confirmation with order number, per-supplier breakdown, operator-in-the-loop message |
 | FEAT-004 | Localization & delivery coverage | Simplified | Hardcoded to Bogota / COP |
 | FEAT-006 | Render review & moderation | Not in demo | No operator render review (render is faked/cached) |
