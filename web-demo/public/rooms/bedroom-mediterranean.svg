@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" width="800" height="520" role="img" aria-label="Bedroom · Modern Mediterranean">
+  
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EFE3D2"/>
+      <stop offset="1" stop-color="#E7D7C0"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C4A17C"/>
+      <stop offset="1" stop-color="#B0895F"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4D8B8"/>
+      <stop offset="1" stop-color="#E9B98C"/>
+    </linearGradient>
+    <linearGradient id="sofaG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E7DCC7"/>
+      <stop offset="1" stop-color="#D8C8AC"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="520" fill="url(#wall)"/>
+  <rect y="358" width="800" height="162" fill="url(#floor)"/>
+  <rect y="356" width="800" height="4" fill="#14342B" opacity="0.10"/>
+  <!-- soft light wash -->
+  <ellipse cx="400" cy="150" rx="360" ry="180" fill="#ffffff" opacity="0.12"/>
+  <text x="24" y="500" font-family="Georgia, serif" font-size="15" fill="#14342B" opacity="0.35">Bedroom · Modern Mediterranean</text>
+  
+  <g>
+    <rect x="534" y="64" width="202" height="162" rx="8" fill="#B08968" opacity="0.9"/>
+    <rect x="540" y="70" width="190" height="150" rx="4" fill="url(#sky)"/>
+    <line x1="635" y1="70" x2="635" y2="220" stroke="#ffffff" stroke-width="4" opacity="0.7"/>
+    <line x1="540" y1="145" x2="730" y2="145" stroke="#ffffff" stroke-width="4" opacity="0.7"/>
+    <circle cx="710" cy="92" r="12" fill="#ffffff" opacity="0.55"/>
+  </g>
+  
+  <g>
+    <rect x="150" y="70" width="210" height="90" rx="4" fill="#ffffff"/>
+    <rect x="155" y="75" width="200" height="80" rx="2" fill="#C1694F" opacity="0.85"/>
+    <circle cx="223.5" cy="106" r="14.4" fill="#ffffff" opacity="0.6"/>
+    <path d="M 156 152 L 255 115 L 354 152 Z" fill="#14342B" opacity="0.25"/>
+  </g>
+
+  <!-- rug -->
+  <ellipse cx="400" cy="452" rx="300" ry="54" fill="#C1694F" opacity="0.20"/>
+
+  <!-- bed -->
+  <g>
+    <ellipse cx="400" cy="470" rx="240" ry="22" fill="#14342B" opacity="0.16"/>
+    <rect x="196" y="250" width="408" height="86" rx="16" fill="#E7DCC7"/>
+    <rect x="180" y="236" width="60" height="150" rx="16" fill="#8C6A4E"/>
+    <rect x="196" y="330" width="408" height="70" rx="14" fill="url(#sofaG)"/>
+    <!-- pillows -->
+    <rect x="236" y="262" width="120" height="58" rx="16" fill="#ffffff" opacity="0.85"/>
+    <rect x="366" y="262" width="120" height="58" rx="16" fill="#ffffff" opacity="0.7"/>
+    <!-- throw blanket -->
+    <rect x="196" y="366" width="408" height="34" rx="10" fill="#C1694F" opacity="0.55"/>
+    <rect x="586" y="392" width="16" height="20" rx="5" fill="#8C6A4E"/>
+    <rect x="198" y="392" width="16" height="20" rx="5" fill="#8C6A4E"/>
+  </g>
+
+  <!-- nightstand (right) -->
+  <g>
+    <ellipse cx="672" cy="452" rx="52" ry="12" fill="#14342B" opacity="0.16"/>
+    <rect x="622" y="352" width="100" height="90" rx="10" fill="#8C6A4E"/>
+    <rect x="632" y="372" width="80" height="26" rx="5" fill="#14342B" opacity="0.12"/>
+    <circle cx="672" cy="414" r="4" fill="#C1694F"/>
+  </g>
+  <!-- table lamp on nightstand -->
+  <g>
+    <rect x="662" y="322" width="8" height="34" rx="3" fill="#14342B" opacity="0.5"/>
+    <path d="M 648 300 L 686 300 L 692 324 L 642 324 Z" fill="#E7DCC7"/>
+    <ellipse cx="667" cy="300" rx="19" ry="4" fill="#FFF3D0"/>
+  </g>
+
+  
+  <g>
+    <ellipse cx="90" cy="458" rx="34" ry="9" fill="#14342B" opacity="0.14"/>
+    <path d="M 68 452 Q 60 382 84 360" fill="none" stroke="#3B6B4E" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 90 452 Q 94 364 94 340" fill="none" stroke="#3B6B4E" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 110 452 Q 122 386 104 356" fill="none" stroke="#3B6B4E" stroke-width="9" stroke-linecap="round"/>
+    <ellipse cx="82" cy="356" rx="16" ry="9" fill="#3B6B4E" transform="rotate(-30 82 356)"/>
+    <ellipse cx="96" cy="336" rx="16" ry="9" fill="#3B6B4E"/>
+    <ellipse cx="106" cy="354" rx="16" ry="9" fill="#3B6B4E" transform="rotate(28 106 354)"/>
+    <path d="M 66 446 L 72 482 L 108 482 L 114 446 Z" fill="#B08968"/>
+  </g>
+</svg>
