@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
 import { productSummary } from "../../services/productSummary.js";
+import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
 
 /**
  * Cart routes. The cart is auto-populated from an approved render (FR-031, BR-31);
@@ -27,6 +28,11 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      if (!(await projectOwnedByDevice(prisma, request.query.projectId, token))) {
+        return reply.code(404).send({ error: "not_found", message: "Cart not found." });
+      }
       const cart = await prisma.cart.findUnique({
         where: { projectId: request.query.projectId },
         include: { items: { include: { product: { include: { supplier: true } } } } },
@@ -63,8 +69,17 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const item = await prisma.cartItem.update({
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const existing = await prisma.cartItem.findUnique({
         where: { id: request.params.id },
+        include: { cart: { include: { project: { select: { deviceToken: true } } } } },
+      });
+      if (!existing || existing.cart.project.deviceToken !== token) {
+        return reply.code(404).send({ error: "not_found", message: "Cart item not found." });
+      }
+      const item = await prisma.cartItem.update({
+        where: { id: existing.id },
         data: { productId: request.body.productId },
       });
       return reply.code(200).send({ id: item.id, productId: item.productId });
@@ -80,7 +95,16 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      await prisma.cartItem.delete({ where: { id: request.params.id } });
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const existing = await prisma.cartItem.findUnique({
+        where: { id: request.params.id },
+        include: { cart: { include: { project: { select: { deviceToken: true } } } } },
+      });
+      if (!existing || existing.cart.project.deviceToken !== token) {
+        return reply.code(404).send({ error: "not_found", message: "Cart item not found." });
+      }
+      await prisma.cartItem.delete({ where: { id: existing.id } });
       return reply.code(204).send();
     },
   );
@@ -94,6 +118,15 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const owned = await prisma.cart.findUnique({
+        where: { id: request.body.cartId },
+        include: { project: { select: { deviceToken: true } } },
+      });
+      if (!owned || owned.project.deviceToken !== token) {
+        return reply.code(404).send({ error: "not_found", message: "Cart not found." });
+      }
       const cart = await prisma.cart.update({
         where: { id: request.body.cartId },
         data: { status: "confirmed" },
@@ -124,11 +157,16 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
       const cart = await prisma.cart.findUnique({
         where: { id: request.query.cartId },
-        include: { items: { include: { product: true } } },
+        include: {
+          items: { include: { product: true } },
+          project: { select: { deviceToken: true } },
+        },
       });
-      if (!cart) {
+      if (!cart || cart.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Cart not found." });
       }
       return reply.code(200).send({

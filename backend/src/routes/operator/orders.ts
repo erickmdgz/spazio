@@ -1,11 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { OrderStatus } from "@prisma/client";
+import { requireOperatorRole } from "../../auth/operator.js";
 
 /**
  * Operator order forwarding queue (§0.1#5; FR-061). Registered under /api/v1/operator.
  * In the pilot the operator forwards each paid order to suppliers manually.
  *  - GET  /orders?status=paid_unforwarded
- *  - POST /orders/:id/forward
+ *  - POST /orders/:id/forward   order_handler role; only from paid_unforwarded,
+ *                               so a double-forward cannot silently overwrite the
+ *                               forwarded_at/forwarded_by audit trail (NFR-008).
  */
 export const operatorOrderRoutes: FastifyPluginAsync = async (app) => {
   const { prisma } = app.deps;
@@ -40,12 +43,23 @@ export const operatorOrderRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Params: { id: string } }>(
     "/orders/:id/forward",
     {
+      preHandler: requireOperatorRole("order_handler"),
       schema: {
         params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
       },
     },
     async (request, reply) => {
       const orderId = request.params.id;
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) {
+        return reply.code(404).send({ error: "not_found", message: "Order not found." });
+      }
+      if (order.status !== "paid_unforwarded") {
+        return reply.code(409).send({
+          error: "invalid_state",
+          message: `Order is ${order.status}, not paid_unforwarded.`,
+        });
+      }
       const now = new Date();
       await prisma.$transaction([
         prisma.purchaseOrder.updateMany({

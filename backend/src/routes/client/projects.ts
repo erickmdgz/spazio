@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
 
 interface CreateProjectBody {
   deviceToken: string;
@@ -72,6 +73,11 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      if (!(await projectOwnedByDevice(prisma, request.params.id, token))) {
+        return reply.code(404).send({ error: "not_found", message: "Project not found." });
+      }
       const photo = await prisma.roomPhoto.create({
         data: {
           projectId: request.params.id,
@@ -107,6 +113,11 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      if (!(await projectOwnedByDevice(prisma, request.params.id, token))) {
+        return reply.code(404).send({ error: "not_found", message: "Project not found." });
+      }
       const project = await prisma.project.update({
         where: { id: request.params.id },
         data: { ...request.body },

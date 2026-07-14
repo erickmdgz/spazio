@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
 import { productSummary } from "../../services/productSummary.js";
+import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
 
 interface CreateRenderBody {
   projectId: string;
@@ -39,6 +40,12 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const { projectId, styleId, freeText, budgetMinCop, budgetMaxCop } = request.body;
+
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      if (!(await projectOwnedByDevice(prisma, projectId, token))) {
+        return reply.code(404).send({ error: "not_found", message: "Project not found." });
+      }
 
       const render = await prisma.$transaction(async (tx) => {
         // Finalize the project (§0.1#3: bootstrapped at first input, finalized at render).
@@ -87,8 +94,14 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const render = await prisma.render.findUnique({ where: { id: request.params.id } });
-      if (!render) {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const render = await prisma.render.findUnique({
+        where: { id: request.params.id },
+        include: { project: { select: { deviceToken: true } } },
+      });
+      // Another device's render answers 404 — no existence leak (NFR-007).
+      if (!render || render.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Render not found." });
       }
       return reply.code(200).send({
@@ -107,11 +120,16 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
       const render = await prisma.render.findUnique({
         where: { id: request.params.id },
-        include: { items: { include: { product: { include: { supplier: true } } } } },
+        include: {
+          items: { include: { product: { include: { supplier: true } } } },
+          project: { select: { deviceToken: true } },
+        },
       });
-      if (!render) {
+      if (!render || render.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Render not found." });
       }
 

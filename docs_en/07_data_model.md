@@ -76,7 +76,7 @@ A homeowner/renter with profile, preferences, and order history; may also transa
 
 Spazio staff who curate the catalog, maintain the style taxonomy, review renders, and (in the pilot) forward orders manually (PRD §5, pilot "human's role").
 
-> **Update (PR #27):** built in the pilot schema (`backend/prisma/schema.prisma`) — scrypt-hashed `password_hash`, optional single `role` (enum below), `status` `active`/`inactive`. Console sign-in is implemented (build plan §1.7 — nothing is deployed); per-action role gating arrives with FEAT-006/011/015.
+> **Update (PR #27):** built in the pilot schema (`backend/prisma/schema.prisma`) — scrypt-hashed `password_hash`, optional single `role` (enum below), `status` `active`/`inactive`. Console sign-in is implemented (build plan §1.7 — nothing is deployed). **Update (#34):** per-action role gating is enforced — curator/reviewer/handler each gate their actions; a role-less operator is all-purpose.
 
 | Field | Type | Required | Description |
 |---|---|---|---|

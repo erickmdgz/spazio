@@ -195,11 +195,7 @@ describe("operator session guard", () => {
   });
 
   it("stamps reviewedById from the session on render approval (FR-027)", async () => {
-    const update = vi.fn().mockResolvedValue({
-      id: "r1",
-      projectId: "p1",
-      reviewStatus: "approved",
-    });
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     // Approval also auto-populates the cart (FR-031) — stub what that path needs.
     const txStub = {
       cart: { upsert: vi.fn().mockResolvedValue({ id: "cart_1", status: "draft" }) },
@@ -209,7 +205,12 @@ describe("operator session guard", () => {
       },
     };
     ({ app } = await buildTestApp({
-      render: { update },
+      render: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: "r1", projectId: "p1", reviewStatus: "pending_review" }),
+        updateMany,
+      },
       renderItem: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction: vi.fn(async (fn: (t: typeof txStub) => Promise<void>) => fn(txStub)),
     }));
@@ -219,7 +220,7 @@ describe("operator session guard", () => {
       headers: { cookie: operatorSessionCookie({ operatorId: "op_reviewer" }) },
     });
     expect(response.statusCode).toBe(200);
-    expect(update).toHaveBeenCalledWith(
+    expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ reviewedById: "op_reviewer" }),
       }),
@@ -231,8 +232,11 @@ describe("operator session guard", () => {
     const update = vi.fn().mockResolvedValue({ id: "o1", status: "forwarded" });
     const $transaction = vi.fn(async (operations: unknown[]) => Promise.all(operations));
     ({ app } = await buildTestApp({
+      order: {
+        findUnique: vi.fn().mockResolvedValue({ id: "o1", status: "paid_unforwarded" }),
+        update,
+      },
       purchaseOrder: { updateMany },
-      order: { update },
       $transaction,
     }));
     const response = await app.inject({

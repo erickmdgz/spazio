@@ -80,9 +80,11 @@ hidden read — see `scripts/create-operator.ts`):
 npm run operator:create -- --email ana@spazio.example --name "Ana" --role render_reviewer
 ```
 
-Roles (`catalog_curator` / `render_reviewer` / `order_handler`) are stored but not
-yet enforced per action — that arrives with FEAT-006/011/015 (see the DoD
-carve-outs in the build plan §2.4).
+Roles are enforced per action (#34): `catalog_curator` gates catalog create/edit/
+approve/reject, `render_reviewer` gates render approve/reject, `order_handler`
+gates forwarding; an operator created **without** a role is all-purpose. Client
+endpoints are scoped by the anonymous `x-device-token` header (NFR-007) — one
+device cannot read another device's renders, cart, or orders.
 
 ## API surface
 
