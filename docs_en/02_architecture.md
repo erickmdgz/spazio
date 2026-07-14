@@ -203,7 +203,9 @@ See the `/docs_en/decisions` folder for the individual ADR records.
 
 The demo is a scoped **visual** walkthrough of the render-to-purchase happy path. It is **not** production, **not** real payments, and **not** the full pilot.
 
-**Deliverable.** `web-demo/` — a **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app. **No database**; in-memory state only (`src/lib/store.tsx`).
+> **Update (#31, PR #32/#33 — post-ADR-024):** this section describes the demo **as originally delivered**. The app has since been wired to the real backend: the wizard runs over `/api/v1` (Next.js rewrite → `backend/`, Fastify + Prisma + Postgres), renders wait for real operator approval, the cart/checkout/order rows are real, and the catalog is seeded in Postgres (`backend/prisma/seed.ts`). Still fake: the composite image (cached asset — ADR-002 vendor open) and the payment capture (ADR-003 vendor open).
+
+**Deliverable.** `web-demo/` — a **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app. **No database**; in-memory state only (`src/lib/store.tsx`). *(As originally delivered — see the update note above.)*
 
 **Purpose.** A time-boxed 2-day academic class-project demo of the render-to-purchase happy path — a scoped visual demo, not production and not the full pilot.
 

@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline";
 import { Writable } from "node:stream";
 import { PrismaClient, type OperatorRole } from "@prisma/client";
+import { loadDotEnv } from "../src/env.js";
 import { hashPassword } from "../src/auth/passwords.js";
 
 /**
@@ -41,6 +42,7 @@ async function promptHiddenPassword(): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  loadDotEnv();
   const email = argValue("--email");
   const name = argValue("--name");
   const roleArg = argValue("--role");

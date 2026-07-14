@@ -34,13 +34,19 @@ npm install
 docker compose up db          # add -d to run detached
 
 # 3. copy env and generate the Prisma client
-cp .env.example .env
+cp .env.example .env          # set PORT=3001 when running the web app alongside
 npm run db:generate
 
 # 4. apply the schema to the local database
 npm run db:migrate
 
-# 5. run the dev server (http://localhost:3000)
+# 5. seed the pilot catalog (3 styles, 3 suppliers, 11 BR-1-complete SKUs)
+npm run db:seed
+
+# 6. create an operator console account (password prompted, hidden input)
+npm run operator:create -- --email you@example.com --name "You" --role render_reviewer
+
+# 7. run the dev server (loads ./.env natively)
 npm run dev
 ```
 
@@ -57,6 +63,7 @@ Health check: `curl http://localhost:3000/health` → `{"status":"ok","service":
 | `npm run lint`      | ESLint over `src/` and `test/`                |
 | `npm run db:generate` | Generate the Prisma client                  |
 | `npm run db:migrate`  | Create/apply a dev migration                 |
+| `npm run db:seed`     | Seed the pilot catalog (idempotent)          |
 | `npm run operator:create` | Create/update an operator console account |
 
 ## Operator console (plan §1.7)
