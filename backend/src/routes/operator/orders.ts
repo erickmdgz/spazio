@@ -50,7 +50,11 @@ export const operatorOrderRoutes: FastifyPluginAsync = async (app) => {
       await prisma.$transaction([
         prisma.purchaseOrder.updateMany({
           where: { orderId },
-          data: { status: "sent_to_supplier", forwardedAt: now },
+          data: {
+            status: "sent_to_supplier",
+            forwardedAt: now,
+            forwardedById: request.operator?.operatorId ?? null,
+          },
         }),
         prisma.order.update({ where: { id: orderId }, data: { status: "forwarded" } }),
       ]);

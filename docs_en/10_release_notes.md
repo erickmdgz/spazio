@@ -19,12 +19,14 @@ Each release block keeps the same four sections: **Added**, **Fixed**,
 **Current state.** The repository has been bootstrapped and the product
 documentation has been seeded from **PRD v0.7** (`Spazio_PRD_v0.7.md`). Since that
 documentation pass, some code has begun landing on `develop`: a **class-project
-demo web app** (`web-demo/`) and a **backend foundation scaffold** (`backend/`),
-both described under *Added* and *Technical changes* below. Even so, **nothing has
-been released, deployed, or run in production, and no requirement is satisfied in a
-shipped build**: the demo was only built and smoke-verified in an authoring
-sandbox, and the backend is a foundation scaffold (typed route stubs and pilot
-schema; minimal business logic). This entry stays under
+demo web app** (`web-demo/`), a **backend foundation scaffold** (`backend/`), and
+the **operator console shell + operator session auth** (`operator/` + backend,
+PR #27), all described under *Added* and *Technical changes* below. Even so,
+**nothing has been released, deployed, or run in production, and no requirement is
+satisfied in a shipped build**: the demo was only built and smoke-verified in an
+authoring sandbox, the backend is a foundation scaffold (typed route stubs and
+pilot schema; minimal business logic), and the operator console is a foundation
+shell (sign-in + three queue views; no feature UX, no role enforcement). This entry stays under
 `[Unreleased]` until the first `vX.Y.Z` tag is cut (see *First tagged release*
 below).
 
@@ -160,6 +162,16 @@ below).
   service interfaces, the **6-point `NFR-006` event trail**, and a **10-test
   DB-free suite** — business logic is intentionally minimal/stubbed, there is
   no seed data, and nothing is deployed, so it still covers no requirement.
+
+- **Operator console shell + operator auth landed (`operator/` + `backend/`).**
+  The build plan §1.7 foundation remainder, merged to `develop` via **PR #27**:
+  an `Operator` Prisma model (scrypt-hashed credentials, optional single role),
+  cookie-session sign-in (`POST /api/v1/operator/session`) guarding every
+  `/operator/*` route (replacing PR #21's interim shared-secret header),
+  `reviewed_by` / `forwarded_by` stamping on approve/reject/forward, and a
+  static three-queue console shell served by the backend at `/operator/console`.
+  Foundation only — no feature UX, no per-action role enforcement, nothing
+  deployed; it satisfies the *intent* of NFR-008 but covers no requirement.
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the

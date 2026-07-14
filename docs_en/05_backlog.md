@@ -6,7 +6,7 @@ This backlog lists the **features** that make up Spazio, derived from the PRD (`
 
 **Reading notes:**
 
-- **Status.** Every item is `Pending` — no feature is implemented; these are specifications. The class demo (see **Class-demo coverage** below) exercises FEAT UIs over fakes, and the `backend/` scaffold is foundation-only; neither implements a feature. Status here reflects **work progress**, not requirement validity (validity lives in `03_requirements.md`).
+- **Status.** Every item is `Pending` — no feature is implemented; these are specifications. The class demo (see **Class-demo coverage** below) exercises FEAT UIs over fakes, and the `backend/` scaffold plus the operator console shell + operator auth (PR #27) are foundation-only; none of them implements a feature. Status here reflects **work progress**, not requirement validity (validity lives in `03_requirements.md`).
 - **Priority.** Feature criticality (`High` / `Medium` / `Low`), carried from the requirement registry.
 - **Pilot.** `Yes` = in scope for the one-week iOS pilot; `No` = out of pilot scope, later phase. The critical-path subset of pilot features is listed again in the **Core pilot backlog** subsection below.
 - **Related requirement.** The functional requirements (`FR-`) each feature groups. The full FR text and acceptance criteria live in `03_requirements.md`; feature documents (`/docs_en/features/`) reference the FRs, they do not rewrite them.

@@ -1,6 +1,6 @@
 # System architecture
 
-> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the two exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section) and the backend foundation scaffold (`backend/`, PR #21). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`.
+> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section), the backend foundation scaffold (`backend/`, PR #21), and the operator console foundation shell + operator session auth (`operator/` + backend, PR #27). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`.
 >
 > **How to read the labels used throughout:**
 >
@@ -239,4 +239,4 @@ The demo is a scoped **visual** walkthrough of the render-to-purchase happy path
 
 **Status.** Built and verified in the authoring sandbox (`npm run build` ok, lint clean, runtime smoke HTTP 200 on all routes). **Not deployed; nothing is production.**
 
-**Related recent work (on `develop`).** A `backend/` foundation scaffold (Node / TS / Fastify / Prisma) was merged via PR #21, and the pilot build plan (`docs_en/12_pilot_build_plan.md`) via PR #19.
+**Related recent work (on `develop`).** A `backend/` foundation scaffold (Node / TS / Fastify / Prisma) was merged via PR #21, the pilot build plan (`docs_en/12_pilot_build_plan.md`) via PR #19, and the operator console shell + operator session auth (`operator/` + backend) via PR #27.

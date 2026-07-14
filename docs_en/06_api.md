@@ -14,7 +14,12 @@
 > structuring*, not a committed interface. **Update (PR #21):** the pilot subset
 > of this surface now exists as typed stub routes in `backend/` under `/api/v1`
 > (business logic stubbed, 501); where they differ, the pilot build plan §0.1
-> boundaries govern the pilot code.
+> boundaries govern the pilot code. **Update (PR #27):** operator access is now
+> session-based — `POST/GET/DELETE /api/v1/operator/session` (sign-in / whoami /
+> sign-out against the `Operator` table, httpOnly cookie) guards every
+> `/operator/*` route, and the three §0.1#5 operator queue reads
+> (`GET /operator/renders?status=…`, `GET /operator/catalog/products?filter=…`,
+> `GET /operator/orders?status=…`) drive the console shell at `/operator/console`.
 
 ## How to read this document
 
@@ -39,7 +44,9 @@ the cart-hold duration and the budget tolerance appear in the PRD only as
 - **Auth:** endpoints that touch account or order data assume an authenticated
   session; the stack is decided (**ADR-001**) and the concrete scheme (token type,
   header) is an implementation detail. This satisfies the *intent* of NFR-008 but
-  does not specify it.
+  does not specify it. *(As built for the **operator** surface — PR #27: cookie-session
+  sign-in against the `Operator` table; see the operator session endpoints in §5.
+  Client endpoints stay unauthenticated in the pilot — ADR-022.)*
 - **Rendering is asynchronous.** A render is expected to take on the order of
   minutes (PRD target ~2–5 min, adopted for the pilot as a soft target with no hard
   SLA via **ADR-013**), so render creation is modelled as *submit → poll*, not a
@@ -317,7 +324,13 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 ### `POST /api/v1/operator/renders/{renderId}/approve` · `.../reject`
 
 - **Purpose (VERIFIED):** Operator reviews each render and approves (or rejects) it before it is shown to the user (Pilot; PRD §5 render-quality monitoring). Actor: **Operator**.
-- **Related requirements:** FR-027. **Pilot core.**
+- **Related requirements:** FR-027. **Pilot core.** *(As built — PR #27: stamps `reviewed_by` from the operator session.)*
+
+### `POST /api/v1/operator/session` · `GET` · `DELETE` *(as built, pilot — PR #27)*
+
+- **Purpose:** Operator sign-in (email + password against the `Operator` table, hashed credentials), whoami, and sign-out. Sets/clears the HMAC-signed httpOnly session cookie that guards every other `/operator/*` route — the pilot's only authenticated surface (build plan §1.7; NFR-008 intent). Actor: **Operator**.
+- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
+- **Related requirements:** FR-027, FR-056–FR-059, FR-061; NFR-008. **Pilot core.**
 
 ### `GET /api/v1/renders/quota`
 
