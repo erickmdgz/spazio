@@ -11,6 +11,10 @@ Core principle: **the AI never invents furniture.** Every rendered item maps to 
 - Full product spec: [`Spazio_PRD_v0.7.md`](./Spazio_PRD_v0.7.md)
 - First milestone (one-week iOS pilot in Bogotá): [`Spazio_One_Week_iOS_Pilot.md`](./Spazio_One_Week_iOS_Pilot.md)
 
+## Class demo (web)
+
+The [`web-demo/`](./web-demo/) folder holds a **time-boxed, 2-day academic class-project demo** of the render-to-purchase happy path: a Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4 web app with **no database** (in-memory state), a seeded in-code catalog (11 SKUs, 3 Bogotá suppliers), a fallback-first cached render, and a **mock** checkout — it is a scoped visual demo, **not** production, not real payments, and not the full pilot. It walks landing → room → style + budget (COP) → simulated render with tappable product hotspots → cart → mock checkout → confirmation. Scope, feature mapping, and what is deliberately left out are documented in [`docs_en/13_class_demo_scope.md`](./docs_en/13_class_demo_scope.md); the full run/deploy guide is in [`web-demo/README.md`](./web-demo/README.md). Quick run: **Node 20+**, then `cd web-demo`, `npm install`, `npm run dev` → http://localhost:3000. For the **demo scope only** this supersedes the native-iOS decision by delivering on the web ([`ADR-023`](./docs_en/decisions/)); it changes nothing about the real product decisions or the production plan — it only records how the class demo is delivered.
+
 ## Status
 
 Early stage. The immediate goal is the one-week iOS pilot: prove the render-to-purchase loop in one city, with a small hand-curated catalog and a human in the loop. See the pilot doc.

@@ -73,7 +73,7 @@ src/
   app/            landing + one route per wizard step + actions.ts (server action)
   components/     Wordmark, Stepper, SiteHeader, ProductSheet
   lib/
-    catalog.ts    8–10 real SKUs + 3 suppliers (incl. made-to-order items)
+    catalog.ts    11 real SKUs + 3 suppliers (incl. made-to-order items)
     scenarios.ts  sample rooms, styles, and room+style → render mappings
     format.ts     COP formatting + lead-time labels
     store.tsx     in-memory wizard + cart state

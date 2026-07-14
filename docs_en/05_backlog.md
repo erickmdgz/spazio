@@ -50,6 +50,32 @@ These are the **critical-path** features that must work end-to-end for the pilot
 
 > Note: within these features, only the pilot-included FRs are exercised in the one-week pilot (see the `pilotIncluded` flag per FR in the requirement registry / `03_requirements.md`). Non-pilot FRs grouped under the same feature (for example stock holds `FR-039`/`FR-040` in `FEAT-008`, or split settlement `FR-043` and per-supplier POs `FR-044` in `FEAT-010`) are part of the feature's full spec but out of the pilot's scope.
 
+## Class-demo coverage
+
+> **Scope of this subsection.** This records how a **time-boxed, 2-day academic class-project demo** (`web-demo/` — a Next.js 15 / React 19 / TypeScript / Tailwind 3.4 web app, **no database**, in-memory state in `src/lib/store.tsx`) exercises the FEATs above. The demo walks the render-to-purchase happy path (`/` → `/room` → `/style` → `/render` → product sheet → `/cart` → `/checkout` → `/confirmation`) as a scoped visual demo. It is **not production**, **not** the full one-week pilot, and it **does not change any FEAT row, priority, or FR mapping above, nor any real product decision**. For the demo scope only (the production plan and ADRs are unchanged), it supersedes: `ADR-001` (a web app instead of native iOS); `ADR-003`/`ADR-004` (a mock checkout — no real payment or settlement); `ADR-006`/`ADR-012`/`ADR-015` (a seeded in-code catalog instead of operator/self-service ingestion); and it uses no database (vs managed Postgres). The render is fallback-first and **faked/cached** (offline SVG assets) with no operator QA, so `ADR-002` is only partially realized.
+
+Coverage legend: **Demo fidelity** = exercised at the UI level, backed by fakes; **Simplified** = present but hardcoded; **Not in demo** = out of the demo's scope.
+
+| FEAT | Name | Demo coverage | Note |
+|---|---|---|---|
+| FEAT-002 | Room capture & inputs | Demo fidelity | Sample living/bedroom or upload → prepared result; approximate dimensions |
+| FEAT-003 | Style & budget selection | Demo fidelity | 3 styles + free-text + COP budget slider (2,000,000–12,000,000) |
+| FEAT-005 | AI rendering engine | Demo fidelity | Render is faked/cached; `OpenAIRenderProvider` stub used only if `IMAGE_API_KEY` is set, with silent fallback |
+| FEAT-007 | Product tagging & interaction | Demo fidelity | Tappable product hotspots on the render → product detail sheet |
+| FEAT-008 | Shopping cart & stock holds | Demo fidelity | Cart items, per-item + total COP, budget-vs-total, remove/swap (no stock holds) |
+| FEAT-009 | Estimates & warranty display | Demo fidelity | Per-item delivery/production dates shown (no warranty display) |
+| FEAT-010 | Checkout & payments | Demo fidelity | Contact-only checkout; **mock** "Pay COP $X"; order grouped by supplier, one PO each |
+| FEAT-011 | Order fulfillment & tracking | Demo fidelity | Confirmation with order number, per-supplier breakdown, operator-in-the-loop message |
+| FEAT-004 | Localization & delivery coverage | Simplified | Hardcoded to Bogota / COP |
+| FEAT-006 | Render review & moderation | Not in demo | No operator render review (render is faked/cached) |
+| FEAT-015 | Supplier catalog management | Not in demo | Replaced by a seeded in-code catalog (11 SKUs, 3 Bogota suppliers) |
+| FEAT-001 | Accounts & identity | Not in demo | No accounts (contact-only checkout per `ADR-022`) |
+| FEAT-012 | Keep-or-replace segmentation | Not in demo | — |
+| FEAT-013 | Render metering & monetization | Not in demo | — |
+| FEAT-014 | Targeted render refinement | Not in demo | — |
+
+For how to run and deploy the class demo, see `web-demo/README.md`.
+
 ## Allowed types
 
 - `Feature`

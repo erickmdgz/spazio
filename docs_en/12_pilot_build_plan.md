@@ -2,6 +2,8 @@
 
 **Status: APPROVED 2026-07-13. Nothing is built yet.** Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
 
+> **Class-demo note —** A **time-boxed, 2-day academic class-project demo** — a *scoped subset* of this plan covering the render-to-purchase happy path — is delivered **separately** as a web app (`web-demo/`; see `docs_en/13_class_demo_scope.md` and **ADR-023**). It is a scoped visual demo, **not** production and **not** the full pilot: a Next.js 15 (App Router) + React 19 + TypeScript app with **no database** (in-memory state), a **mock** checkout (no real payment, no settlement), a **faked/cached** render, and a **seeded in-code catalog**. **For the demo scope only**, this supersedes ADR-001 (web app instead of native iOS), ADR-003/ADR-004 (mock checkout), and ADR-006/ADR-012/ADR-015 (seeded catalog instead of operator/self-service ingestion). This changes **nothing** about the real product decisions — the production plan and ADRs are unchanged; it only records how the class demo is delivered. **This document remains the full, production-oriented pilot build plan.**
+
 **The one loop to prove:** a real user in Bogotá sees their own room photorealistically furnished with **real, purchasable** SKUs and buys ≥1 shown item in-session — *render-to-purchase* — operator-in-the-loop, manual fulfilment.
 
 ---
