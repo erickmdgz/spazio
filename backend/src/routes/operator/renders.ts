@@ -42,7 +42,11 @@ export const operatorRenderRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const render = await prisma.render.update({
         where: { id: request.params.id },
-        data: { reviewStatus: "approved", reviewedAt: new Date() },
+        data: {
+          reviewStatus: "approved",
+          reviewedAt: new Date(),
+          reviewedById: request.operator?.operatorId ?? null,
+        },
       });
 
       // Approval auto-populates the cart (FR-031) — deferred to the cart feature.
@@ -66,7 +70,11 @@ export const operatorRenderRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const render = await prisma.render.update({
         where: { id: request.params.id },
-        data: { reviewStatus: "rejected", reviewedAt: new Date() },
+        data: {
+          reviewStatus: "rejected",
+          reviewedAt: new Date(),
+          reviewedById: request.operator?.operatorId ?? null,
+        },
       });
       return reply.code(200).send({ id: render.id, reviewStatus: render.reviewStatus });
     },

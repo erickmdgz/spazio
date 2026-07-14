@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance, type FastifyError } from "fastify";
+import fastifyCookie from "@fastify/cookie";
 import type { AppDeps } from "./types.js";
 import { healthRoutes } from "./routes/health.js";
 import { projectRoutes } from "./routes/client/projects.js";
@@ -9,7 +10,9 @@ import { checkoutRoutes } from "./routes/client/checkout.js";
 import { operatorCatalogRoutes } from "./routes/operator/catalog.js";
 import { operatorRenderRoutes } from "./routes/operator/renders.js";
 import { operatorOrderRoutes } from "./routes/operator/orders.js";
-import { makeOperatorGuard } from "./auth/operator.js";
+import { operatorSessionRoutes } from "./routes/operator/session.js";
+import { operatorConsoleRoutes } from "./routes/operator/console.js";
+import { makeOperatorSessionGuard } from "./auth/operator.js";
 
 // Expose injected dependencies to every handler via the Fastify instance.
 declare module "fastify" {
@@ -38,8 +41,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
   });
 
+  // Cookies (operator session, see src/auth/operator.ts). The session token is
+  // self-signed with HMAC, so the plugin needs no signing secret of its own.
+  await app.register(fastifyCookie);
+
   // Health (unversioned).
   await app.register(healthRoutes);
+
+  // Operator console shell (static, unversioned — plan §1.7).
+  await app.register(operatorConsoleRoutes);
 
   // Client API (public in the pilot — no end-user accounts, ADR-022).
   await app.register(
@@ -53,8 +63,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     { prefix: API_PREFIX },
   );
 
-  // Operator API (internal, behind the shared-secret guard).
-  const operatorGuard = makeOperatorGuard(deps.config.OPERATOR_API_SECRET);
+  // Operator session endpoints (login/whoami/logout) — outside the guard.
+  await app.register(operatorSessionRoutes, { prefix: `${API_PREFIX}/operator` });
+
+  // Operator API (internal, behind the session guard — plan §1.7).
+  const operatorGuard = makeOperatorSessionGuard(deps.config.OPERATOR_SESSION_SECRET);
   await app.register(
     async (operator) => {
       operator.addHook("preHandler", operatorGuard);

@@ -23,8 +23,16 @@ const envSchema = z.object({
   // Required: database (ADR-001).
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
-  // Required: operator shared secret (pilot auth stub, hardens later).
-  OPERATOR_API_SECRET: z.string().min(1, "OPERATOR_API_SECRET is required"),
+  // Required: operator session-signing key (plan §1.8) — signs the console
+  // session cookie (see src/auth/operator.ts). Replaces the interim
+  // OPERATOR_API_SECRET shared-secret header from the PR #21 scaffold.
+  OPERATOR_SESSION_SECRET: z
+    .string()
+    .min(16, "OPERATOR_SESSION_SECRET is required (min 16 characters)"),
+
+  // Operator console shell location, served at /operator/console (plan §1.7).
+  // Resolved relative to the backend working directory.
+  OPERATOR_CONSOLE_DIR: z.string().default("../operator/public"),
 
   // Object storage (private photos/renders). Placeholder vendor fields.
   STORAGE_DRIVER: z.enum(["local"]).default("local"),
