@@ -1,6 +1,6 @@
 # Spazio — One-Week iOS Pilot · Build Plan
 
-**Status: APPROVED 2026-07-13. Build started.** Since approval, the backend §1 foundation scaffold landed on `develop` via **PR #21** (typed route stubs + Prisma schema + CI — no feature logic) and the class demo via **PR #22** (`web-demo/`); the **iOS app, the operator console, and all feature logic remain unbuilt**, and nothing is deployed. Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
+**Status: APPROVED 2026-07-13. Build started.** Since approval, the backend §1 foundation scaffold landed on `develop` via **PR #21** (typed route stubs + Prisma schema + CI — no feature logic), the class demo via **PR #22** (`web-demo/`), and the operator console shell + operator session auth via **PR #27** (see the §1.7 as-built note); the **iOS app and all feature logic remain unbuilt**, and nothing is deployed. Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
 
 > **Class-demo note —** A **time-boxed, 2-day academic class-project demo** — a *scoped subset* of this plan covering the render-to-purchase happy path — is delivered **separately** as a web app (`web-demo/`; see `docs_en/13_class_demo_scope.md` and **ADR-023**). It is a scoped visual demo, **not** production and **not** the full pilot: a Next.js 15 (App Router) + React 19 + TypeScript app with **no database** (in-memory state), a **mock** checkout (no real payment, no settlement), a **faked/cached** render, and a **seeded in-code catalog**. **For the demo scope only**, this supersedes ADR-001 (web app instead of native iOS), ADR-003/ADR-004 (mock checkout), and ADR-006/ADR-012/ADR-015 (seeded catalog instead of operator/self-service ingestion). This changes **nothing** about the real product decisions — the production plan and ADRs are unchanged; it only records how the class demo is delivered. **This document remains the full, production-oriented pilot build plan.**
 
@@ -63,8 +63,8 @@ strictly to the accepted ADRs (ADR-001, ADR-002, ADR-003/004, ADR-019, ADR-022) 
 not reopen them. Where an ADR fixed an *approach* but not a *vendor* (hosted image-gen API,
 hosted PCI checkout), the vendor pick is called out as an explicit implementation task and
 the capability is named by role. This section was written as a plan for human approval; since
-approval, its backend scaffold landed via PR #21 (stubs only — see §1.2), while the iOS app, the
-operator console, and all feature logic remain unbuilt.
+approval, its backend scaffold landed via PR #21 (stubs only — see §1.2) and the operator console
+shell + auth via PR #27 (see §1.7), while the iOS app and all feature logic remain unbuilt.
 
 Scope discipline: this section only wires the pilot-included FRs. The detailed behaviour of
 each feature (matching rules, tag layout, cart edits, checkout screens) lives in its own plan
@@ -137,7 +137,7 @@ build with one team.
 └── docs_en/           (unchanged; architecture rule: keep code tied to FR/ADR/TC)
 ```
 
-> **As-built note (PR #21):** the backend landed with `backend/src/routes | services | jobs | auth` plus `prisma/` (schema + migrations), which supersedes the proposed `backend/` internal layout above; the rest of this layout (`ios/`, `operator/`, `ops/`) remains the plan.
+> **As-built note (PR #21):** the backend landed with `backend/src/routes | services | jobs | auth` plus `prisma/` (schema + migrations), which supersedes the proposed `backend/` internal layout above. **PR #27** added `operator/` (static console shell, served by the backend — see §1.7); the rest of this layout (`ios/`, `ops/`) remains the plan.
 
 Architecture rule from `02_architecture.md` is honoured by this split: frontend, backend and data
 concerns are separated; the frontend never queries the database directly; business logic lives in
@@ -286,6 +286,16 @@ backend). Three jobs, all pilot-core:
 `Operator` table (hashed credentials), satisfying the intent of NFR-008 for catalog/render/order
 operations. End users have no accounts (ADR-022).
 
+> **As-built note (PR #27):** the console shell + auth land with this PR. A static three-queue
+> shell (`operator/public`) is served by the backend at `/operator/console` (no second backend);
+> operators sign in via `POST /api/v1/operator/session` against the `Operator` table
+> (scrypt-hashed credentials; HMAC-signed httpOnly session cookie keyed by
+> `OPERATOR_SESSION_SECRET` — §1.8), replacing PR #21's interim shared-secret header. Approve /
+> reject / forward stamp `reviewed_by` / `forwarded_by` from the session, and the three §0.1#5
+> queue reads drive the shell. Roles are stored but not yet enforced per action — that, plus the
+> §2.4 NFR-008 security TCs and the full curation/review/forwarding UX (CSV import, signed-URL
+> image review), lands with FEAT-015/006/011.
+
 ### 1.8 Storage, auth, config, environments
 
 - **Object storage for private photos/renders (BR-33 / NFR-007).** `RoomPhoto` and `Render` images live
@@ -370,8 +380,8 @@ order, maps that order onto the pilot's Day 1–7 structure (and states plainly 
 calendar days is or is not realistic), defines the milestone gates and the per-feature
 Definition of Done, consolidates the risks the feature sections raised, and restates the
 render-to-purchase go/no-go and the governance flow. It was written as a plan for human approval;
-since approval, only the backend foundation scaffold (PR #21) and the class demo (PR #22) exist —
-the iOS app, the operator console, and all feature logic remain unbuilt.
+since approval, only the backend foundation scaffold (PR #21), the class demo (PR #22), and the
+operator console shell + auth (PR #27) exist — the iOS app and all feature logic remain unbuilt.
 
 ### 2.1 Dependency graph & critical path
 
