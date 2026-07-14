@@ -1,6 +1,6 @@
 # System architecture
 
-> **Status of this document.** This is a specification, not a description of anything built. Nothing here is implemented yet. It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`.
+> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the two exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section) and the backend foundation scaffold (`backend/`, PR #21). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`.
 >
 > **How to read the labels used throughout:**
 >
@@ -13,7 +13,7 @@
 
 ## Overview
 
-This is a logical, technology-neutral description of how Spazio works end to end. It follows the basic flow in PRD §8 and the invariants in PRD §4. It names no concrete technology; the platform stack is an open decision (see [Technology stack](#technology-stack)).
+This is a logical, technology-neutral description of how Spazio works end to end. It follows the basic flow in PRD §8 and the invariants in PRD §4. It names no concrete technology; the platform stack is decided for the pilot and recorded in ADR-001 (see [Technology stack](#technology-stack)); vendor/product picks for hosting, image generation, and payments remain open.
 
 The core promise is that the AI never invents furniture: every rendered item must correspond to a real, purchasable SKU already loaded into the marketplace (PRD §1, BR-6, BR-14; FR-016).
 
@@ -41,12 +41,12 @@ End-to-end logical flow:
 
 ## Technology stack
 
-**The platform stack is decided for the pilot (ADR-001).** PRD §12 reserved the technology stack for humans; that human decision has been made for the one-week iOS pilot. Each line below shows the value adopted for the pilot and references the governing decision record. Specific product/tool picks are left to implementation (ADR-001).
+**The platform stack is decided for the pilot (ADR-001).** PRD §12 reserved the technology stack for humans; that human decision has been made for the one-week iOS pilot. Each line below shows the value adopted for the pilot and references the governing decision record. The remaining open product/tool picks are hosting, the image-generation vendor, and the payment gateway (ADR-001).
 
 | Layer | Choice | Decision |
 |---|---|---|
 | Frontend | Native iOS (SwiftUI) app (see ADR-001) | [ADR-001 — Technology stack](#important-decisions-accepted-for-the-pilot) |
-| Backend | One small managed backend service (see ADR-001) | ADR-001 |
+| Backend | One small managed backend service — Node.js 22 + TypeScript (Fastify) + Prisma, per the ADR-001 implementation note; foundation scaffold in `backend/` (PR #21) | ADR-001 |
 | Database | Managed relational database — Postgres — plus object storage for photos/renders (see ADR-001) | ADR-001 |
 | Authentication | No accounts or login in the pilot; minimal contact capture at checkout (see ADR-022) | ADR-001; ADR-022 |
 | Hosting | Single managed environment/region (see ADR-001) | ADR-001 |
@@ -224,7 +224,7 @@ The demo is a scoped **visual** walkthrough of the render-to-purchase happy path
 4. `/render` — simulated generate, then a furnished render with tappable product hotspots and a budget indicator (10% tolerance).
 5. **Product detail sheet** (`ProductSheet.tsx`).
 6. `/cart` — items, per-item and total COP, budget-vs-total, remove/swap.
-7. `/checkout` — minimal contact capture (email / phone / address, per ADR-022 — **no accounts**); order grouped by supplier, one PO each; **MOCK** "Pay COP $X".
+7. `/checkout` — minimal contact capture (email / phone / address, per ADR-022 — **no accounts**); order grouped by supplier, one PO each; a **MOCK** "Pay $ X" button (amount in COP).
 8. `/confirmation` — order number, per-supplier breakdown, per-item delivery/production dates, and an operator-in-the-loop message.
 
 **Catalog.** `src/lib/catalog.ts` — 11 SKUs across 3 Bogotá suppliers (Maderos del Norte, Textiles Bacatá, Lumina Bogotá); 2 made-to-order and 9 ready-made.

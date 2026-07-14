@@ -3,7 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 /**
  * Minimal operator auth guard for the pilot: a shared secret sent in a header.
  * This is deliberately simple — it hardens later (real operator accounts / SSO,
- * see ADR-022 note on operator access). NOT suitable beyond the pilot.
+ * see the operator-console auth plan in docs_en/12_pilot_build_plan.md §1.7).
+ * NOT suitable beyond the pilot.
  */
 export const OPERATOR_HEADER = "x-operator-secret";
 

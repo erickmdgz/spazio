@@ -47,7 +47,7 @@ in spirit so the demo is faithful to the product.
    budget-vs-total indicator (10% tolerance), remove/swap.
 7. **Checkout** (`/checkout`) — minimal contact (email, phone, shipping — no
    account), order summary **grouped by supplier (one PO per supplier)**, and a
-   **mock** "Pay COP $X" button with a brief processing spinner.
+   **mock** "Pay $ X" button (amount in COP) with a brief processing spinner.
 8. **Confirmation** (`/confirmation`) — order number, per-supplier breakdown,
    per-item delivery/production estimate, and a friendly operator-in-the-loop
    message.
@@ -70,7 +70,7 @@ in spirit so the demo is faithful to the product.
 
 ```
 src/
-  app/            landing + one route per wizard step + actions.ts (server action)
+  app/            landing + one route per wizard step (product detail is a modal, not a route) + actions.ts (server action)
   components/     Wordmark, Stepper, SiteHeader, ProductSheet
   lib/
     catalog.ts    11 real SKUs + 3 suppliers (incl. made-to-order items)
@@ -172,7 +172,7 @@ needed — the placeholder SVGs are simply replaced.
    **Swap** on one item to show it changing, or **Remove** one. Click
    **Checkout**.
 6. **Checkout:** fill email / phone / address. Show the summary is **grouped by
-   supplier (one PO each)**. Click **Pay COP $…** — the spinner runs briefly.
+   supplier (one PO each)**. Click **Pay $ …** — the spinner runs briefly.
 7. **Confirmation:** show the order number, the per-supplier breakdown with
    per-item delivery/production dates, and the operator-in-the-loop message.
    Optionally click **Start a new design** to reset.

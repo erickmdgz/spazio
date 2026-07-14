@@ -28,7 +28,7 @@ For the demo scope **only**, a handful of Accepted decisions are intentionally s
 | Real decision (unchanged) | Demo delivers instead | Scope |
 |---|---|---|
 | **ADR-001** — native iOS (SwiftUI) + managed backend + object storage | A single-process **web app** (Next.js + React + TypeScript + Tailwind) | Demo scope only |
-| **ADR-003 / ADR-004** — hosted PCI checkout in COP; merchant-of-record / manual supplier settlement | **Mock checkout** — a "Pay COP $X" button with a spinner; no real payment, no settlement | Demo scope only |
+| **ADR-003 / ADR-004** — hosted PCI checkout in COP; merchant-of-record / manual supplier settlement | **Mock checkout** — a mock "Pay $ X" button (amount in COP) with a spinner; no real payment, no settlement | Demo scope only |
 | **ADR-006 / ADR-012 / ADR-015** — operator/self-service catalog ingestion, sync cadence, launch-market setup | A **seeded in-code catalog** (`src/lib/catalog.ts`) | Demo scope only |
 | **Managed Postgres** (per the pilot foundation) | **No database** — in-memory state (`src/lib/store.tsx`) | Demo scope only |
 
@@ -41,7 +41,7 @@ Two further notes on fidelity:
 
 ## 3. The happy-path flow (routes)
 
-The demo is an 8-step wizard, one route per step:
+The demo is an 8-step flow across 7 routes (the product detail sheet, step 5, is a modal overlay rather than a route):
 
 1. `/` — landing (value prop + Start).
 2. `/room` — pick a sample living room or bedroom, or "upload" (in demo mode an upload routes to a prepared result); approximate dimensions.
@@ -49,7 +49,7 @@ The demo is an 8-step wizard, one route per step:
 4. `/render` — a simulated "generating…" state, then the furnished render with **tappable product hotspots** and a budget indicator (**10% tolerance**).
 5. **Product detail sheet** (`ProductSheet.tsx`) — image, name, price (COP), supplier, category, lead time, add/remove.
 6. `/cart` — items with per-item and total COP, budget-vs-total indicator, remove/swap.
-7. `/checkout` — minimal contact (email / phone / address per **ADR-022** — no accounts); order **grouped by supplier, one PO each**; **mock** "Pay COP $X".
+7. `/checkout` — minimal contact (email / phone / address per **ADR-022** — no accounts); order **grouped by supplier, one PO each**; a **mock** "Pay $ X" button (amount in COP).
 8. `/confirmation` — order number, per-supplier breakdown, per-item delivery/production dates, and an operator-in-the-loop message.
 
 ---
@@ -86,7 +86,7 @@ Three things are deliberately simulated so the demo always works and never depen
 
 - **Render is fallback-first (cached/offline).** `CachedRenderProvider` is the default: it serves prepared, local SVG assets for every room+style scenario, works offline, and always succeeds. `OpenAIRenderProvider` is an **isolated stub**, used only if `IMAGE_API_KEY` is set (server-side via `src/app/actions.ts`), with **silent fallback to the cached provider** on any error. In the demo the render is faked/cached.
 - **No operator QA.** Because the render is cached, there is no render-review / moderation step. This is why **ADR-002** is only **partially realized** (FEAT-006 is not in the demo).
-- **Payment is mocked.** `/checkout` shows a "Pay COP $X" button with a brief processing spinner; there is **no real payment and no settlement** (superseding ADR-003/ADR-004 for the demo scope only).
+- **Payment is mocked.** `/checkout` shows a mock "Pay $ X" button (amount in COP) with a brief processing spinner; there is **no real payment and no settlement** (superseding ADR-003/ADR-004 for the demo scope only).
 
 The catalog is also fixed rather than ingested: **`src/lib/catalog.ts`** seeds **11 SKUs** across **3 Bogotá suppliers** (**Maderos del Norte**, **Textiles Bacatá**, **Lumina Bogotá**) — **2 made-to-order** and **9 ready-made** — standing in for FEAT-015 / ADR-006 / ADR-012 / ADR-015.
 

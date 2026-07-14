@@ -11,7 +11,10 @@
 > render (**ADR-002**), and checkout is a single PCI-compliant COP capture with **no
 > split settlement**, the operator paying suppliers manually (**ADR-003**,
 > **ADR-004**). Treat every path, verb, and JSON body below as *illustrative
-> structuring*, not a committed interface.
+> structuring*, not a committed interface. **Update (PR #21):** the pilot subset
+> of this surface now exists as typed stub routes in `backend/` under `/api/v1`
+> (business logic stubbed, 501); where they differ, the pilot build plan §0.1
+> boundaries govern the pilot code.
 
 ## How to read this document
 
