@@ -76,6 +76,14 @@ Coverage legend: **Demo fidelity** = exercised at the UI level, backed by fakes;
 
 For how to run and deploy the class demo, see `web-demo/README.md`.
 
+## Proposals under discussion
+
+Design proposals awaiting a team decision. They are not scheduled work; each becomes backlog rows (new/amended FRs and TCs) only if accepted.
+
+| ID | Type | Name | Status | Issue | Documents |
+|---|---|---|---|---|---|
+| ADR-025 | Documentation | Automated render QA & order forwarding (remove human gates from the request path; amends FR-027/FR-061) | Proposed | [#24](https://github.com/erickmdgz/spazio/issues/24) | [`decisions/ADR-025_…`](decisions/ADR-025_automated-render-qa-and-order-forwarding.md) · [`proposals/ADR-025_…`](proposals/ADR-025_automated_pilot_build_plan.md) |
+
 ## Allowed types
 
 - `Feature`
