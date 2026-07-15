@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (demo scope). **Update (ADR-024, 2026-07-14):** the web-app delivery recorded here for the demo is now the product direction — see ADR-024. The mock substitutions below (in-memory state, mock checkout, faked render, seeded catalog) remain demo artifacts slated for replacement by the real backend integration.
+Accepted (demo scope). **Update (ADR-024, 2026-07-14):** the web-app delivery recorded here for the demo is now the product direction — see ADR-024. The mock substitutions below (in-memory state, mock checkout, faked render, seeded catalog) remain demo artifacts slated for replacement by the real backend integration. **Update (ADR-025, 2026-07-14):** the operator render-review gate (FEAT-006 / FR-027) is retired product-wide; the demo's "no operator QA" is no longer a divergence from ADR-002 to be closed by the real-backend integration — renders are published immediately on generation success (ADR-025).
 
 ## Context
 

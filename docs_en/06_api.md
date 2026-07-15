@@ -8,8 +8,9 @@
 > the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
 > backend service + Postgres + object storage (**ADR-001**; client since changed
 > to the **web app** by **ADR-024**, 2026-07-14), the rendering/AI
-> pipeline is a hosted generative image API with mandatory operator QA of every
-> render (**ADR-002**), and checkout is a single PCI-compliant COP capture with **no
+> pipeline is a hosted generative image API (**ADR-002**; its mandatory
+> operator-QA clause is superseded by **ADR-025**, 2026-07-14 — renders are
+> published immediately on generation success), and checkout is a single PCI-compliant COP capture with **no
 > split settlement**, the operator paying suppliers manually (**ADR-003**,
 > **ADR-004**). Treat every path, verb, and JSON body below as *illustrative
 > structuring*, not a committed interface. **Update (PR #21):** the pilot subset
@@ -28,6 +29,12 @@
 > live (FR-036); matching + cart auto-populate + checkout with commission run
 > against seeded catalog data. Image-gen and payments remain FAKE drivers —
 > vendor picks are still open ADR-002/003 tasks.
+> **Update (ADR-025, 2026-07-14):** the operator render-review gate is retired —
+> renders are published to the requesting user immediately on generation
+> success. FR-027 and FEAT-006 are retired; the render approve/reject endpoints
+> and the `pending_review` queue read below are marked Retired and remain only
+> as as-built history until the next development iteration removes them from
+> code (catalog curation and order forwarding are unaffected).
 
 ## How to read this document
 
@@ -70,8 +77,9 @@ the cart-hold duration and the budget tolerance appear in the PRD only as
 - **JSON bodies below are labelled `illustrative / draft`.** Field names, types and
   units are proposals; none are guaranteed by the PRD.
 - **Pilot note.** Some capabilities exist in the pilot only with a human in the
-  loop (operator render review, operator forwarding orders); others are excluded
-  from the pilot entirely. This is flagged per endpoint.
+  loop (operator forwarding orders); others are excluded from the pilot
+  entirely. This is flagged per endpoint. *(Operator render review was retired
+  by ADR-025, 2026-07-14.)*
 
 ---
 
@@ -245,11 +253,11 @@ endpoints are effectively constant in the pilot.
 
 ---
 
-## 5. Render generation, review & targeted edit
+## 5. Render generation & targeted edit
 
-**Capability area:** FEAT-005 (rendering) + FEAT-006 (operator review) + FEAT-014 (targeted edit) + FEAT-013 (metering).
-This is the heart of the product. **The pipeline is decided — a hosted generative image API with mandatory operator QA of every render (ADR-002); the concrete contracts below are still DRAFT.**
-The core render + human review is **pilot core**.
+**Capability area:** FEAT-005 (rendering) + FEAT-014 (targeted edit) + FEAT-013 (metering) *(FEAT-006 operator review retired — ADR-025, 2026-07-14)*.
+This is the heart of the product. **The pipeline is decided — a hosted generative image API (ADR-002; its mandatory operator-QA clause is superseded by ADR-025); the concrete contracts below are still DRAFT.**
+The core render is **pilot core**; renders are published immediately on generation success (ADR-025).
 
 ### `POST /api/v1/renders`  *(representative — full contract, illustrative)*
 
@@ -262,8 +270,9 @@ constraints (all VERIFIED): every rendered item is a real, purchasable SKU and
 nothing is fabricated (BR-6, BR-14); only currently available stock is rendered
 (BR-4); dimensions are used to scale realistically (BR-7); total cost stays within
 budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns a
-**pending** render that the client polls; the render is shown to the user only
-**after an operator approves it** (Pilot; FR-027).
+**pending** render that the client polls; the render is published to the user
+immediately on generation success (ADR-025, 2026-07-14; the FR-027 operator
+gate is retired).
 
 #### Request
 
@@ -288,7 +297,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 // 202 Accepted
 {
   "renderId": "rnd_789",
-  "status": "queued",             // queued → rendering → pending_review → approved | rejected
+  "status": "queued",             // queued → processing → completed | failed (review states removed — ADR-025)
   "countsAsAttempt": true,        // one attempt against the daily limit (BR-20)
   "estimateSeconds": 180          // informational; render-time target ~2–5 min soft target, no hard SLA in the pilot (ADR-013)
 }
@@ -299,7 +308,7 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 | Code | Cause |
 |---|---|
 | 400 | Missing photo/style/budget/dimensions inputs |
-| 402 | Daily free-render limit reached — return next day or buy a package (BR-21). *The pilot has NO daily limit (metering excluded; every render is operator-reviewed) — the PRD default of five applies only when metering is built post-pilot (**ADR-009**); render packages are not offered in the pilot (**ADR-010**).* |
+| 402 | Daily free-render limit reached — return next day or buy a package (BR-21). *The pilot has NO daily limit (metering excluded *(the operator-review rationale was retired by ADR-025)*) — the PRD default of five applies only when metering is built post-pilot (**ADR-009**); render packages are not offered in the pilot (**ADR-010**).* |
 | 404 | `photoId` not found |
 | 409 | Budget cannot be met within tolerance — see fallback behaviour below (BR-10) |
 | 422 | No strong match for one or more items (BR-13) |
@@ -322,8 +331,8 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 
 ### `GET /api/v1/renders/{renderId}`
 
-- **Purpose (VERIFIED):** Poll a render's status and, once approved, retrieve the image and its tagged items. A render is only visible to the user after operator approval (FR-027).
-- **Related requirements:** FR-015, FR-027; NFR-001, NFR-007.
+- **Purpose (VERIFIED):** Poll a render's status and, once completed, retrieve the image and its tagged items. Renders are published to the requesting user immediately on generation success (ADR-025, 2026-07-14; FR-027 retired).
+- **Related requirements:** FR-015; NFR-001, NFR-007 *(FR-027 retired — ADR-025)*.
 
 ### `POST /api/v1/renders/{renderId}/edits`
 
@@ -332,14 +341,13 @@ budget plus the agreed tolerance (BR-9). Because rendering is slow, this returns
 
 ### `POST /api/v1/operator/renders/{renderId}/approve` · `.../reject`
 
-- **Purpose (VERIFIED):** Operator reviews each render and approves (or rejects) it before it is shown to the user (Pilot; PRD §5 render-quality monitoring). Actor: **Operator**.
-- **Related requirements:** FR-027. **Pilot core.** *(As built — PR #27: stamps `reviewed_by` from the operator session. #31 increment 1: approval auto-populates the project cart from the render's items, FR-031.)*
+- **Retired — ADR-025 (2026-07-14).** The operator render-review gate is removed; renders are published immediately on generation success, and cart auto-population (FR-031) is triggered by generation success instead of approval. *(As built — PR #27/#31: these endpoints still exist in code, stamping `reviewed_by` and auto-populating the cart on approval; their removal is next-iteration work.)*
 
 ### `POST /api/v1/operator/session` · `GET` · `DELETE` *(as built, pilot — PR #27)*
 
 - **Purpose:** Operator sign-in (email + password against the `Operator` table, hashed credentials), whoami, and sign-out. Sets/clears the HMAC-signed httpOnly session cookie that guards every other `/operator/*` route — the pilot's only authenticated surface (build plan §1.7; NFR-008 intent). Actor: **Operator**.
-- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
-- **Related requirements:** FR-027, FR-056–FR-059, FR-061; NFR-008. **Pilot core.**
+- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue — **Retired, ADR-025**; still in code until the next iteration), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
+- **Related requirements:** FR-056–FR-059, FR-061; NFR-008 *(FR-027 retired — ADR-025)*. **Pilot core.**
 
 ### `GET /api/v1/renders/quota`
 
@@ -372,7 +380,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 
 ### `GET /api/v1/cart`
 
-- **Purpose (VERIFIED):** Review cart contents. On render approval the cart is auto-populated with every product shown in the render (PRD FR-08); a returned item includes its captured price and its stock-hold expiry.
+- **Purpose (VERIFIED):** Review cart contents. On render publication (immediately on generation success — ADR-025, 2026-07-14; previously on operator approval) the cart is auto-populated with every product shown in the render (PRD FR-08); a returned item includes its captured price and its stock-hold expiry.
 - **Related requirements:** FR-031, FR-032; NFR-014.
 
 ### `POST /api/v1/cart/items`
@@ -553,7 +561,7 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 | 2 | Room capture & inputs | FEAT-002 | FR-005, FR-006, FR-011, FR-024 | Core (upload + dimensions) |
 | 3 | Style catalog & inputs | FEAT-003 | FR-007, FR-008, FR-009, FR-010 | Core (FR-010 no) |
 | 4 | Localization & delivery | FEAT-004 | FR-012, FR-013, FR-020, FR-046, FR-053 | Partial (fixed zone) |
-| 5 | Render generation, review, edit | FEAT-005, FEAT-006, FEAT-014, FEAT-013 | FR-014–FR-023, FR-027, FR-048–FR-052 | Core (FR-027 review); edits/metering no |
+| 5 | Render generation & edit | FEAT-005, FEAT-014, FEAT-013 *(FEAT-006 retired — ADR-025)* | FR-014–FR-023, FR-048–FR-052 *(FR-027 retired — ADR-025)* | Core; edits/metering no |
 | 6 | Product tags & interaction | FEAT-007 | FR-028, FR-029 | Core |
 | 7 | Cart & stock holds | FEAT-008 | FR-030–FR-035, FR-039, FR-040 | Core (holds/swap no) |
 | 8 | Estimates & warranty | FEAT-009 | FR-036, FR-037, FR-038 | Partial (FR-036 only) |
@@ -570,7 +578,7 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-10; see the ADR registry). Each shapes part of the surface above; the concrete contract shapes remain DRAFT:
 
 - **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation). *Client choice superseded by **ADR-024** (web app).*
-- **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA of every render, no custom-trained model. Shapes the render section (§5).
+- **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting), no custom-trained model. Shapes the render section (§5). *Mandatory-operator-QA clause superseded by **ADR-025** (2026-07-14) — renders publish immediately on generation success.*
 - **ADR-003 / ADR-004** payment & merchant of record — Accepted: a single PCI-compliant hosted COP capture with **no split settlement**, the operator paying suppliers manually (**ADR-003**); the Spazio operating entity is the merchant of record for the pilot (**ADR-004**, revisit before scale). Shapes checkout & payment (§9).
 - **ADR-005** style taxonomy — Accepted: 1–2 predefined visual styles + free-text, no taxonomy engine. Shapes `GET /styles`, catalog style mapping.
 - **ADR-006** supplier ingestion channels — Accepted: operator-loaded CSV/Excel of 30–60 curated SKUs, no self-service ingestion in the pilot. Shapes supplier self-ingest (§11).

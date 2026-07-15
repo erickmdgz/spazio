@@ -22,7 +22,7 @@ Throughout the Spazio docs we distinguish three levels of certainty. Keep them e
 Where the PRD gives a number only as an example or default, an ADR has now settled the value **for the pilot** (keeping the same number where the PRD showed one). The PRD examples and their adopted pilot decisions are:
 
 - Budget tolerance "such as 10%" (PRD BR-9) — adopted for the pilot: 10% (`ADR-008`).
-- Daily free renders "defaulting to five" (PRD BR-19, §7) — pilot decision: no limit (every render is operator-reviewed); the five/day default applies only post-pilot (`ADR-009`).
+- Daily free renders "defaulting to five" (PRD BR-19, §7) — pilot decision: no limit (`ADR-009`); the five/day default applies only post-pilot. ~~(every render is operator-reviewed)~~ *rationale superseded by ADR-025 (2026-07-14) — the render-review gate is retired; the no-limit value itself stands.*
 - Cart stock hold "15 minutes" (PRD BR-22) — pilot decision: no stock hold; the 15-minute hold applies only post-pilot (`ADR-011`).
 - Render time "approximately 2–5 minutes" (PRD §7) — adopted for the pilot as a soft target, no hard SLA (`ADR-013`).
 - Commission "for example 10%" (PRD §9, BR-28) — adopted for the pilot: 10%, reconciled manually (`ADR-007`).
@@ -61,7 +61,7 @@ The AI coding agent — and the runtime pipeline it builds — is expected to:
 
 ### Pilot scope reminder
 
-In the one-week iOS pilot, humans stay deliberately in the loop: an operator curates the catalog by hand, an operator reviews **every** render before the user sees it (`FR-027`, `FEAT-006`), the user confirms the cart before paying (`FR-035`), and the operator forwards each order to the supplier manually (`FR-061`). The AI does the creative and matching work; it does not fulfill or auto-approve.
+In the one-week iOS pilot, humans stay deliberately in the loop: an operator curates the catalog by hand, ~~an operator reviews **every** render before the user sees it (`FR-027`, `FEAT-006`),~~ the user confirms the cart before paying (`FR-035`), and the operator forwards each order to the supplier manually (`FR-061`). **Superseded by ADR-025 (2026-07-14):** renders are published immediately on generation success; the render-review gate is retired. The AI does the creative and matching work; it does not fulfill orders.
 
 ## Spazio hard rule (non-negotiable)
 
@@ -109,7 +109,7 @@ The AI proposes; humans decide. In addition to the general items below, PRD §12
 | Commission percentage & fee model | `ADR-007` | Decided (pilot) — `ADR-007`: 10% of product price (PRD §9, BR-28), reconciled manually in the pilot. |
 | Catalog synchronization frequency | `ADR-012` | Decided (pilot) — `ADR-012`: manual / on-demand refresh by the operator; no automated sync. |
 | Render-time target | `ADR-013` | Decided (pilot) — `ADR-013`: ~2–5 minutes soft target (PRD §7); no hard SLA. |
-| Daily free-render limit | `ADR-009` | Decided (pilot) — `ADR-009`: no limit (every render is operator-reviewed); the five/day default (BR-19) applies only post-pilot. |
+| Daily free-render limit | `ADR-009` | Decided (pilot) — `ADR-009`: no limit; the five/day default (BR-19) applies only post-pilot. ~~(every render is operator-reviewed)~~ *rationale superseded by ADR-025 (2026-07-14); the no-limit value stands.* |
 | Render-package pricing | `ADR-010` | Decided (pilot) — `ADR-010`: not offered in the pilot (deferred). |
 | Cart-hold duration | `ADR-011` | Decided (pilot) — `ADR-011`: no stock hold; the 15-minute hold (BR-22) applies only post-pilot. |
 | Payment gateway | `ADR-003` | Decided (pilot) — `ADR-003`: a single PCI-compliant hosted checkout, one payment in COP (provider selection: revisit before scale). |
@@ -182,6 +182,6 @@ Additional Spazio checks when the change touches rendering, matching, catalog, p
 - [ ] No product can be rendered, tagged, or added to a cart without a backing real, in-stock, deliverable SKU (the hard rule holds).
 - [ ] Decided PRD §12 values live in configuration and reference their ADR (see the decisions table); rows still reserved for humans with no ADR are not encoded as if settled.
 - [ ] Budget, locality, delivery, photo-quality, stock-hold, and usage-limit rules are enforced as specified, with the error/fallback path handled (disclose gap, offer alternative, or mark unavailable — never fabricate).
-- [ ] Operator-in-the-loop steps are respected where the pilot requires them (render review, manual order handoff).
+- [ ] Operator-in-the-loop steps are respected where the spec requires them (catalog curation, manual order handoff; ~~render review~~ retired — ADR-025).
 - [ ] User photos and generated renders are private by default (BR-33).
 - [ ] Claims in the PR distinguish VERIFIED vs PROPOSED/DRAFT vs TBD, and cite PRD/pilot sections.

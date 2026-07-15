@@ -55,7 +55,7 @@ The system shall complete a typical single-room render within the confirmed rend
 
 - **PRD-stated target/example, adopted for the pilot:** approximately **2–5 minutes** for a typical single-room render (PRD §7, Performance). **Decided (pilot): ~2–5 minutes is a soft target with no hard SLA — see ADR-013.**
 - **Measure:** p50 and p95 end-to-end render latency against the confirmed target.
-- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). Human review adds operator time (FR-027) in the pilot; **operator-review time is additional to (outside) the soft target — Decided (pilot), see ADR-013.**
+- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). *(The former note "human review adds operator time (FR-027); operator-review time is additional to (outside) the soft target" is superseded by ADR-025, 2026-07-14 — there is no review step; renders are published immediately on generation success. The ~2–5 min soft target itself stands — ADR-013.)*
 
 ## NFR-002 - Targeted edits faster than full renders
 
@@ -118,7 +118,7 @@ The system shall track render-to-purchase conversion from day one of operation.
 
 The system shall keep user room photos and generated renders private by default.
 
-- **Measure:** an uploaded/captured photo or a generated render is not accessible to any party other than its owner (and the operators required to review it, FR-027) unless the owner explicitly shares it; sharing is not a pilot feature.
+- **Measure:** an uploaded/captured photo or a generated render is not accessible to any party other than its owner unless the owner explicitly shares it; sharing is not a pilot feature. *(The former operator-review access carve-out — "and the operators required to review it, FR-027" — is superseded by ADR-025, 2026-07-14.)*
 - **Trace:** PRD §7 (Security and payments) and BR-33; entities `RoomPhoto`, `Render`. Broader data-privacy rules follow the minimal-data pilot approach — **Decided (pilot): private by default, minimum data (email, phone, shipping), short privacy notice + consent at first use, aligned with Colombia Ley 1581; legal review before scale (ADR-019).**
 
 ## NFR-008 - Authentication protects account and order data

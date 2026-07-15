@@ -1,6 +1,8 @@
 # Spazio — One-Week iOS Pilot · Build Plan
 
 > **Update (ADR-024, 2026-07-14) — read before anything else:** the native-iOS client and the one-week pilot *program* are **superseded** — the product continues on the **web app** (`web-demo/`) at class-demo scale, wired to the real backend. This plan remains the reference for the loop's design (data model §1.3, API §1.4, render pipeline §1.5, operator console §1.7, scope boundaries §0.1, build order §2.1). Read iOS-specific items (the `ios/` scaffold, TestFlight/Apple enrollment, SwiftUI screens in FEAT-002/003/007) as void or as their web equivalents.
+>
+> **Update (ADR-025, 2026-07-14):** the mandatory operator render-review gate is retired **entirely** — renders are published to the user immediately on generation success. Read FEAT-006, the operator-QA/release-gate steps (§1.5 step 6, §1.7 job 2), the `pending_review → approved | rejected` review states, `reviewed_by` stamping on renders, the render-review queue, the `render_reviewer` role, and TC-051/TC-052/TC-053 (plus the render approve/reject state-machine preconditions among TC-107..109) as **Retired — ADR-025**. The render lifecycle keeps only generation states (`queued → processing → completed | failed`, per `RenderRequest.status` in 07_data_model.md). The rest of ADR-002 (hosted image API, no custom model) stands; catalog curation (FEAT-015) and manual order forwarding (FEAT-011) are unchanged. The code on `develop` still implements the review flow; this document is the target spec for the next development iteration (see `05_backlog.md` and `decisions/ADR-025_autonomous-render-publication.md`).
 
 **Status: APPROVED 2026-07-13. Build started.** Since approval, the backend §1 foundation scaffold landed on `develop` via **PR #21** (typed route stubs + Prisma schema + CI — no feature logic), the class demo via **PR #22** (`web-demo/`), and the operator console shell + operator session auth via **PR #27** (see the §1.7 as-built note). Per **#31** (post-ADR-024), the render-to-purchase loop now runs end-to-end — matching → render → operator QA → cart → estimates → checkout → forwarding — with the web app as the client over `/api/v1` and a seeded catalog (PR #32/#33), verified on a local Postgres stack; the ADR-002 image-gen and ADR-003 payment vendors remain fake drivers, and nothing is deployed. Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
 
@@ -15,13 +17,13 @@
 **What we build (from the Accepted ADRs — not reopened here):**
 
 - Native **iOS (SwiftUI)** app + one small **managed backend** (REST/JSON over HTTPS) + **managed Postgres** + **object storage** for private photos/renders.
-- **Rendering:** a hosted generative image API (image-to-image / inpainting) composited from operator-curated product images, gated by **mandatory operator QA** before the user sees it. No custom model. (Vendor selection is an implementation task; ADR-002 fixed the *approach*.)
+- **Rendering:** a hosted generative image API (image-to-image / inpainting) composited from operator-curated product images~~, gated by **mandatory operator QA** before the user sees it~~ (**QA gate retired — ADR-025, 2026-07-14**: renders publish immediately on generation success). No custom model. (Vendor selection is an implementation task; ADR-002 fixed the *approach*.)
 - **Payments:** a single **COP** capture via a hosted PCI checkout; **no split settlement** — operator pays suppliers manually; commission 10% recorded manually.
 - **Identity:** minimal contact capture at checkout (email + phone + shipping) — **no accounts, no login** (ADR-022).
 - **Catalog:** operator loads 30–60 curated SKUs by spreadsheet; every SKU carries all required fields (ADR-006/014).
-- **Operator console:** catalog curation, render review/approval, manual order forwarding.
+- **Operator console:** catalog curation and manual order forwarding (~~render review/approval~~ retired — ADR-025).
 
-**Build order (detail in §2):** Foundation → [Supplier catalog · Localization · Room capture · Style & budget] → **AI render engine** → Render review → Tagging → Cart → Estimates → Checkout → Fulfilment.
+**Build order (detail in §2):** Foundation → [Supplier catalog · Localization · Room capture · Style & budget] → **AI render engine** → ~~Render review~~ (retired — ADR-025) → Tagging → Cart → Estimates → Checkout → Fulfilment.
 
 **Effort (rough sizing):**
 
@@ -29,7 +31,7 @@
 |---|---|
 | **XL** | Foundation · FEAT-005 (render engine) |
 | **M** | FEAT-015 catalog · 002 capture · 007 tagging · 008 cart · 010 checkout · 011 fulfilment |
-| **S** | FEAT-004 localization · 003 style/budget · 006 render review · 009 estimates |
+| **S** | FEAT-004 localization · 003 style/budget · ~~006 render review~~ (retired — ADR-025) · 009 estimates |
 
 **Honest schedule reality:** the source doc frames this as "one week." Building a from-scratch iOS app **plus** a backend **plus** a novel real-SKU render pipeline **plus** operator tooling is aggressive for 7 calendar days. §2 gives a realistic milestone view; the render engine (FEAT-005) and the catalog/operator loop are the schedule risk. I flag this rather than pretend the scope fits a literal week.
 
@@ -45,10 +47,10 @@ The parallel planning surfaced **9 edge contradictions** between sections (found
 2. **No manual "add to cart" in the pilot.** The cart is **auto-populated** from the render (FR-031). Manual add (**FR-030**, `POST /cart/items`, TC-056/057) is **deferred** — remove it from the foundation pilot API; the tag detail sheet (FEAT-007) offers **view + remove/swap** (FR-032/033), not "add."
 3. **Project bootstrap.** A `Project` is created on **first input** (session bootstrap tied to the anonymous device token) *before* `POST /photos`. `POST /renders` **finalizes** the project — it does not create it.
 4. **Pilot checkout scope.** Checkout builds **FR-042 (single COP capture) + ADR-022 contact + a recorded 10% commission value** only. FR-041 revalidation, FR-044 PO fan-out, FR-045 retention (and TC-072/073/078/079) are **out of pilot** — strike from foundation §1.4/1.6/1.11.
-5. **Operator read endpoints.** Foundation gains three operator list endpoints: a pending **render-review queue**, a **curation catalog list** that surfaces incomplete/unmapped/not-approved SKUs, and a **paid/un-forwarded order queue**. Without them the console jobs have nothing to drive.
+5. **Operator read endpoints.** Foundation gains ~~three~~ **two** operator list endpoints (~~a pending **render-review queue**~~ retired — ADR-025): a **curation catalog list** that surfaces incomplete/unmapped/not-approved SKUs, and a **paid/un-forwarded order queue**. Without them the console jobs have nothing to drive.
 6. **Localization.** Keep one thin `GET /localization/resolve` (returns the fixed Bogotá zone + deliverable curated suppliers); list it in the foundation API. It satisfies TC-022/024.
 7. **FR-019 eligibility filter.** The *automated* "exclude incomplete entries from rendering" filter is **out of pilot**; the guarantee is met **upstream** by operator-enforced completeness on load (**FR-057 / ADR-014**). Record this in `03_requirements.md`; retarget TC-037 to curation.
-8. **Instrumentation emit points (NFR-006 render-to-purchase trail):** `render_created` → FEAT-005 · `render_approved` → FEAT-006 · `render_viewed` → FEAT-007 · `cart_confirmed` → FEAT-008 · `checkout_started` + `purchase_completed` → FEAT-010.
+8. **Instrumentation emit points (NFR-006 render-to-purchase trail):** `render_created` → FEAT-005 · ~~`render_approved` → FEAT-006~~ (retired — ADR-025) · `render_viewed` → FEAT-007 · `cart_confirmed` → FEAT-008 · `checkout_started` + `purchase_completed` → FEAT-010.
 9. **Estimates test data.** The pilot catalog is ready-made only, so include **1–2 made-to-order SKUs** so **TC-065**'s production-estimate path is actually exercised; otherwise scope TC-065 to **delivery estimate only** for the pilot.
 
 > These 9 items are the concrete decisions I'd want your sign-off on — they shape the data model and API before the first line of code.
@@ -89,7 +91,7 @@ Two runtime components plus three managed dependencies, per ADR-001:
   ┌─────────────────────┐        authenticated web             ┌─────▼───┐     │    (image-to-image / inpaint;
   │  Operator console    │  ───────────────────────────────▶  │ Postgres │     │     ADR-002; vendor = task)
   │  (Spazio staff, web) │                                     │ (managed)│     │
-  │  catalog · QA · POs  │  ◀───────────────────────────────  └──────────┘     ├──▶ Hosted PCI checkout
+  │  catalog · POs       │  ◀───────────────────────────────  └──────────┘     ├──▶ Hosted PCI checkout
   └─────────────────────┘                                     ┌──────────┐     │    (single COP capture;
                                                               │ Object   │◀────┘     ADR-003/004; vendor = task)
                                                               │ storage  │  private photos + renders
@@ -99,12 +101,14 @@ Two runtime components plus three managed dependencies, per ADR-001:
 - **Client ↔ backend transport:** REST/JSON over HTTPS. Concrete base path, versioning and
   auth header are implementation details (ADR-001); `06_api.md` uses `/api/v1` illustratively.
 - **Async rendering (job + poll).** A render takes minutes (~2–5 min soft target, no hard SLA —
-  ADR-013), and an operator must approve it before the user sees it (FR-027). So render creation
-  is **submit → poll**, never a blocking call: `POST /renders` returns `202 Accepted` with a
-  `renderId` and status `queued`; the app polls `GET /renders/{renderId}` until status is
-  `approved` (image + tags returned) or `rejected`/`failed`. A push-notification nudge on approval
-  is a nice-to-have and out of the pilot; polling is the contract. The operator QA step sits inside
-  this async window, so the poll may legitimately stay `pending_review` for a while.
+  ADR-013)~~, and an operator must approve it before the user sees it (FR-027)~~ (**approval gate
+  retired — ADR-025**). So render creation is **submit → poll**, never a blocking call:
+  `POST /renders` returns `202 Accepted` with a `renderId` and status `queued`; the app polls
+  `GET /renders/{renderId}` until status is `completed` (image + tags returned; published
+  immediately on generation success — ADR-025) or `failed`. A push-notification nudge on
+  completion is a nice-to-have and out of the pilot; polling is the contract. ~~The operator QA
+  step sits inside this async window, so the poll may legitimately stay `pending_review` for a
+  while.~~ (Retired — ADR-025.)
 - **No always-on client session state on the server beyond the Project.** With no accounts
   (ADR-022), the app scopes its work with a lightweight anonymous per-install/session token
   (issued on first launch) so a Project's photos, renders and cart stay bound to that device and
@@ -162,7 +166,7 @@ generic (UUID/String/Decimal/Enum/JSON/DateTime) per that document; Postgres is 
 | `Project` | One user session's inputs (style, free-text, budget min/max, dimensions, locality). | `user_id` null (no accounts — ADR-022); `keep_replace_map`/`room_change_description` unused in the pilot. |
 | `RoomPhoto` | The uploaded room photo, private, quality-gated. | `source` = `upload` only (camera capture FR-006 is out); `is_private` default true (NFR-007/BR-33). |
 | `RenderRequest` | One render job; carries cost tracking. | `type` = `generate` only (edits out); `inference_cost` recorded from day one (NFR-005); `counts_against_limit` unused (no metering — ADR-009). |
-| `Render` | The generated image + review state. | `status` ∈ `pending_review`/`approved`/`rejected`; `reviewed_by`/`reviewed_at` set by operator (FR-027); `within_budget` uses 10% tolerance (ADR-008); private by default. |
+| `Render` | The generated image. | `status` keeps generation states only (`completed`/`failed` — ADR-025); ~~`pending_review`/`approved`/`rejected`; `reviewed_by`/`reviewed_at` set by operator (FR-027)~~ **Retired — ADR-025 (2026-07-14)**; `within_budget` uses 10% tolerance (ADR-008); private by default. |
 | `RenderItem` | The tag link render→product (name, price, supplier, listing). | Every row references a real `Product` (FR-016); `is_kept_item` unused (keep-or-replace out). |
 | `Cart` | Auto-populated suggestion from a render; confirmable. | `status` ∈ `draft`/`confirmed`; `confirmed_at` on explicit confirm (FR-035/BR-31). |
 | `CartItem` | One line per shown product; captured price. | `unit_price` revalidated at checkout (FR-041/BR-24). |
@@ -170,7 +174,7 @@ generic (UUID/String/Decimal/Enum/JSON/DateTime) per that document; Postgres is 
 | `PurchaseOrder` | One per supplier, forwarded manually. | `forwarded_by`/`forwarded_at` set by operator (FR-061); status advances manually. |
 | `Payment` | The single COP capture. | Stores only `gateway_reference` + `status` (card data stays in the gateway — NFR-009); `split_settlement` unused (ADR-003). |
 | `DeliveryZone` | One seeded row: Bogotá. | Locality gate (FR-020) resolves against this single zone; `fallback_options` unused (FR-053 out). |
-| `Operator` | Console login accounts for Spazio staff. | `password_hash` used **for the operator surface only** (the pilot's sole authenticated actor); roles: curator / render_reviewer / order_handler. |
+| `Operator` | Console login accounts for Spazio staff. | `password_hash` used **for the operator surface only** (the pilot's sole authenticated actor); roles: curator / ~~render_reviewer~~ / order_handler (**render_reviewer retired — ADR-025**). |
 | `Market` (reduced) | Single seeded config row: Bogotá / COP. | Provides the currency for FR-046; `tax_config`/`payment_methods`/`legal_config` handled manually (ADR-018). May be collapsed into config constants rather than a full table. |
 
 **Minimal Contact (ADR-022).** ADR-022 says: capture email + phone + shipping at checkout, store
@@ -198,7 +202,7 @@ illustrative `/api/v1/...` shapes; final contract shape is an implementation tas
 | Client | `POST /photos` | Upload room photo (multipart) + quality gate; store private | FR-005, FR-024 | TC-011, TC-012, TC-046, TC-047 |
 | Client | `GET /styles` | List the 1–2 predefined styles | FR-007 | TC-015 |
 | Client | `POST /renders` | Submit render job with style/free-text/budget/dimensions → `202` + renderId | FR-007–FR-009, FR-011, FR-014–FR-023 | TC-016–TC-047 (matching/render set) |
-| Client | `GET /renders/{id}` | Poll status; when `approved`, return image + tags | FR-015, FR-027 | TC-028, TC-051, TC-053 |
+| Client | `GET /renders/{id}` | Poll status; when ~~`approved`~~ `completed` (ADR-025), return image + tags | FR-015~~, FR-027~~ | TC-028~~, TC-051, TC-053~~ |
 | Client | `GET /renders/{id}/items` | List tagged products on the render | FR-028 | TC-054 |
 | Client | `GET /renders/{id}/items/{itemId}` | Tap a tag → product detail | FR-029 | TC-055 |
 | Client | `GET /cart` | Auto-populated cart contents | FR-031, FR-032 | TC-058, TC-059 |
@@ -211,7 +215,7 @@ illustrative `/api/v1/...` shapes; final contract shape is an implementation tas
 | Client | `POST /payments/{id}/confirm` | Finalize the single COP capture | FR-042 | TC-074, TC-075 |
 | Client | `GET /orders/{id}` | Order + per-PO status (minimal) | FR-047 | TC-081, TC-082 |
 | Operator | `POST /operator/catalog/products` · `PATCH .../{sku}` | Curate/approve SKUs; store BR-1 attributes; classify; map style | FR-056, FR-057, FR-058, FR-059 | TC-095–TC-103 |
-| Operator | `POST /operator/renders/{id}/approve` · `.../reject` | Release gate before the user sees a render | FR-027 | TC-051, TC-052 |
+| Operator | ~~`POST /operator/renders/{id}/approve` · `.../reject`~~ | **Retired per ADR-025 (2026-07-14)** — the human render gate is removed; renders publish on generation success | ~~FR-027~~ | ~~TC-051, TC-052~~ |
 | Operator | `POST /operator/purchase-orders/{id}/forward` | Mark a PO forwarded to the supplier | FR-061 | TC-106 |
 | Internal | `GET /catalog/products` | Matching input: real, in-stock, complete, deliverable SKUs | FR-014, FR-018, FR-019, FR-020 | TC-026, TC-027, TC-034–TC-039 |
 
@@ -226,7 +230,7 @@ exposed and returns the fixed Bogotá/COP zone + deliverable curated suppliers, 
 
 ### 1.5 Rendering integration (ADR-002)
 
-Pipeline is **match → render → tag → operator QA → release**, honouring the "AI never invents furniture"
+Pipeline is **match → render → tag → publish** (~~operator QA → release~~ **QA step retired — ADR-025**), honouring the "AI never invents furniture"
 invariant. The image-gen approach is fixed (hosted image-to-image / inpainting API compositing
 operator-curated product images; no custom model); **vendor selection is an implementation task** and
 must be picked on Day 1.
@@ -244,15 +248,17 @@ must be picked on Day 1.
    photo, scaled by the approximate dimensions (FR-015, FR-017). The composite is assembled *from actual
    catalog product images*, which is the structural guard for BR-6/BR-14.
 5. **Store render + tags** — persist `Render` (image_ref → private object storage, status
-   `pending_review`) and one `RenderItem` per shown SKU carrying name, price, supplier, listing
+   `completed` — ~~`pending_review`~~ retired, ADR-025) and one `RenderItem` per shown SKU carrying name, price, supplier, listing
    (FR-028). Record `RenderRequest.inference_cost` (NFR-005). A fabrication check validates every
    `RenderItem` resolves to an existing `Product`; a mismatch blocks the render with a `fabricated-item`
    flag (FR-016, TC-031).
-6. **Operator QA gate (mandatory)** — the render is invisible to the user until an operator approves it
+6. ~~**Operator QA gate (mandatory)** — the render is invisible to the user until an operator approves it
    via the console (`/operator/renders/{id}/approve`). Reject → `rejected`, never shown (FR-027, TC-052/53).
-   This human gate is the ADR-002 backstop against a plausible look-alike slipping through.
-7. **Release** — on approval, the cart is auto-populated from `RenderItem`s (FR-031) and
-   `GET /renders/{id}` starts returning the image + tags to the polling app.
+   This human gate is the ADR-002 backstop against a plausible look-alike slipping through.~~
+   **Retired — ADR-025 (2026-07-14):** renders are published immediately on generation success; no
+   operator reviews, approves, or rejects renders.
+7. **Publish** — on generation success (~~on approval~~ — ADR-025), the cart is auto-populated from
+   `RenderItem`s (FR-031) and `GET /renders/{id}` returns the image + tags to the polling app.
 
 ### 1.6 Payments integration (ADR-003 / ADR-004)
 
@@ -273,20 +279,22 @@ must be picked on Day 1.
 ### 1.7 Operator console
 
 A minimal internal, authenticated web tool served by/alongside the one backend service (no second
-backend). Three jobs, all pilot-core:
+backend). Two jobs, both pilot-core (a third — render review — was retired by ADR-025):
 
 1. **Catalog curation** — load the 30–60 SKU spreadsheet (CSV/Excel), validate BR-1 completeness
    (ADR-014), classify ready-made vs made-to-order with required stock/lead-time data, map the pilot
    style tag, approve/reject into the renderable catalog; manual/on-demand refresh (FR-056–059, ADR-006/012;
    TC-095–105). Self-service supplier ingestion (FR-055) is out.
-2. **Render review/approval** — a queue of `pending_review` renders showing the original room photo,
-   the composite, and the matched SKU list; approve or reject (FR-027). This is the release gate in §1.5.
+2. ~~**Render review/approval** — a queue of `pending_review` renders showing the original room photo,
+   the composite, and the matched SKU list; approve or reject (FR-027). This is the release gate in §1.5.~~
+   **Retired — ADR-025 (2026-07-14):** renders publish immediately on generation success; there is no
+   review queue.
 3. **Manual order forwarding** — list paid orders and their POs; forward to the supplier (out-of-band)
    and mark forwarded (FR-061).
 
 **Auth:** the console is the pilot's **only authenticated surface** — operators sign in against the
-`Operator` table (hashed credentials), satisfying the intent of NFR-008 for catalog/render/order
-operations. End users have no accounts (ADR-022).
+`Operator` table (hashed credentials), satisfying the intent of NFR-008 for catalog~~/render~~/order
+operations (render review retired — ADR-025). End users have no accounts (ADR-022).
 
 > **As-built note (PR #27):** the console shell + auth land with this PR. A static three-queue
 > shell (`operator/public`) is served by the backend at `/operator/console` (no second backend);
@@ -302,7 +310,7 @@ operations. End users have no accounts (ADR-022).
 
 - **Object storage for private photos/renders (BR-33 / NFR-007).** `RoomPhoto` and `Render` images live
   in private buckets with no public ACLs; access is via short-lived signed/expiring URLs granted only to
-  the owning session and the reviewing operator. Minimum-data retention per ADR-019.
+  the owning session ~~and the reviewing operator~~ (operator render review retired — ADR-025). Minimum-data retention per ADR-019.
 - **Auth model (summary):** operator console = authenticated login (Operator table). Client app = no user
   login; an anonymous per-install/session token scopes a Project's private assets (NFR-007). Contact is
   captured only at checkout and stored on the order (ADR-022).
@@ -341,7 +349,7 @@ Matches the `main` + `develop` model and branch protection already defined in CL
 - **Instrumentation from day one (NFR-005, NFR-006).** Two metrics must exist on Day 1: **cost per render**
   (`RenderRequest.inference_cost`, recorded on every job) and **render-to-purchase** — the pilot's primary
   go/no-go signal. A minimal event trail links `render_id → order_id → payment captured`
-  (`render_created`, `render_approved`, `render_viewed`, `cart_confirmed`, `checkout_started`,
+  (`render_created`, ~~`render_approved`~~ (retired — ADR-025), `render_viewed`, `cart_confirmed`, `checkout_started`,
   `purchase_completed`), so `render-to-purchase = purchases / renders` is queryable from the first real user.
 - **Privacy defaults (ADR-019).** Photos and renders private by default (NFR-007/BR-33); collect only email
   + phone + shipping, only at checkout; show a short privacy notice + consent at first use, aligned with
@@ -351,11 +359,11 @@ Matches the `main` + `develop` model and branch protection already defined in CL
 
 | Foundation concern | Pilot FRs enabled | Proof (TCs) |
 |---|---|---|
-| Async render job + poll, operator QA gate | FR-015, FR-027 | TC-028, TC-051, TC-052, TC-053 |
+| Async render job + poll~~, operator QA gate~~ (gate retired — ADR-025) | FR-015~~, FR-027~~ | TC-028~~, TC-051, TC-052, TC-053~~ |
 | Real-SKU-only / no fabrication guard | FR-016, FR-018, FR-019 | TC-030, TC-031, TC-034–TC-037 |
 | Private photo/render storage | FR-005, (NFR-007) | TC-011, TC-047 |
 | Single COP checkout + PO scaffolding (§0.1#1) + commission value | FR-042, FR-046 | TC-074, TC-075, TC-080 |
-| Operator console: curation / QA / forwarding | FR-027, FR-056–FR-059, FR-061 | TC-051, TC-052, TC-095–TC-103, TC-106 |
+| Operator console: curation /~~ QA /~~ forwarding (render QA retired — ADR-025) | ~~FR-027,~~ FR-056–FR-059, FR-061 | ~~TC-051, TC-052,~~ TC-095–TC-103, TC-106 |
 | Cart plumbing (auto-populate, review, confirm) | FR-031–FR-033, FR-035 | TC-058–TC-060, TC-063, TC-064 |
 
 ### 1.12 Deferred (not in this foundation, tracked elsewhere)
@@ -421,10 +429,10 @@ This is an interpretation of the coupling, flagged as such; the build order belo
   FEAT-003 style+budget (S)─┼─────────┤
                             ▼         ▼
                     FEAT-005 AI render engine (XL)             ◀── the make-or-break core
-                            │  match → composite → pending_review
+                            │  match → composite → completed (ADR-025)
                             ▼
-                    FEAT-006 operator QA gate (S)              [release gate]
-                            ▼
+                    FEAT-006 operator QA gate (S)              [release gate — RETIRED, ADR-025;
+                            ▼                                    FEAT-005 feeds FEAT-007 directly]
                     FEAT-007 product tags (M)
                             ▼
                     FEAT-008 cart (M) ──► FEAT-009 estimates (S)
@@ -435,7 +443,8 @@ This is an interpretation of the coupling, flagged as such; the build order belo
 ```
 
 **Critical path (what gates the go/no-go):**
-`foundation → FEAT-015 → FEAT-004 → FEAT-005 → FEAT-006 → FEAT-007 → FEAT-008 → FEAT-010 → FEAT-011`.
+`foundation → FEAT-015 → FEAT-004 → FEAT-005 → FEAT-007 → FEAT-008 → FEAT-010 → FEAT-011`
+(~~FEAT-006~~ dropped from the path — retired per ADR-025; FEAT-005 feeds FEAT-007 directly).
 FEAT-005 (XL) dominates the middle; its cost is render-fidelity tuning, not code volume.
 
 **Runs in parallel (off the critical path):**
@@ -461,8 +470,8 @@ and this plan maps to it below. Two things must be said plainly, per the plannin
 
 1. **The seven-day plan is a "thin working loop with heavy manual glue," not "all 11 features
    built to full Definition of Done in seven calendar days."** The source itself makes this fit by
-   putting humans in the loop everywhere automation is missing (operator curates, operator QA's
-   every render, operator forwards every order). Roughly twelve build items — one backend service
+   putting humans in the loop everywhere automation is missing (operator curates, ~~operator QA's
+   every render,~~ operator forwards every order — render QA retired per ADR-025). Roughly twelve build items — one backend service
    (~15 endpoints), ~16 Postgres tables, an iOS app (~8–9 screens), a 3-function operator console,
    and **two** third-party integrations — cannot all reach the §2.4 DoD (every TC automated, all
    `/docs_en` updated, PR-reviewed) in seven days for a small team. What *can* land in seven days
@@ -477,7 +486,7 @@ and this plan maps to it below. Two things must be said plainly, per the plannin
    go/no-go, and both depend on third parties.
 
 **Realistic fallback if the external prereqs are not pre-cleared:** run the same milestone order
-over **~2–3 weeks**, with Week 1 = foundation + catalog + inputs + first operator-approved render
+over **~2–3 weeks**, with Week 1 = foundation + catalog + inputs + first ~~operator-approved~~ published (ADR-025) render
 (gates G0–G3), Week 2 = shoppable render + cart + checkout wired against the gateway sandbox
 (G4–G5 in TestFlight), Week 3 = real-money cutover + pilot cohort (G6). The milestone gates in
 §2.3 are identical in both the 7-day and the 2–3-week versions; only the calendar stretches. Do
@@ -514,16 +523,17 @@ concurrent workstreams. Each gate lists its proof TCs.
 - FEAT-005 (XL): matching service (style/dimension/budget+10%/in-stock/locality), rendering
   orchestration (composite operator-curated images into the room photo), the **real-SKU /
   `fabricated-item` guard**, `RenderRequest.inference_cost` instrumentation, submit→poll iOS client.
-- FEAT-006 (S): `pending_review → approved|rejected` state machine, fail-closed serve guard,
-  operator review queue.
-- FEAT-007 (M): tag overlay + detail sheet on the approved render.
-- FEAT-008 (M): cart auto-populate on approval, review/remove/confirm.
+- ~~FEAT-006 (S): `pending_review → approved|rejected` state machine, fail-closed serve guard,
+  operator review queue.~~ **Retired — ADR-025.**
+- FEAT-007 (M): tag overlay + detail sheet on the ~~approved~~ completed (ADR-025) render.
+- FEAT-008 (M): cart auto-populate on ~~approval~~ render completion (ADR-025), review/remove/confirm.
 - **Gate G2 — Inputs captured:** photo+dimensions+style+budget persist on a `Project`.
   Proof: TC-011/TC-012, TC-020/TC-021, TC-015…TC-018.
-- **Gate G3 — First believable render (operator-approved):** match→render→`pending_review`→operator
-  approves→user sees it. This is the pilot's pivot gate. Proof: TC-026/TC-028/TC-030/TC-031/
-  TC-032/TC-034/TC-040 (FEAT-005), TC-051/TC-052/TC-053 (FEAT-006). Render-fidelity iteration
-  begins here and continues through Day 5.
+- **Gate G3 — First believable render:** match→render→`completed`→user sees it
+  (~~operator-approved: `pending_review`→operator approves~~ — gate retired, ADR-025). This is the
+  pilot's pivot gate. Proof: TC-026/TC-028/TC-030/TC-031/
+  TC-032/TC-034/TC-040 (FEAT-005)~~, TC-051/TC-052/TC-053 (FEAT-006)~~ (retired — ADR-025).
+  Render-fidelity iteration begins here and continues through Day 5.
 
 **Day 4 — Estimates, checkout, fulfillment handoff. → complete G4, wire G5**
 - FEAT-009 (S): per-item production/delivery estimate on each cart line; `missing-estimate`
@@ -552,8 +562,8 @@ concurrent workstreams. Each gate lists its proof TCs.
   render-to-purchase metric.
 
 **Day 7 — Pilot launch + measure. → Gate G6 (go/no-go)**
-- Launch to the pilot cohort; operators monitor the render-review and order-forward queues promptly
-  (no render SLA — ADR-013). Track `render-to-purchase = purchases / renders`.
+- Launch to the pilot cohort; operators monitor the ~~render-review and~~ order-forward ~~queues~~ queue promptly
+  (render review retired — ADR-025; no render SLA — ADR-013). Track `render-to-purchase = purchases / renders`.
 - **Gate G6 — Render-to-purchase:** at least one real pilot user buys ≥1 rendered piece in-session
   (see §2.5).
 
@@ -576,7 +586,7 @@ and CLAUDE.md §8:
 **DoD carve-outs to record now, so "Done" is honest:** three privileged-action **security TCs do
 not yet exist** and must be added before the owning feature closes — non-operator cannot approve a
 catalog entry (FEAT-015, NFR-008), non-operator/wrong-role cannot approve a render (FEAT-006,
-NFR-008), and non-operator cannot forward / a buyer cannot read another buyer's order (FEAT-011,
+NFR-008) *(render-approval item since retired — ADR-025)*, and non-operator cannot forward / a buyer cannot read another buyer's order (FEAT-011,
 NFR-008). For the 7-day loop, "Done" for a feature means its **core loop TCs** pass in TestFlight;
 non-core TC automation and full doc backfill may trail into the following days but block the tagged
 release, not the go/no-go demo.
@@ -585,7 +595,8 @@ release, not the go/no-go demo.
 > handler; role-less staff stay all-purpose), status-machine preconditions (approve/reject only from
 > `pending_review`, forward only from `paid_unforwarded`, approve only BR-1-complete SKUs), and
 > NFR-007 device scoping on every client read/write are implemented and automated as **TC-107..109**
-> (`08_test_plan.md`).
+> (`08_test_plan.md`). *(The render approve/reject preconditions and the `render_reviewer` role among
+> these have since been retired — ADR-025, 2026-07-14; see TC-108 in `08_test_plan.md`.)*
 
 ### 2.5 Pilot go / no-go
 
@@ -602,8 +613,8 @@ render-to-purchase rate = purchases / renders
   quality metrics*; fix the loop — **render fidelity, catalog fit, or trust** — before adding **any**
   deferred FR from the full PRD.
 
-Measurement is wired from Day 1: the event trail `render_created → render_approved → render_viewed →
-cart_confirmed → checkout_started → purchase_completed` (foundation §1.10, NFR-006) makes the ratio
+Measurement is wired from Day 1: the event trail `render_created → render_viewed →
+cart_confirmed → checkout_started → purchase_completed` (~~`render_approved`~~ retired — ADR-025; foundation §1.10, NFR-006) makes the ratio
 queryable from the first real user, and `RenderRequest.inference_cost` (NFR-005) tracks the cost side.
 
 ### 2.6 Consolidated risks & mitigations
@@ -612,12 +623,12 @@ Pulled from the feature sections; ranked by pilot impact.
 
 | # | Risk | Source | Mitigation | Residual |
 |---|---|---|---|---|
-| 1 | **Render fidelity** — 2D hosted inpainting can show a plausible *look-alike*, not the exact SKU (ADR-002 flags the BR-6/BR-14 tension); wrong scale from approximate dimensions erodes trust. **Highest product risk.** | FEAT-005, FEAT-002 | Composite **only** from operator-curated product images; **mandatory operator QA** (FEAT-006) as the human backstop; the real-SKU guarantee is manual/visual in the pilot, not a pixel proof; budget explicit Day-5 fidelity tuning. | Fidelity is judged by a human, not proven technically; bad user photos still waste a cycle (no FR-024 gate — deferred). |
+| 1 | **Render fidelity** — 2D hosted inpainting can show a plausible *look-alike*, not the exact SKU (ADR-002 flags the BR-6/BR-14 tension); wrong scale from approximate dimensions erodes trust. **Highest product risk.** | FEAT-005, FEAT-002 | Composite **only** from operator-curated product images; ~~**mandatory operator QA** (FEAT-006) as the human backstop; the real-SKU guarantee is manual/visual in the pilot, not a pixel proof~~ (**QA backstop retired — ADR-025**; the structural guard is compositing from real catalog images + the `fabricated-item` check); budget explicit Day-5 fidelity tuning. | ~~Fidelity is judged by a human, not proven technically~~ (human backstop retired — ADR-025; fidelity is not proven technically and no human judges it); bad user photos still waste a cycle (no FR-024 gate — deferred). |
 | 2 | **Catalog cold-start** — 30–60 SKUs under a strict *all-BR-1-fields* gate (ADR-014) makes `empty-match` / `budget-exceeded` likely; a style-tag ↔ `Product.style_attributes` drift empties every render. | FEAT-015, FEAT-003, FEAT-005 | Pre-qualify suppliers and curate only SKUs that clear the bar; one shared pilot style-tag list for `Style` seeds and product tags; COP budget hints tuned to the catalog; pilot *raises* the `empty-match`/`budget-exceeded` status and the **operator resolves edge cases by hand** (FR-022/FR-023 fallbacks deferred). | Tiny catalog limits matchable combinations; degenerate locality gate (all-Bogotá) means TC-039 must be verified synthetically. |
 | 3 | **Payments in COP** — vendor unresolved (ADR-003/004 fix approach, not vendor); merchant onboarding + PCI is an external lead-time item; webhook/confirm races; real money + tax/legal exposure (ADR-018). | FEAT-010, foundation §1.6 | Pick the COP+PCI+iOS gateway **Day 1** and start merchant onboarding *before* Day 1; idempotency on `gateway_reference` so webhook+client-confirm can't double-create/charge; card data confined to the hosted flow (NFR-009); confirm merchant-of-record/tax posture before real users. | Onboarding can exceed a week (see §2.2); real funds move in the pilot. |
-| 4 | **Operator throughput** — no render SLA (ADR-013); the operator is the only thing between a queued render and the user, and between a paid order and the supplier; manual stock refresh; a missed forward silently strands a paid order. | FEAT-006, FEAT-011, FEAT-015 | Oldest-first review + un-forwarded-order queues; prompt operator monitoring Days 6–7; refresh stock/price before sessions; `forwarded_at` audit surfaces stalls. | Human bottleneck directly hits render-to-purchase; unautomated, no retry. |
+| 4 | **Operator throughput** — ~~no render SLA (ADR-013); the operator is the only thing between a queued render and the user, and~~ (render review retired — ADR-025) the operator is the only thing between a paid order and the supplier; manual stock refresh; a missed forward silently strands a paid order. | ~~FEAT-006,~~ FEAT-011, FEAT-015 | ~~Oldest-first review +~~ un-forwarded-order ~~queues~~ queue (render queue retired — ADR-025); prompt operator monitoring Days 6–7; refresh stock/price before sessions; `forwarded_at` audit surfaces stalls. | Human bottleneck ~~directly hits render-to-purchase~~ now sits on fulfilment (render queue retired — ADR-025); unautomated, no retry. |
 | 5 | **Inference cost** — per-render cost from a third party must be bounded. | FEAT-005, foundation §1.10 | Record `inference_cost` per render from Day 1 (NFR-005); enforce a global cost threshold (NFR-003) and degrade gracefully via queue/slower rendering (NFR-004). | Cost depends on the (Day-1) vendor pick and prompt iteration. |
-| 6 | **Privacy of assets leaving to a hosted API** — room photos/renders transit to third parties. | FEAT-002/005/006, NFR-007/ADR-019 | Private buckets, short-lived signed URLs scoped to owner-session + reviewing operator; minimum-data retention; consent notice at first capture (Ley 1581). | Full legal review deferred to scale. |
+| 6 | **Privacy of assets leaving to a hosted API** — room photos/renders transit to third parties. | FEAT-002/005~~/006~~ (006 retired — ADR-025), NFR-007/ADR-019 | Private buckets, short-lived signed URLs scoped to owner-session~~ + reviewing operator~~ (review retired — ADR-025); minimum-data retention; consent notice at first capture (Ley 1581). | Full legal review deferred to scale. |
 | 7 | **Login-less access control (NFR-008 partial)** — no accounts (ADR-022); buyer order status rests on an unguessable order reference. | FEAT-011, FEAT-008 | Sufficiently random order token; cart/order scoped to originating session/project; add the missing security TCs (§2.4). | Only partially meets NFR-008 until accounts (FEAT-001) return. |
 | 8 | **DRAFT status enums / scope tensions to sign off** — `PurchaseOrder.status` `forwarded` value and `no-tracking-yet` are DRAFT (FEAT-011); **FR-047 pilot inclusion** disagrees across docs; **FR-041 revalidation / FR-044 PO fan-out** are wired into `POST /checkout` by the foundation but classed out-of-pilot by FEAT-010/test-plan. | FEAT-011, FEAT-010 | Fix the enums and resolve both scope tensions by **human sign-off before build** (CLAUDE.md: AI proposes, human decides); this plan follows the FEAT/test-plan scoping (no FR-041/FR-044 automation in the pilot) and the single-order FR-047 form. | Building the wrong side wastes effort or ships an unsigned-off feature. |
 
@@ -678,7 +689,7 @@ plan (this document, human-approved)
 **Endpoints** (base path/auth per ADR-001; shapes DRAFT):
 
 - `POST /api/v1/operator/catalog/products` · `PATCH /api/v1/operator/catalog/products/{sku}` — create/update a SKU with the full BR-1 attribute set, classification, and style mapping. Runs completeness + classification + mapping validation on save (FR-057, FR-058, FR-059).
-- `POST /api/v1/operator/catalog/products/{sku}/approve` · `.../reject` — curation transition (FR-056), mirroring the operator render approve/reject pattern already in `06_api.md` §5. Approve → renderable/active; reject → `not-approved`, excluded.
+- `POST /api/v1/operator/catalog/products/{sku}/approve` · `.../reject` — curation transition (FR-056), mirroring the operator render approve/reject pattern already in `06_api.md` §5 *(that render pattern is itself retired — ADR-025; this catalog curation transition stands)*. Approve → renderable/active; reject → `not-approved`, excluded.
 - `GET /api/v1/catalog/products` *(internal read, consumed by FEAT-005)* — returns only entries that pass the eligibility predicate (approved **and** `is_complete` **and** style-mapped **and**, for `ready_made`, `stock_quantity > 0`), enforcing BR-2/BR-4/BR-16 downstream. Owned here, read by matching.
 
 **Services (managed backend service, ADR-001):**
@@ -840,7 +851,7 @@ plan (this document, human-approved)
 **Deferred (out of pilot):**
 
 - **FR-006 — In-app camera capture** (pilot ships photo *upload* only; pilot "Included": "Photo upload"). → TC-013, TC-014.
-- **FR-024 — Automated photo-quality validation + retake request** (BR-15). In the pilot there is **no automated quality gate**; input quality is protected by the mandatory operator render review in FEAT-006 (FR-027) instead (per FEAT-002 §4 and the pilot's human-in-the-loop model). → TC-046, TC-047.
+- **FR-024 — Automated photo-quality validation + retake request** (BR-15). In the pilot there is **no automated quality gate**; ~~input quality is protected by the mandatory operator render review in FEAT-006 (FR-027) instead (per FEAT-002 §4 and the pilot's human-in-the-loop model)~~ **Superseded by ADR-025 (2026-07-14):** the operator render review is retired; FR-024 remains deferred and there is no photo-quality gate in the target spec (no replacement automation is specified). → TC-046, TC-047.
 
 ### iOS work (SwiftUI, ADR-001)
 
@@ -858,12 +869,12 @@ plan (this document, human-approved)
 - **Dimension persistence** — persist FR-011 dimensions onto **`Project.room_dimensions`** (JSON `{width_cm, length_cm, height_cm}`). Proposed surface: `PATCH /api/v1/projects/{id}` (project-inputs update, co-owned with FEAT-003 style/budget and FEAT-004 locality). The API draft (§2/§5) alternatively carries dimensions as fields on the render request; either is acceptable, but the FR-011 acceptance requires them **persisted on the Project** with a `dimension-validation` error path, so validation (reject non-positive / non-numeric, persist nothing → TC-021; persist valid → TC-020) lives on whichever endpoint writes the `Project`.
 - **Services / components**
   - A **RoomCapture / Photo service** in the backend service: multipart handling, format/size validation, object-storage put, `RoomPhoto` persistence, private-access URL issuance.
-  - **Access control**: `RoomPhoto` readable only by the owning session and authorized operators (the operator needs it for the FEAT-006 render review).
+  - **Access control**: `RoomPhoto` readable only by the owning session ~~and authorized operators (the operator needs it for the FEAT-006 render review)~~ (operator read grant retired with the render review — ADR-025; NFR-007 owner-session scoping stands).
 - **Data entities touched:** `RoomPhoto` (created), `Project` (`room_dimensions` written; `currency`/other inputs written by FEAT-003/004). Both are specified in `07_data_model.md`.
 
 ### Operator work
 
-None directly in FEAT-002 for the pilot. The operator's involvement is **indirect**: because the automated photo-quality gate (FR-024) is deferred, the operator render review in **FEAT-006 (FR-027)** is the safeguard that catches unusable input photos before the render reaches the user. This requires operator read access to the private `RoomPhoto` (see access control above).
+None directly in FEAT-002 for the pilot. ~~The operator's involvement is **indirect**: because the automated photo-quality gate (FR-024) is deferred, the operator render review in **FEAT-006 (FR-027)** is the safeguard that catches unusable input photos before the render reaches the user. This requires operator read access to the private `RoomPhoto` (see access control above).~~ **Superseded by ADR-025 (2026-07-14):** the operator render review is retired; there is no photo-quality safeguard in the target spec (FR-024 stays deferred, and no replacement automation is specified). The operator read grant on `RoomPhoto` goes with it.
 
 ### Approach / key steps (ordered)
 
@@ -871,7 +882,7 @@ None directly in FEAT-002 for the pilot. The operator's involvement is **indirec
 2. Fix the DRAFT input limits as an implementation task: allowed image formats, max file size, and the dimension bounds/units (cm) used for validation.
 3. Backend: implement `POST /api/v1/photos` — validation → object-storage put → `RoomPhoto` insert (private) → return `photoId` + private flag. Cover TC-011 and TC-012.
 4. Backend: implement dimension persistence on `Project` with positive/numeric validation. Cover TC-020 and TC-021.
-5. Backend: enforce private-by-default access on stored photos (owner session + authorized operator).
+5. Backend: enforce private-by-default access on stored photos (owner session~~ + authorized operator~~ — operator render-review grant retired, ADR-025).
 6. iOS: build `RoomPhotoInputView` (PHPicker upload) wired to `POST /photos`, with progress and rejection handling.
 7. iOS: build `RoomDimensionsInputView` wired to the project-inputs write, with inline validation.
 8. Carry `photoId` + dimensions into the flow state for hand-off to the render request (FEAT-005).
@@ -890,7 +901,7 @@ Deferred (do not build in the pilot): TC-013 / TC-014 (FR-006 camera), TC-046 / 
 
 - **Foundation (ADR-001):** the iOS app shell (SwiftUI), the managed backend service, Postgres (schema for `RoomPhoto` and `Project`), and object storage for photos — plus the `Project` session bootstrap.
 - **Shared `Project` session:** co-written with **FEAT-003** (style/budget) and **FEAT-004** (locality); FEAT-002 needs the `Project` to exist to attach the photo and dimensions.
-- **Downstream consumer (not a dependency):** **FEAT-005** (AI rendering) reads the uploaded photo and dimensions; **FEAT-006** (operator review) reads the private photo.
+- **Downstream consumer (not a dependency):** **FEAT-005** (AI rendering) reads the uploaded photo and dimensions~~; **FEAT-006** (operator review) reads the private photo~~ (retired — ADR-025).
 
 ### Effort
 
@@ -898,9 +909,9 @@ Deferred (do not build in the pilot): TC-013 / TC-014 (FR-006 camera), TC-046 / 
 
 ### Risks
 
-- **No automated quality gate in the pilot (accepted trade-off).** Poor user photos are the PRD's top render-fidelity risk (PRD §10); with FR-024 deferred, the *only* backstop is the operator review in FEAT-006. A bad photo can waste a render cycle and hurt the render-to-purchase signal.
-- **Privacy / access control on object storage.** Photos must be private by default (NFR-007, BR-33, ADR-019); a misconfigured or non-expiring storage URL would leak a user's room photo. Needs deliberate signed/expiring-URL handling and operator-only read scope.
-- **Approximate dimensions are unverified free input.** Validation only checks positivity/numeric-ness, not realism; wildly wrong dimensions silently degrade scaling downstream (FR-017/FEAT-005). No pilot mechanism catches this beyond operator review.
+- **No automated quality gate in the pilot (accepted trade-off).** Poor user photos are the PRD's top render-fidelity risk (PRD §10); ~~with FR-024 deferred, the *only* backstop is the operator review in FEAT-006~~ with FR-024 deferred and the operator review retired (ADR-025), there is **no** backstop. A bad photo can waste a render cycle and hurt the render-to-purchase signal.
+- **Privacy / access control on object storage.** Photos must be private by default (NFR-007, BR-33, ADR-019); a misconfigured or non-expiring storage URL would leak a user's room photo. Needs deliberate signed/expiring-URL handling scoped to the owning session (~~operator-only read scope~~ — the operator render-review grant is retired, ADR-025).
+- **Approximate dimensions are unverified free input.** Validation only checks positivity/numeric-ness, not realism; wildly wrong dimensions silently degrade scaling downstream (FR-017/FEAT-005). ~~No pilot mechanism catches this beyond operator review.~~ No mechanism catches this (the operator review that was the last backstop is retired — ADR-025).
 - **`Project` lifecycle ambiguity.** The creation point of the `Project` (before photo/dimension writes) is shared across FEAT-002/003/004 and must be nailed down in the foundation, or uploads have no valid `project_id` target.
 - **Undecided input limits.** Allowed formats, max size, and dimension bounds are DRAFT in the requirements/API; they must be fixed before the validation tests (TC-012, TC-021) are meaningful.
 - **iOS media handling.** HEIC/large-image handling, EXIF orientation, and photo-library permission states need explicit treatment so uploaded images render correctly and permission denial degrades gracefully.
@@ -988,7 +999,7 @@ All three controls live in one step of the design-input flow and write into a sh
 
 ## FEAT-005 — AI rendering engine
 
-**Goal:** Match only real, in-stock catalog SKUs to the user's style, dimensions, budget, and locality, then composite them into the user's own room photo as a believable render — leaving it in `pending_review` so the operator (FEAT-006) must approve before it is ever shown.
+**Goal:** Match only real, in-stock catalog SKUs to the user's style, dimensions, budget, and locality, then composite them into the user's own room photo as a believable render — published to the user immediately on generation success (~~leaving it in `pending_review` so the operator (FEAT-006) must approve before it is ever shown~~ retired — ADR-025).
 
 **Pilot FRs covered:** FR-014 (match real, available SKUs), FR-015 (generate composite render), FR-016 (real-SKU-only, never fabricate), FR-017 (scale to room dimensions), FR-018 (in-stock only), FR-021 (within budget + 10% tolerance, ADR-008).
 
@@ -1001,48 +1012,48 @@ All three controls live in one step of the design-input flow and write into a sh
 ### iOS work (screens / components)
 
 - **`RenderRequestService` (client):** submits `POST /renders` once the input set is complete (photo + dimensions + style + budget), then polls `GET /renders/{renderId}`. Rendering is async submit→poll (ADR-013: ~2–5 min soft, no SLA), so no blocking call.
-- **`RenderProgressView`:** indeterminate "preparing your render" wait state. Because operator QA is mandatory (FEAT-006), the wait spans generation *and* review; copy must not imply an SLA or read as a failure during the wait.
+- **`RenderProgressView`:** indeterminate "preparing your render" wait state. The wait spans generation only (~~Because operator QA is mandatory (FEAT-006), the wait spans generation *and* review~~ review retired — ADR-025); copy must not imply an SLA or read as a failure during the wait.
 - **Error / non-happy states** (surfaced from the poll response, no image shown): `render-failed` (TC-029), `missing-dimensions` block (TC-033), `empty-match` (TC-027), `budget-exceeded` (TC-041). These render as ret/adjust-inputs prompts.
-- Note: the *approved render image + tappable tags* is FEAT-007, and the *release gate* is FEAT-006. FEAT-005's client surface stops at submit, poll, wait, and error states — it never displays a `pending_review` render.
+- Note: the *completed render image + tappable tags* is FEAT-007~~, and the *release gate* is FEAT-006~~ (gate retired — ADR-025). FEAT-005's client surface stops at submit, poll, wait, and error states — it never displays a render before `completed` (~~`pending_review`~~ retired state — ADR-025).
 
 ### Backend work
 
 **Endpoints (paths illustrative per 06_api.md; ADR-001 stack):**
 - `POST /api/v1/renders` — create a `RenderRequest` (`type=generate`), kick off match→generate, return `202` with `renderId` + `status=queued`.
-- `GET /api/v1/renders/{renderId}` — poll status; FEAT-005 owns the generation portion of the status machine (`queued → rendering → pending_review | failed`); `approved | rejected` transitions are FEAT-006.
+- `GET /api/v1/renders/{renderId}` — poll status; FEAT-005 owns the whole status machine (`queued → processing → completed | failed`); ~~the generation portion ended at `pending_review`, with `approved | rejected` transitions in FEAT-006~~ **retired — ADR-025**.
 - `GET /api/v1/catalog/products` *(internal, read)* — matching input; owned by FEAT-015, consumed here.
 
 **Services:**
 - **Product matching service** (module *Product matching*): selects candidate SKUs constrained by style (via `Style`/`StyleTaxonomy`, ADR-005), room-dimension fit, budget (`budget_min/max` + 10% tolerance, ADR-008), availability (`product_type=ready_made` ⇒ `stock_quantity > 0`, FR-018), and locality/delivery (from FEAT-004, FR-020 gate). Returns a matched SKU set, or `empty-match` (FR-014 error path), or `budget-exceeded` (FR-021 error path).
 - **Rendering pipeline / orchestration service** (module *Rendering pipeline*): takes the matched SKUs + accepted `RoomPhoto` + `room_dimensions`, calls the **hosted generative image API (image-to-image / inpainting, ADR-002)** compositing the operator-curated product images into the photo at realistic scale (FR-015, FR-017), stores the result in object storage (private), and writes `Render` + `RenderItem` links.
-- **Real-SKU guarantee / validation** (FR-016, the central invariant): every `RenderItem` must reference an existing, purchasable `Product`; a `fabricated-item` check blocks the render from reaching review if any shown item has no backing SKU (TC-031). In the 2D-inpainting pilot this binding is *the matched set + RenderItem records + operator visual QA*, not a pixel-level proof.
+- **Real-SKU guarantee / validation** (FR-016, the central invariant): every `RenderItem` must reference an existing, purchasable `Product`; a `fabricated-item` check blocks the render from ~~reaching review~~ publishing (ADR-025) if any shown item has no backing SKU (TC-031). In the 2D-inpainting pilot this binding is *the matched set + RenderItem records*~~ + operator visual QA~~ (QA retired — ADR-025), not a pixel-level proof.
 - **Cost & conversion instrumentation:** record `RenderRequest.inference_cost` per render (NFR-005), seed the render-to-purchase counter (NFR-006), enforce a global inference-cost threshold (NFR-003) and degrade gracefully via queueing/slower rendering when exceeded (NFR-004).
 
 **Data entities touched (07_data_model.md):**
-- *Writes:* `RenderRequest` (`type`, `status`, `inference_cost`), `Render` (`image_ref`, `status=pending_review`, `total_product_cost`, `within_budget`, `is_private=true`), `RenderItem` (`product_id`, `display_name`, `captured_price`, `supplier_id`, `rendered_scale`, `tag_position`).
+- *Writes:* `RenderRequest` (`type`, `status`, `inference_cost`), `Render` (`image_ref`, `status=completed` — ~~`pending_review`~~ retired, ADR-025, `total_product_cost`, `within_budget`, `is_private=true`), `RenderItem` (`product_id`, `display_name`, `captured_price`, `supplier_id`, `rendered_scale`, `tag_position`).
 - *Reads:* `Product` (SKU, dimensions, price, `product_type`, `stock_quantity`, `style_attributes`, photos), `Style`/`StyleTaxonomy`, `Project` (`style_id`, `style_description`, `budget_min/max`, `room_dimensions`), `RoomPhoto` (accepted image), `DeliveryZone`/`Market` (locality via FEAT-004).
 
 ### Operator work
 
-No operator UI is built *inside* FEAT-005. FEAT-005 sets `Render.status = pending_review` and hands off to the mandatory operator QA in **FEAT-006** (FR-027) — nothing is displayed to the user before approval. Two operator responsibilities that FEAT-005 *depends on* live elsewhere: catalog completeness/curation and the operator-curated product images used as the compositing source (FEAT-015, ADR-002/ADR-014). Prompt/pipeline set-up and render-quality tuning are builder tasks (pilot Day 1 and Day 5), not an operator screen.
+No operator UI is built *inside* FEAT-005. ~~FEAT-005 sets `Render.status = pending_review` and hands off to the mandatory operator QA in **FEAT-006** (FR-027) — nothing is displayed to the user before approval.~~ **Superseded by ADR-025 (2026-07-14):** FEAT-005 sets `Render.status = completed` and the render publishes to the requesting user immediately. Two operator responsibilities that FEAT-005 *depends on* live elsewhere: catalog completeness/curation and the operator-curated product images used as the compositing source (FEAT-015, ADR-002/ADR-014). Prompt/pipeline set-up and render-quality tuning are builder tasks (pilot Day 1 and Day 5), not an operator screen.
 
 ### Approach / key steps (ordered)
 
-1. Persist `RenderRequest` / `Render` / `RenderItem` and define the generation status machine (`queued → rendering → pending_review | failed`).
+1. Persist `RenderRequest` / `Render` / `RenderItem` and define the generation status machine (`queued → processing → completed | failed`; ~~`pending_review`~~ retired — ADR-025).
 2. Build the matching service: query active, complete, in-stock, locally-deliverable products; filter by style taxonomy; keep only those that fit the room dimensions; select a combination whose total is within `budget_max` + 10% (ADR-008). Emit `empty-match` / `budget-exceeded` when no valid set exists.
-3. **Implementation task — vendor selection:** ADR-002 fixes the *capability* (hosted generative image API with mandatory operator QA) but not the product; pick the hosted image-to-image/inpainting provider and stand up the pipeline + prompt (pilot Day 1).
+3. **Implementation task — vendor selection:** ADR-002 fixes the *capability* (hosted generative image API~~ with mandatory operator QA~~ — QA clause superseded by ADR-025) but not the product; pick the hosted image-to-image/inpainting provider and stand up the pipeline + prompt (pilot Day 1).
 4. Build the rendering orchestration: assemble prompt + room photo + matched product images, call the hosted API, scale placement using room + product dimensions (FR-017), retrieve the composite, store privately in object storage.
 5. Bind every shown item to its real `Product` via `RenderItem`; run the `fabricated-item` validation and block on failure (FR-016).
 6. Compute `total_product_cost`, set `within_budget` against budget + 10%; raise `budget-exceeded` when the only combination exceeds tolerance (FR-021).
 7. Guardrails: block generation with `missing-dimensions` when `room_dimensions` is absent (FR-017/TC-033); record `render-failed` and show nothing to the user on generation failure (FR-015/TC-029).
-8. Set `status = pending_review` and hand to FEAT-006; wire `RenderItem` data for FEAT-007 tagging.
+8. Set `status = completed` and publish immediately (~~`pending_review` hand-off to FEAT-006~~ retired — ADR-025); wire `RenderItem` data for FEAT-007 tagging.
 9. Instrument inference cost, cost threshold, graceful degradation, and the render-to-purchase seed (NFR-003/004/005/006).
 10. iOS: submit render, poll, wait state, and error states.
 
 ### Tests to satisfy (pilot FRs)
 
 - FR-014 → **TC-026** (match set selected), **TC-027** (`empty-match`).
-- FR-015 → **TC-028** (composite produced, `pending-review`), **TC-029** (`render-failed`, nothing shown).
+- FR-015 → **TC-028** (composite produced, `completed` — ~~`pending-review`~~ ADR-025), **TC-029** (`render-failed`, nothing shown).
 - FR-016 → **TC-030** (every item resolves to a real SKU), **TC-031** (`fabricated-item` blocks). *Critical.*
 - FR-017 → **TC-032** (scaled to room dimensions), **TC-033** (`missing-dimensions` block).
 - FR-018 → **TC-034** (in-stock only rendered), **TC-035** (`out-of-stock` exclusion).
@@ -1057,22 +1068,30 @@ No operator UI is built *inside* FEAT-005. FEAT-005 sets `Render.status = pendin
 - **FEAT-003** — style + budget inputs (`style_id`/`style_description`, `budget_min/max`).
 - **FEAT-004** — resolved locality / delivery zone (FR-020 gate; single fixed Bogotá zone in the pilot, ADR-015).
 - **FEAT-015** — curated `Product` catalog: complete per ADR-014, in-stock flags, style-taxonomy mapping, and the operator-curated product images used for compositing.
-- **Feeds:** FEAT-006 (operator review of the `pending_review` render — mandatory release gate) and FEAT-007 (product tagging from `RenderItem`).
+- **Feeds:** ~~FEAT-006 (operator review of the `pending_review` render — mandatory release gate)~~ (retired — ADR-025) and FEAT-007 (product tagging from `RenderItem`), fed directly on completion.
 
 ### Effort & risks
 
 **Effort: XL.** Two logical modules (matching + rendering), an external vendor integration with prompt iteration, the real-SKU binding invariant, cost instrumentation, and iOS polling. Most of the effort and risk is *render-fidelity tuning* (pilot Day 5), not raw code volume — this is the make-or-break core of the pilot.
 
 **Key risks:**
-- **Render fidelity (PRD §10, the highest product risk).** A 2D hosted inpainting API can show a plausible look-alike rather than the *exact* SKU — ADR-002 explicitly flags this tension with BR-6/BR-14. Mitigation: composite from operator-curated product images + mandatory operator QA (FEAT-006); the real-SKU guarantee is manual/visual in the pilot, not a technical proof.
+- **Render fidelity (PRD §10, the highest product risk).** A 2D hosted inpainting API can show a plausible look-alike rather than the *exact* SKU — ADR-002 explicitly flags this tension with BR-6/BR-14. Mitigation: composite from operator-curated product images~~ + mandatory operator QA (FEAT-006); the real-SKU guarantee is manual/visual in the pilot, not a technical proof~~ (QA backstop retired — ADR-025; the structural guard is the real-catalog compositing + the `fabricated-item` check, and the guarantee is not technically proven).
 - **Scale realism from approximate dimensions (FR-017).** A 2D pipeline has weak 3D scale control; wrong-sized furniture erodes trust and raises returns.
 - **Vendor open (ADR-002).** Provider/product not fixed; per-render cost, latency, and availability depend on a third party and must be bounded by the global cost threshold (NFR-003/005).
 - **Tiny catalog (30–60 SKUs).** `empty-match`/`budget-exceeded` are likely; the pilot returns the status but the FR-022/FR-023 fallbacks are deferred, so the operator resolves edge cases manually.
-- **Latency + no SLA.** ~2–5 min generation plus operator-review time; the wait UX must not read as a failure.
+- **Latency + no SLA.** ~2–5 min generation~~ plus operator-review time~~ (review retired — ADR-025); the wait UX must not read as a failure.
 - **Privacy.** Room photos and renders leave to a hosted API; must stay private-by-default and access-controlled (NFR-007, ADR-019) even in transit to the third party.
 
 
 ## FEAT-006 — Render review & moderation
+
+> **Retired — ADR-025 (2026-07-14).** The human render-approval gate is removed entirely: no operator
+> reviews, approves, or rejects renders; renders are published immediately on generation success.
+> FR-027 is superseded, the `render_reviewer` role is retired, and TC-051/TC-052/TC-053 (and the
+> render approve/reject state-machine preconditions among TC-107..109) are retired with it. The
+> client's waiting-for-approval hold state (`RenderWaitingView` through `pending_review`) is likewise
+> removed. This section is preserved for history and is no longer part of the target build plan
+> (see `decisions/ADR-025_autonomous-render-publication.md`).
 
 **Goal:** Enforce the mandatory human-in-the-loop gate — no render reaches the user until an authorized operator approves it (FR-027, ADR-002).
 
@@ -1172,7 +1191,7 @@ To be added (new `TC-` against FR-027, not yet in the plan — see step 6):
 
 ## FEAT-007 — Product tagging & interaction
 
-**Goal:** Turn an operator-approved render into a *shoppable image* — every product shown carries a real, tappable tag (name / price / supplier / listing link), and tapping it opens that product's details, bridging "seeing" to "buying."
+**Goal:** Turn a completed (~~operator-approved~~ — ADR-025) render into a *shoppable image* — every product shown carries a real, tappable tag (name / price / supplier / listing link), and tapping it opens that product's details, bridging "seeing" to "buying."
 
 **Pilot FRs covered:**
 - **FR-028** — Tag every rendered product with its details (pilot subset: name, price, supplier, listing link). *(actor: System)*
@@ -1182,23 +1201,23 @@ Cross-cutting NFRs surfaced here: **NFR-015** (price/delivery visible before che
 
 **Deferred (out of pilot):**
 - **Warranty field on the tag** — the tag field list in FR-028/TC-054 includes *warranty terms*, but warranty display is out of pilot (ADR-020; FR-038 in FEAT-009). The **pilot tag subset carries name, price, supplier, and listing link**; the warranty portion of TC-054 is validated only when FR-038 ships. Schema keeps the `warranty_terms` column but the pilot iOS tag UI does not render it.
-- **Add / remove from the tagged render** — cart actions live in **FEAT-008**, not here. FEAT-007 owns the tag overlay + detail view only. Per **§0.1#2**, manual add-to-cart (FR-030, `POST /cart/items`) is **deferred out of the pilot**: the cart is auto-populated on render approval (FR-031/FEAT-008), and the pilot detail sheet shows product details without an "Add to cart" affordance (remove/swap happen in the cart via FEAT-008).
+- **Add / remove from the tagged render** — cart actions live in **FEAT-008**, not here. FEAT-007 owns the tag overlay + detail view only. Per **§0.1#2**, manual add-to-cart (FR-030, `POST /cart/items`) is **deferred out of the pilot**: the cart is auto-populated on render ~~approval~~ completion (ADR-025) (FR-031/FEAT-008), and the pilot detail sheet shows product details without an "Add to cart" affordance (remove/swap happen in the cart via FEAT-008).
 - **`is_kept_item` / kept-vs-purchased visual distinction** (NFR-014) — depends on keep-or-replace (FEAT-012), out of pilot; every tagged item in the pilot is a purchasable catalog SKU.
 
 ### iOS work (SwiftUI, ADR-001)
-- **`TaggedRenderView`** — the approved render image with an overlaid, interactive **tag hotspot layer**. Renders one tappable marker per `RenderItem` at its `tag_position`, mapping normalized/image-space coordinates onto the displayed (scaled/aspect-fit) image frame so hotspots track the image on resize and rotation. Includes accessible hit targets (min ~44pt) and a visible label chip (name + price in COP).
+- **`TaggedRenderView`** — the completed (~~approved~~ — ADR-025) render image with an overlaid, interactive **tag hotspot layer**. Renders one tappable marker per `RenderItem` at its `tag_position`, mapping normalized/image-space coordinates onto the displayed (scaled/aspect-fit) image frame so hotspots track the image on resize and rotation. Includes accessible hit targets (min ~44pt) and a visible label chip (name + price in COP).
 - **`ProductTagDetailSheet`** — presented on tap; shows **name, price (COP), supplier, listing link** (opens externally), and the product photo. Renders gracefully when an optional field (e.g., `listing_url`) is missing/omitted (covers the TC-055 missing-optional-data case). No "Add to cart" button in the pilot (manual add is deferred per §0.1#2; the cart is auto-populated — FR-031).
-- **`RenderTagsViewModel`** — fetches tag data for the approved render, holds the tag list, and drives the detail lookup. Reuses the app's networking layer and COP currency formatter from FEAT-004.
-- Guard: the tagged view is only reachable for a render whose status is `approved` (gate owned by FEAT-006); no tag layer is shown for pending/rejected renders.
+- **`RenderTagsViewModel`** — fetches tag data for the completed (~~approved~~ — ADR-025) render, holds the tag list, and drives the detail lookup. Reuses the app's networking layer and COP currency formatter from FEAT-004.
+- Guard: the tagged view is only reachable for a render whose status is `completed` (~~`approved`, gate owned by FEAT-006~~ retired — ADR-025); no tag layer is shown for in-progress/failed renders.
 
 ### Backend work (managed backend service + managed Postgres, ADR-001)
 Endpoints (already specified in `06_api.md §6`):
-- **`GET /api/v1/renders/{renderId}/items`** — list the products shown in an approved render, each with tag data. Returns, per item: `render_item_id`, `product_id`, `tag_position`, `display_name`, `captured_price`, `supplier` (name), `listing_url` (`warranty_terms` present in payload but not surfaced in pilot UI). → FR-028.
+- **`GET /api/v1/renders/{renderId}/items`** — list the products shown in a completed (~~approved~~ — ADR-025) render, each with tag data. Returns, per item: `render_item_id`, `product_id`, `tag_position`, `display_name`, `captured_price`, `supplier` (name), `listing_url` (`warranty_terms` present in payload but not surfaced in pilot UI). → FR-028.
 - **`GET /api/v1/renders/{renderId}/items/{itemId}`** — details for one tapped tag, returning current catalog data joined to the captured tag values. → FR-029.
 
 Service / logic:
 - **Tag-projection service** — on the read path, assemble each tag from the stored **`RenderItem`** row joined to **`Product`** and **`Supplier`** catalog data. `display_name` and `captured_price` come from the `RenderItem` (captured at render time, from FEAT-005); `supplier` name and `listing_url` from the joined catalog. No tag data is *generated* here — `RenderItem` rows are produced during rendering (FEAT-005); FEAT-007 is the read/serve + interaction layer.
-- **Authorization gate** — serve items only for renders the requesting contact/session owns and only when status is `approved` (NFR-007, FR-027). Displayed data is read-only.
+- **Authorization gate** — serve items only for renders the requesting contact/session owns and only when status is `completed` (NFR-007~~, FR-027~~ — review gate retired, ADR-025). Displayed data is read-only.
 
 Data entities touched (read-only for this feature; `07_data_model.md`):
 - **`RenderItem`** — `render_id`, `product_id`, `tag_position` (JSON), `display_name`, `captured_price`, `supplier_id`, `warranty_terms`, `listing_url`. Source of truth for the tag.
@@ -1206,27 +1225,27 @@ Data entities touched (read-only for this feature; `07_data_model.md`):
 
 ### Operator work
 No dedicated operator step in FEAT-007. Operator involvement is upstream and reused:
-- **FEAT-006 render review** — during render QA the operator confirms each visible product maps to the correct real SKU, which is what makes the tags trustworthy (BR-6/BR-14).
+- ~~**FEAT-006 render review** — during render QA the operator confirms each visible product maps to the correct real SKU, which is what makes the tags trustworthy (BR-6/BR-14).~~ **Retired — ADR-025:** tag trustworthiness rests on FEAT-015 curation and the FR-016 `fabricated-item` guard.
 - **FEAT-015 catalog curation** — the operator loads the SKUs so `display_name`, `price`, `supplier`, and `listing_url` are present and correct (BR-1). If `listing_url` is intentionally omitted for a SKU, the tag/detail UI must still render (TC-055 missing-optional case).
 
 ### Approach / key steps (ordered)
 1. **Confirm the read contract** for `GET /renders/{renderId}/items` and `.../items/{itemId}` against `RenderItem`/`Product`/`Supplier` — freeze the pilot field set (name, price, supplier, listing link; warranty carried but not surfaced).
-2. **Backend: tag-projection service + two GET endpoints**, with the `approved` + ownership authorization gate (NFR-007). Return `tag_position` for hotspot placement.
-3. **iOS: `RenderTagsViewModel`** to fetch the item list once the render is approved (consumes FEAT-006's approval state).
+2. **Backend: tag-projection service + two GET endpoints**, with the `completed` (~~`approved`~~ — ADR-025) + ownership authorization gate (NFR-007). Return `tag_position` for hotspot placement.
+3. **iOS: `RenderTagsViewModel`** to fetch the item list once the render is completed (~~consumes FEAT-006's approval state~~ retired — ADR-025).
 4. **iOS: `TaggedRenderView`** overlay — map `tag_position` onto the displayed image frame; render tappable, accessible hotspots with name+COP price chips.
 5. **iOS: `ProductTagDetailSheet`** — populate from the item detail lookup; handle a missing optional field (e.g., no `listing_url`) without breaking layout. (No add-to-cart affordance in the pilot — §0.1#2.)
 6. **Currency + formatting** — reuse FEAT-004's COP formatter for all prices.
 7. **Test** TC-054 (tag generation/serving, pilot subset) and TC-055 (tap-to-view happy path + missing-optional case); verify the private-render/unauthorized-viewer guard (NFR-007) and that price is visible pre-checkout (NFR-015).
 
 ### Tests to satisfy (`08_test_plan.md`)
-- **TC-054** (FR-028) — Generate/serve tags for an approved render: each rendered product carries name, price, supplier, and listing link. *(Warranty part of TC-054 deferred to FR-038 per ADR-020; validated only when FEAT-009 ships.)*
-- **TC-055** (FR-029) — Tap a product tag on an approved render: the product's details are displayed. Covers the happy path **and** a tag with missing/omitted optional data (e.g., no listing link).
+- **TC-054** (FR-028) — Generate/serve tags for a completed (~~approved~~ — ADR-025) render: each rendered product carries name, price, supplier, and listing link. *(Warranty part of TC-054 deferred to FR-038 per ADR-020; validated only when FEAT-009 ships.)*
+- **TC-055** (FR-029) — Tap a product tag on a completed (~~approved~~ — ADR-025) render: the product's details are displayed. Covers the happy path **and** a tag with missing/omitted optional data (e.g., no listing link).
 - Cross-cutting (referenced, not FEAT-007-owned TC rows): NFR-015 (price visible before checkout), NFR-007 (tag data served only to authorized viewers).
 
 ### Depends on
 - **Foundation** — iOS app shell, backend service, managed Postgres, object storage, networking/auth-context layer (ADR-001).
 - **FEAT-005** (AI rendering engine) — produces the `RenderItem` rows (incl. `tag_position`, `display_name`, `captured_price`) that this feature serves.
-- **FEAT-006** (Render review & moderation) — supplies the `approved` gate; tags are only served/shown for approved renders (FR-027).
+- ~~**FEAT-006** (Render review & moderation) — supplies the `approved` gate; tags are only served/shown for approved renders (FR-027).~~ **Retired — ADR-025:** tags are served for `completed` renders owned by the requesting session.
 - **FEAT-015** (Supplier catalog management) — source of `Product`/`Supplier` fields shown in tags/details.
 - **FEAT-004** (currency/formatting) — COP price display.
 - Downstream (not a build dependency): **FEAT-008** (cart) — consumes the same `RenderItem` data to auto-populate the cart (FR-031); the pilot detail sheet has no add affordance (§0.1#2).
@@ -1238,12 +1257,12 @@ No dedicated operator step in FEAT-007. Operator involvement is upstream and reu
 - **Tag positioning fidelity** — if `tag_position` from FEAT-005 is inaccurate or in an unclear coordinate space, hotspots drift off their products. Mitigate by fixing a normalized coordinate convention with FEAT-005 and testing on multiple device sizes/orientations.
 - **Warranty scope tension (FR-028 vs ADR-020)** — TC-054 lists warranty; pilot must ship the name/price/supplier/link subset only. Risk of accidentally surfacing an unpopulated/legally-unreviewed warranty field. Mitigate by explicitly excluding warranty from the pilot tag UI while keeping the column.
 - **Stale captured vs. current price** — the detail lookup joins live catalog data; if catalog price changed after render capture, the tag chip (`captured_price`) and detail could differ. Decide display rule (pilot: show captured price for consistency with the render/cart) to avoid user confusion at checkout.
-- **Authorization leakage** — items endpoint must enforce render ownership + approved status (NFR-007); a missing check would expose another user's private render contents.
+- **Authorization leakage** — items endpoint must enforce render ownership + `completed` status (~~approved~~ — ADR-025) (NFR-007); a missing check would expose another user's private render contents.
 
 
 ## FEAT-008 — Shopping cart
 
-**Goal:** Turn the operator-approved render into a ready-to-buy cart that is auto-populated with the exact tagged products, lets the user review and remove lines, and requires an explicit confirmation before payment is allowed.
+**Goal:** Turn the completed (~~operator-approved~~ — ADR-025) render into a ready-to-buy cart that is auto-populated with the exact tagged products, lets the user review and remove lines, and requires an explicit confirmation before payment is allowed.
 
 **Pilot FRs covered:**
 
@@ -1264,7 +1283,7 @@ Per-item price/delivery estimates shown next to each line are owned by **FEAT-00
 
 ### iOS work (SwiftUI)
 
-- **CartView** — the cart screen, opened after the approved render is shown. Renders the auto-populated line list from `GET /api/v1/cart` (FR-031, FR-032; TC-058, TC-059).
+- **CartView** — the cart screen, opened after the completed (~~approved~~ — ADR-025) render is shown. Renders the auto-populated line list from `GET /api/v1/cart` (FR-031, FR-032; TC-058, TC-059).
 - **CartLineRow** — one row per `CartItem`: product name/thumbnail, supplier, quantity, captured unit price, and a **remove** control (FR-033; TC-060). The estimate/warranty text in the row is fed by FEAT-009.
 - **CartSummaryBar** — subtotal in COP, and the primary **Confirm cart** action (FR-035; TC-063).
 - **Confirm-gating in the client:** the "Proceed to pay" affordance (handed off to FEAT-010 checkout) is disabled until the cart is confirmed; the app relies on the server `confirmed` state, not only local UI state, so the block is real (TC-064).
@@ -1283,8 +1302,8 @@ Per-item price/delivery estimates shown next to each line are owned by **FEAT-00
 
 **Services:**
 
-- **Cart service** — (1) **auto-populate**: on render approval, build one `Cart` from the render and one `CartItem` per `RenderItem`, capturing `unit_price` from the product/tag at populate time and `currency = COP`; (2) **review**: read cart + lines; (3) **remove**: delete a line and recompute subtotal; (4) **confirm**: transition `draft → confirmed`. No hold placement, no swap.
-  - **Populate trigger:** invoked when FEAT-006 (operator console) marks the render **approved** — consistent with ADR-002 mandatory operator QA before the user sees the render, so the cart never materializes from an unapproved render.
+- **Cart service** — (1) **auto-populate**: on render ~~approval~~ completion (ADR-025), build one `Cart` from the render and one `CartItem` per `RenderItem`, capturing `unit_price` from the product/tag at populate time and `currency = COP`; (2) **review**: read cart + lines; (3) **remove**: delete a line and recompute subtotal; (4) **confirm**: transition `draft → confirmed`. No hold placement, no swap.
+  - **Populate trigger:** invoked when the render completes generation successfully (~~when FEAT-006 (operator console) marks the render **approved** — consistent with ADR-002 mandatory operator QA before the user sees the render~~ retired — ADR-025), so the cart never materializes from a failed render.
 - **Confirmation gate:** `Cart.status` is the single source of truth for "may pay." FEAT-010 checkout reads it and rejects an unconfirmed cart with a `confirmation-required` status (BR-31). → TC-064 is proven end-to-end across FEAT-008 (state) + FEAT-010 (enforcement at `POST /api/v1/checkout`).
 
 **Data entities touched:**
@@ -1296,12 +1315,12 @@ Per-item price/delivery estimates shown next to each line are owned by **FEAT-00
 
 ### Operator work
 
-- None specific to cart mechanics. The operator's render **approval** in the console (FEAT-006) is what triggers auto-population; no separate operator cart step. Availability is checked by the operator during curation/QA (this is why holds are unnecessary per ADR-011).
+- None specific to cart mechanics. ~~The operator's render **approval** in the console (FEAT-006) is what triggers auto-population~~ Auto-population triggers on render **completion** (approval retired — ADR-025); no separate operator cart step. Availability is checked by the operator during curation~~/QA~~ (this is why holds are unnecessary per ADR-011).
 
 ### Approach / key steps (ordered)
 
 1. Add `Cart` and `CartItem` tables/migrations in managed Postgres (pilot fields only); omit `StockHold`.
-2. Implement **auto-populate** in the cart service, triggered by render approval: create `Cart(status=draft)` + one `CartItem` per `RenderItem`, capturing `unit_price`/`currency` (FR-031). → TC-058.
+2. Implement **auto-populate** in the cart service, triggered by render ~~approval~~ completion (ADR-025): create `Cart(status=draft)` + one `CartItem` per `RenderItem`, capturing `unit_price`/`currency` (FR-031). → TC-058.
 3. Implement `GET /api/v1/cart` returning lines + derived `subtotal` (FR-032). → TC-059.
 4. Implement `DELETE /api/v1/cart/items/{itemId}` with subtotal recomputation (FR-033). → TC-060.
 5. Implement `POST /api/v1/cart/confirm` (`draft → confirmed`, stamp `confirmed_at`, idempotent) (FR-035). → TC-063.
@@ -1312,7 +1331,7 @@ Per-item price/delivery estimates shown next to each line are owned by **FEAT-00
 
 ### Tests to satisfy (pilot FRs)
 
-- **FR-031 → TC-058** — approved render with N tagged products auto-populates N cart lines.
+- **FR-031 → TC-058** — a completed (~~approved~~ — ADR-025) render with N tagged products auto-populates N cart lines.
 - **FR-032 → TC-059** — opening a populated cart shows every line with product, quantity, price.
 - **FR-033 → TC-060** — removing a line removes it and recalculates the total.
 - **FR-035 → TC-063** — confirming marks the cart `confirmed` and enables payment.
@@ -1324,20 +1343,20 @@ Deferred TCs (not run in the pilot): TC-056, TC-057 (FR-030); TC-061, TC-062 (FR
 
 - **foundation** — managed backend service, managed Postgres (migrations), iOS app shell/navigation, session identity plumbing (no accounts, ADR-022).
 - **FEAT-002 / FEAT-005 (rendering) + FEAT-007 (product tagging)** — must produce the `Render` and its `RenderItem`s that the cart is populated from.
-- **FEAT-006 (operator console)** — render **approval** event is the auto-population trigger (ADR-002 QA gate).
+- ~~**FEAT-006 (operator console)** — render **approval** event is the auto-population trigger (ADR-002 QA gate).~~ **Retired — ADR-025:** the render **completion** event (FEAT-005) is the auto-population trigger.
 - **FEAT-009 (estimates & warranty)** — supplies per-line delivery/production estimates shown in the cart rows (FR-036); parallel, not blocking cart CRUD.
 - **FEAT-010 (checkout & payment)** — consumes the confirmed cart and enforces the payment block for TC-064; downstream dependency.
 
 ### Effort: M
 
-Straightforward CRUD over two entities, but non-trivial because auto-population is event-driven off render approval, the confirmation gate spans two features (TC-064), and ownership must be scoped without accounts.
+Straightforward CRUD over two entities, but non-trivial because auto-population is event-driven off render ~~approval~~ completion (ADR-025), the confirmation gate spans two features (TC-064), and ownership must be scoped without accounts.
 
 ### Risks
 
 - **Confirm-gate split across FEAT-008/FEAT-010:** TC-064 only passes if checkout actually reads `Cart.status`; a client-only disable would leave the block unenforced. Mitigate by making the server the source of truth and covering it in FEAT-010.
 - **Ownership without accounts (NFR-008):** with no login (ADR-022), a cart must be reliably bound to its session/project so another session cannot read/confirm it; needs a clear session-identity decision in foundation.
 - **Price capture vs checkout revalidation:** `unit_price` is captured at populate time; it may diverge from the price at pay time. Revalidation is FEAT-010/FR-041 (BR-24) — keep the boundary explicit so the cart does not silently show stale totals.
-- **Populate timing / duplicates:** re-approval or retriggering must not create duplicate carts/lines for the same render; make auto-population idempotent per `render_id`.
+- **Populate timing / duplicates:** ~~re-approval or ~~retriggering/regeneration (ADR-025) must not create duplicate carts/lines for the same render; make auto-population idempotent per `render_id`.
 - **Empty cart:** removing the last line must block confirm/checkout to avoid a zero-item "purchase."
 - **No holds (accepted):** without stock holds (ADR-011), an item could go unavailable between populate and checkout; accepted for the pilot because the catalog is tiny and operator-checked, with revalidation at checkout as the backstop.
 

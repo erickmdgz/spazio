@@ -14,7 +14,7 @@ The system's main flows will be tested before closing each feature.
 
 ## Test cases
 
-<!-- Each TC- maps 1:1 to an acceptance criterion of an FR (see 03_requirements.md). Status is validity of the case, not execution result; all start Pending. Nothing here is implemented. -->
+<!-- Each TC- maps 1:1 to an acceptance criterion of an FR (see 03_requirements.md). Status is validity of the case, not execution result; all start Pending. `Automated (#NN)` = validated by automated tests in that PR. `Retired — ADR-025 (2026-07-14)` = the case tests the removed render-review gate and is no longer a valid case; rows are kept for history. Nothing here is implemented. -->
 
 | ID | Feature | Requirement | Case | Expected result | Status |
 |---|---|---|---|---|---|
@@ -45,7 +45,7 @@ The system's main flows will be tested before closing each feature.
 | TC-025 | FEAT-004 Localization & delivery coverage | FR-013 | Evaluate a location outside all defined delivery zones | A `no-coverage` status is returned (triggering delivery fallback per FR-053) | Pending |
 | TC-026 | FEAT-005 AI rendering engine | FR-014 | Match with products satisfying style, dimensions, budget, and locality | A set of real, available SKUs is selected | Pending |
 | TC-027 | FEAT-005 AI rendering engine | FR-014 | Match when no product satisfies the constraints | An `empty-match` status is returned (triggering the no-match fallback per FR-023) | Pending |
-| TC-028 | FEAT-005 AI rendering engine | FR-015 | Generate a render from matched SKUs and a valid room photo | A render compositing those SKUs into the photo is produced with status `pending-review` | Pending |
+| TC-028 | FEAT-005 AI rendering engine | FR-015 | Generate a render from matched SKUs and a valid room photo | A render compositing those SKUs into the photo is produced with status `completed` and published to the user *(review state removed — ADR-025, 2026-07-14)* | Pending |
 | TC-029 | FEAT-005 AI rendering engine | FR-015 | Render generation fails | A `render-failed` status is recorded and no render is shown to the user | Pending |
 | TC-030 | FEAT-005 AI rendering engine | FR-016 | Validate items of a generated render | Every rendered item references an existing, purchasable catalog SKU | Pending |
 | TC-031 | FEAT-005 AI rendering engine | FR-016 | Render contains an item with no matching catalog SKU | The render is blocked with a `fabricated-item` flag and is not shown to the user | Pending |
@@ -68,14 +68,14 @@ The system's main flows will be tested before closing each feature.
 | TC-048 | FEAT-012 Keep-or-replace segmentation | FR-025 | User marks an existing item as keep or replace | The mark is persisted on the project | Pending |
 | TC-049 | FEAT-012 Keep-or-replace segmentation | FR-026 | Generate a render with an item marked keep | The kept item remains visible in the render | Pending |
 | TC-050 | FEAT-012 Keep-or-replace segmentation | FR-026 | Compute cart and budget with an item marked keep | The kept item is excluded from both the cart and the budget total | Pending |
-| TC-051 | FEAT-006 Render review & moderation | FR-027 | Operator approves a `pending-review` render | Its status becomes `approved` and it is released to the user | Pending |
-| TC-052 | FEAT-006 Render review & moderation | FR-027 | Operator rejects a `pending-review` render | Its status becomes `rejected` and it is not shown to the user | Pending |
-| TC-053 | FEAT-006 Render review & moderation | FR-027 | User attempts to view a render not yet reviewed | It is not displayed (blocked by the `pending-review` gate) | Pending |
-| TC-054 | FEAT-007 Product tagging & interaction | FR-028 | Generate tags for an approved render | Each rendered product carries name, price, supplier, warranty terms, and a listing link | Pending |
-| TC-055 | FEAT-007 Product tagging & interaction | FR-029 | Tap a product tag on an approved render | The product's details (name, price, supplier, warranty, listing link) are displayed | Pending |
+| TC-051 | FEAT-006 Render review & moderation | FR-027 | Operator approves a `pending-review` render | Its status becomes `approved` and it is released to the user | Retired — ADR-025 (2026-07-14) |
+| TC-052 | FEAT-006 Render review & moderation | FR-027 | Operator rejects a `pending-review` render | Its status becomes `rejected` and it is not shown to the user | Retired — ADR-025 (2026-07-14) |
+| TC-053 | FEAT-006 Render review & moderation | FR-027 | User attempts to view a render not yet reviewed | It is not displayed (blocked by the `pending-review` gate) | Retired — ADR-025 (2026-07-14) |
+| TC-054 | FEAT-007 Product tagging & interaction | FR-028 | Generate tags for a completed (published) render *(wording updated per ADR-025)* | Each rendered product carries name, price, supplier, warranty terms, and a listing link | Pending |
+| TC-055 | FEAT-007 Product tagging & interaction | FR-029 | Tap a product tag on a completed (published) render *(wording updated per ADR-025)* | The product's details (name, price, supplier, warranty, listing link) are displayed | Pending |
 | TC-056 | FEAT-008 Shopping cart & stock holds | FR-030 | Add a tagged, available product to the cart | A cart item is created for that product | Pending |
 | TC-057 | FEAT-008 Shopping cart & stock holds | FR-030 | Add a product that is now unavailable | The add is rejected with an `unavailable` status and no cart item is created | Pending |
-| TC-058 | FEAT-008 Shopping cart & stock holds | FR-031 | Show an approved render with N tagged products | The cart is auto-populated with all N products | Pending |
+| TC-058 | FEAT-008 Shopping cart & stock holds | FR-031 | Show a completed (published) render with N tagged products *(trigger changed from approval to generation success — ADR-025)* | The cart is auto-populated with all N products | Pending |
 | TC-059 | FEAT-008 Shopping cart & stock holds | FR-032 | Open a populated cart | All cart items with product, quantity, and price are displayed | Pending |
 | TC-060 | FEAT-008 Shopping cart & stock holds | FR-033 | Remove an item from the cart | The item is removed and the cart total is recalculated | Pending |
 | TC-061 | FEAT-008 Shopping cart & stock holds | FR-034 | Swap a cart item that has available alternatives | The original item is replaced by the chosen alternative and the total is recalculated | Pending |
@@ -125,5 +125,5 @@ The system's main flows will be tested before closing each feature.
 | TC-105 | FEAT-015 Supplier catalog management | FR-060 | A supplier feed synchronization fails | A `sync-failed` status is recorded for that supplier | Pending |
 | TC-106 | FEAT-011 Order fulfillment & tracking | FR-061 | Operator forwards a confirmed, paid order | The order is transmitted to the supplier and marked `forwarded` | Pending |
 | TC-107 | FEAT-015 Supplier catalog management | NFR-008 | An operator without the `catalog_curator` role attempts to create or approve a catalog entry | The action is rejected with a `forbidden` (403) status and nothing is persisted | Automated (#34) |
-| TC-108 | FEAT-006 Render review & moderation | NFR-008 | An operator without the `render_reviewer` role (or no operator session) attempts to approve or reject a render | The action is rejected (403 without the role; 401 without a session) and the render's review status is unchanged | Automated (#34) |
+| TC-108 | FEAT-006 Render review & moderation | NFR-008 | An operator without the `render_reviewer` role (or no operator session) attempts to approve or reject a render | The action is rejected (403 without the role; 401 without a session) and the render's review status is unchanged | Retired — ADR-025 (2026-07-14; was Automated #34 — test removal is next-iteration work with the endpoint) |
 | TC-109 | FEAT-011 Order fulfillment & tracking | NFR-008 | An operator without the `order_handler` role attempts to forward an order; a buyer requests another buyer's order with a different device token | The forward is rejected with 403; the foreign order read answers 404 with no data leaked | Automated (#34) |

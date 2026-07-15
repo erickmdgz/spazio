@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Operator-QA clause superseded by ADR-025 (2026-07-14):** the MANDATORY operator QA of every render is retired; renders are published immediately on generation success (ADR-025). The hosted generative image API / no-custom-trained-model decision below stands.
 
 ## Context
 

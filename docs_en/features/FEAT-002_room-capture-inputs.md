@@ -7,7 +7,7 @@
 Let a homeowner/renter give Spazio the raw inputs that describe their physical space so the rest of the pipeline can furnish it: **a photo of the room** and its **approximate dimensions**.
 
 - **Pilot scope (VERIFIED):** photo **upload** from the device and **approximate room-dimension** entry (pilot "Included" list; PRD §8 steps 4 and 6).
-- **Full-product scope (VERIFIED, PRD, out of pilot):** in-app **camera capture** (FR-006) and automated **photo-quality validation with a retake request** (FR-024). The pilot excludes automated photo-quality rejection; in the pilot, render fidelity is protected by human review (see FEAT-006) rather than by an automated quality gate.
+- **Full-product scope (VERIFIED, PRD, out of pilot):** in-app **camera capture** (FR-006) and automated **photo-quality validation with a retake request** (FR-024). The pilot excludes automated photo-quality rejection. *The human render review formerly cited here (FEAT-006) is retired — superseded by ADR-025 (2026-07-14): renders are published immediately on generation success, and no automated quality gate replaces the review in this iteration.*
 
 ## 2. Problem or need
 
@@ -17,7 +17,7 @@ A person cannot picture how real, purchasable furniture will look in their own s
 
 - **Primary: Homeowner/renter** (the pilot persona, "Valentina") who uploads a room photo and enters rough dimensions from an iPhone, without design training (pilot, "The one user").
 - **System** validates photo quality and rejects unusable photos in the full product (FR-024).
-- **Operator** is affected indirectly: in the pilot, the operator's render review (FEAT-006) is the safeguard against low-quality inputs, since automated rejection is out of pilot scope.
+- **Operator** — formerly affected indirectly through the render review (FEAT-006), retired per ADR-025 (2026-07-14). Automated photo-quality rejection (FR-024) remains out of pilot scope, so low-quality inputs are not gated in this iteration.
 
 ## 4. Related requirements
 
@@ -39,7 +39,7 @@ This feature covers the input-capture portion of the PRD §8 basic flow:
 
 1. (PRD §8 step 4) The user enters **approximate room dimensions** (FR-011).
 2. (PRD §8 step 6) The user **uploads** a room photo (FR-005); in the full product they may instead **capture** it with the in-app camera (FR-006).
-3. (PRD §8 step 8, full product) The system **validates photo quality**; if the photo is unusable it is rejected with a **retake request** (FR-024). *In the pilot this automated step is not built; the operator review in FEAT-006 covers input quality instead.*
+3. (PRD §8 step 8, full product) The system **validates photo quality**; if the photo is unusable it is rejected with a **retake request** (FR-024). *In the pilot this automated step is not built. The operator review formerly cited here (FEAT-006) is retired (ADR-025, 2026-07-14); unusable photos are not gated in this iteration.*
 4. The captured inputs are persisted to the user's design session (Project) and passed downstream to the AI rendering engine (FEAT-005).
 
 Adjacent steps handled by other features: account/guest entry (FEAT-001, out of pilot), localization (FEAT-004, PRD §8 step 2), style and budget entry (FEAT-003, PRD §8 steps 3 and 5), keep-or-replace marking (FEAT-012, PRD §8 step 7, out of pilot).
@@ -76,7 +76,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend
 
 - A service to **receive and store** the uploaded room photo as a private `RoomPhoto` and to persist the dimension inputs on the user's `Project` (DRAFT / PROPOSED entities — see below). Storage/back-end technology **decided for the pilot: one managed backend service with a managed Postgres database and object storage for photos/renders — see ADR-001**.
-- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline, which is **decided for the pilot as a hosted generative image API (image-to-image / inpainting) with mandatory operator QA — see ADR-002**. Not built in the pilot.
+- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline, which is **decided for the pilot as a hosted generative image API (image-to-image / inpainting) — see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*. Not built in the pilot.
 
 ### Database
 

@@ -29,6 +29,8 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 > **Governance note (read before treating any value as final).** PRD v0.7 §12 reserves a set of decisions for humans. Where an FR below references a numeric value or a mechanism that the PRD gives only as an **example or default** — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%", render time "~2–5 min" — the value has been **adopted for the one-week pilot** as a human decision recorded in its `ADR-XXX` (the simplest option consistent with the PRD and the pilot), and is linked to that ADR. Structural proposals that go beyond what the PRD states (status codes, field names, response shapes) are marked **Draft / Proposed**. Nothing in this document is implemented; every block is a specification. Traceability tags used below: **VERIFIED** = stated in PRD v0.7 or the one-week pilot; **DRAFT/PROPOSED** = reasonable structuring by the author; **TBD/PENDING** = a human decision (see `docs_en/decisions/`).
 
+> **Update (ADR-025, 2026-07-14):** the human render-review gate is retired. FR-027 is Deprecated (superseded by ADR-025); renders are published to the requesting user immediately upon successful generation. Review-gate preconditions in FR-015, FR-028, FR-029, and FR-031 are updated accordingly; TC-051/TC-052/TC-053 are retired with FR-027 (see `08_test_plan.md`).
+
 ## Requirements index
 
 <!-- Catalog at a glance; the detail lives in each FR-XXX block below. -->
@@ -61,7 +63,7 @@ This document catalogs what the system must do. Each functional requirement (FR)
 | FR-024 | Validate photo quality and reject unusable photos with a retake request | Medium |
 | FR-025 | Let users mark existing items to keep or replace | Medium |
 | FR-026 | Retain kept items in the render and exclude them from cart and budget | Medium |
-| FR-027 | Operator reviews and approves each render before it is shown to the user | High |
+| FR-027 | Operator reviews and approves each render before it is shown to the user *(Deprecated — superseded by ADR-025, 2026-07-14)* | High |
 | FR-028 | Tag every rendered product with name, price, supplier, warranty, and listing link | High |
 | FR-029 | View a tagged product's details by tapping it in the render | High |
 | FR-030 | Add a rendered/tagged product to the cart | High |
@@ -258,7 +260,7 @@ The system shall, when a user enters a free-text style description, persist that
 
 ### Business rules
 
-- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose approach is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002.
+- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose approach is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14) → ADR-002.
 
 ## FR-009 — Enter a budget range (minimum and maximum)
 
@@ -357,7 +359,7 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 
 ### Business rules
 
-- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The matching/rendering pipeline approach is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002.
+- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The matching/rendering pipeline approach is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14) → ADR-002.
 
 ## FR-015 — Generate a photorealistic render compositing matched SKUs into the room photo
 
@@ -366,16 +368,16 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 
 ### Description
 
-The system shall, when matched SKUs and a valid room photo are available, generate a photorealistic render that composites those SKUs into the photo, in a pending-operator-review state.
+The system shall, when matched SKUs and a valid room photo are available, generate a photorealistic render that composites those SKUs into the photo, in a completed state, published to the requesting user immediately upon successful generation (ADR-025).
 
 ### Acceptance criteria
 
-- [ ] Given a set of matched SKUs and a valid room photo, when render generation runs, then a render image compositing those SKUs into the photo is produced with status `pending-review`. → TC-028
+- [ ] Given a set of matched SKUs and a valid room photo, when render generation runs, then a render image compositing those SKUs into the photo is produced with status `completed` and is published to the user (ADR-025). → TC-028
 - [ ] Given render generation fails, when the attempt completes, then a `render-failed` status is recorded and no render is shown to the user. → TC-029
 
 ### Business rules
 
-- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007) and must be operator-approved before being shown (VERIFIED, pilot → FR-027). The rendering pipeline is decided for the pilot (a hosted generative image API with mandatory operator QA; no custom-trained model) → ADR-002; the render-time target (~2–5 min) is adopted for the pilot as a soft target with no hard SLA → ADR-013 / NFR-001.
+- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007). *(The former rule 'must be operator-approved before being shown' (FR-027) is superseded by ADR-025, 2026-07-14 — renders are published immediately on generation success.)* The rendering pipeline is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025) → ADR-002; the render-time target (~2–5 min) is adopted for the pilot as a soft target with no hard SLA → ADR-013 / NFR-001.
 
 ## FR-016 — Restrict every rendered item to a real, purchasable SKU and never fabricate products
 
@@ -576,8 +578,10 @@ The system shall, when items are marked to keep, retain them in the render and e
 
 ## FR-027 — Operator reviews and approves each render before it is shown to the user
 
-**Actor:** Operator · **Priority:** High · **Status:** Proposed
+**Actor:** Operator · **Priority:** High · **Status:** Deprecated — Superseded by ADR-025 (2026-07-14)
 **Origin:** Spazio_One_Week_iOS_Pilot.md ("Operator reviews each render before it reaches the user"); PRD §5 (operator render-quality monitoring); 01_product_vision.md
+
+> **Retired — ADR-025 (2026-07-14).** The human render-review gate is removed; renders are published to the requesting user immediately upon successful generation. No operator reviews, approves, or rejects renders. TC-051, TC-052, and TC-053 are retired with this requirement (see `08_test_plan.md`). The block below is retained for history.
 
 ### Description
 
@@ -600,11 +604,11 @@ The system shall, when a render is in pending-review state, require an operator 
 
 ### Description
 
-The system shall, when a render is approved, tag every rendered product with its name, price, supplier, warranty terms, and listing link.
+The system shall, when a render is published (immediately upon successful generation — ADR-025), tag every rendered product with its name, price, supplier, warranty terms, and listing link.
 
 ### Acceptance criteria
 
-- [ ] Given an approved render, when tags are generated, then each rendered product carries name, price, supplier, warranty terms, and a listing link. → TC-054
+- [ ] Given a published render, when tags are generated, then each rendered product carries name, price, supplier, warranty terms, and a listing link. → TC-054
 
 ### Business rules
 
@@ -617,11 +621,11 @@ The system shall, when a render is approved, tag every rendered product with its
 
 ### Description
 
-The system shall, when a user taps a product tag on an approved render, display that product's details.
+The system shall, when a user taps a product tag on a published render (ADR-025), display that product's details.
 
 ### Acceptance criteria
 
-- [ ] Given an approved render with tagged products, when the user taps a tag, then the product's details (name, price, supplier, warranty, listing link) are displayed. → TC-055
+- [ ] Given a published render with tagged products, when the user taps a tag, then the product's details (name, price, supplier, warranty, listing link) are displayed. → TC-055
 
 ## FR-030 — Add a rendered/tagged product to the cart
 
@@ -648,11 +652,11 @@ The system shall, when a user adds a tagged product, create a corresponding cart
 
 ### Description
 
-The system shall, when an approved render is shown, auto-populate the cart with every product displayed in that render.
+The system shall, when a published render is shown (renders publish immediately on generation success — ADR-025), auto-populate the cart with every product displayed in that render.
 
 ### Acceptance criteria
 
-- [ ] Given an approved render with N tagged products, when the render is shown, then the cart is auto-populated with all N products. → TC-058
+- [ ] Given a published render with N tagged products, when the render is shown, then the cart is auto-populated with all N products. → TC-058
 
 ### Business rules
 
@@ -934,7 +938,7 @@ The system shall, when a user requests a render, enforce the configurable daily 
 
 ### Business rules
 
-- Free render usage is configurable; the PRD states a default of five attempts per user per day. Decided for the pilot: no daily free-render limit (every render is operator-reviewed); the five/day default applies only when metering is built post-pilot → ADR-009.
+- Free render usage is configurable; the PRD states a default of five attempts per user per day. Decided for the pilot: no daily free-render limit; the five/day default applies only when metering is built post-pilot → ADR-009. *(The original rationale 'every render is operator-reviewed' is superseded by ADR-025, 2026-07-14.)*
 
 ## FR-049 — Count every render generation or edit as one render attempt
 

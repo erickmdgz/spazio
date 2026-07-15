@@ -22,6 +22,8 @@ This document describes **`web-demo/`**, a time-boxed **2-day academic class-pro
 > **Update (ADR-024, 2026-07-14):** the product direction has since changed — the web app recorded here **is now the product platform** (no native iOS will be built), to be wired to the real backend in small increments. This document stays as the accurate record of the 2-day demo as delivered; ADR-024 records the pivot.
 >
 > **Update (#31, PR #32/#33):** the wiring happened. The app now runs the REAL loop against `backend/` (`/api/v1` via a Next.js rewrite): project + photo + inputs persist in Postgres, renders wait for real operator approval (no more fake instant render), the cart auto-populates from the approved render, and checkout captures on the fake gateway with a real `Order`/`PurchaseOrder`/commission trail. Still demo-scoped: the composite image remains a cached local asset (ADR-002 vendor open) and no real money moves (ADR-003 vendor open). The "no database / in-memory state" description below records the demo **as originally delivered**.
+>
+> **Update (ADR-025, 2026-07-14):** the mandatory operator render-review gate (`FEAT-006` / `FR-027`, the *mandatory operator QA* clause of `ADR-002`) is **retired entirely** — in the target spec, renders are published to the user immediately on generation success. The review-wait behaviour the #31 note above describes is still what the code implements today; removing it is a next-iteration work item (see `05_backlog.md`). Read the "no operator QA" notes below accordingly: they recorded a demo-scope *gap* versus the real product, and per ADR-025 that gap no longer exists because the gate itself is gone. Catalog curation (FEAT-015) and manual order forwarding (FEAT-011) are unchanged; the rest of ADR-002 (hosted image API, no custom model) stands.
 
 ---
 
@@ -38,7 +40,7 @@ For the demo scope **only**, a handful of Accepted decisions are intentionally s
 
 Two further notes on fidelity:
 
-- **ADR-002 (rendering pipeline)** is only **partially realized**: the render is faked/cached and there is **no operator QA** in the demo (see §5).
+- **ADR-002 (rendering pipeline)** is only **partially realized**: the render is faked/cached and there is **no operator QA** in the demo (see §5). *(Per ADR-025, 2026-07-14, the operator-QA clause of ADR-002 has since been retired product-wide; the missing QA is no longer a demo-scope gap. The faked/cached render still is.)*
 - **FEAT-004 (localization & delivery coverage)** is **simplified/hardcoded** to Bogotá / COP.
 
 ---
@@ -69,7 +71,7 @@ Demo status legend: **Exercised at demo fidelity** = present in the UI along the
 | FEAT-003 | Style & budget selection | Exercised at demo fidelity |
 | FEAT-004 | Localization & delivery coverage | Simplified/hardcoded (fixed to Bogotá / COP) |
 | FEAT-005 | AI rendering engine | Exercised at demo fidelity (render is **faked/cached** — see §5) |
-| FEAT-006 | Render review & moderation | Not in demo (no operator QA) |
+| FEAT-006 | Render review & moderation | Not in demo (no operator QA) — *feature since retired product-wide, ADR-025 (2026-07-14)* |
 | FEAT-007 | Product tagging & interaction | Exercised at demo fidelity |
 | FEAT-008 | Shopping cart & stock holds | Exercised at demo fidelity (cart; no real stock holds) |
 | FEAT-009 | Estimates & warranty display | Exercised at demo fidelity (estimates display) |
@@ -89,7 +91,7 @@ Note: the "exercised at demo fidelity" features are shown **at the UI level only
 Three things are deliberately simulated so the demo always works and never depends on external services:
 
 - **Render is fallback-first (cached/offline).** `CachedRenderProvider` is the default: it serves prepared, local SVG assets for every room+style scenario, works offline, and always succeeds. `OpenAIRenderProvider` is an **isolated stub**, used only if `IMAGE_API_KEY` is set (server-side via `src/app/actions.ts`), with **silent fallback to the cached provider** on any error. In the demo the render is faked/cached.
-- **No operator QA.** Because the render is cached, there is no render-review / moderation step. This is why **ADR-002** is only **partially realized** (FEAT-006 is not in the demo).
+- **No operator QA.** Because the render is cached, there is no render-review / moderation step. This is why **ADR-002** is only **partially realized** (FEAT-006 is not in the demo). *(Superseded framing — ADR-025, 2026-07-14: the operator render-review gate is retired product-wide, so its absence is no longer a fidelity gap; ADR-002's hosted-image-API decision stands.)*
 - **Payment is mocked.** `/checkout` shows a mock "Pay $ X" button (amount in COP) with a brief processing spinner; there is **no real payment and no settlement** (superseding ADR-003/ADR-004 for the demo scope only).
 
 The catalog is also fixed rather than ingested: **`src/lib/catalog.ts`** seeds **11 SKUs** across **3 Bogotá suppliers** (**Maderos del Norte**, **Textiles Bacatá**, **Lumina Bogotá**) — **2 made-to-order** and **9 ready-made** — standing in for FEAT-015 / ADR-006 / ADR-012 / ADR-015.
@@ -120,7 +122,7 @@ npm run dev
 
 ## 7. How it maps back to the pilot and the PRD
 
-- **Pilot build plan (`12_pilot_build_plan.md`).** The pilot proves the same core loop — *render-to-purchase*, operator-in-the-loop, manual fulfilment — but as the real system: native iOS + a managed backend + managed Postgres + object storage, a hosted generative-image render gated by **mandatory operator QA** (ADR-002), a real COP capture via hosted PCI checkout, and an operator-loaded catalog (30–60 SKUs). This class demo shows the **user-facing experience** of that loop at UI fidelity, with the render, payment, and catalog **faked** as described above. Everything the demo simplifies (§2) is fully specified in the pilot plan and its ADRs.
+- **Pilot build plan (`12_pilot_build_plan.md`).** The pilot proves the same core loop — *render-to-purchase*, operator-in-the-loop, manual fulfilment — but as the real system: native iOS + a managed backend + managed Postgres + object storage, a hosted generative-image render ~~gated by **mandatory operator QA** (ADR-002)~~ *(QA gate since retired — ADR-025; renders publish on generation success)*, a real COP capture via hosted PCI checkout, and an operator-loaded catalog (30–60 SKUs). This class demo shows the **user-facing experience** of that loop at UI fidelity, with the render, payment, and catalog **faked** as described above. Everything the demo simplifies (§2) is fully specified in the pilot plan and its ADRs.
 - **PRD (`Spazio_PRD_v0.7.md`).** The demo honors the product's central promise — a room furnished **only with real, purchasable SKUs**, each rendered item mapping to a real catalog entry, ending in in-session purchase. It intentionally omits the product areas outside the happy path (accounts, keep-or-replace, render metering, targeted edits, full catalog management), which remain in the PRD and pilot scope.
 - **Recent related work on `develop`.** The `backend/` foundation scaffold (Node/TS/Fastify/Prisma, PR #21) and the pilot build plan (`docs_en/12_pilot_build_plan.md`, PR #19) belong to the **real pilot track**. This class demo is a separate, self-contained teaching artifact and does not depend on them.
 

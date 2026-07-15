@@ -6,6 +6,8 @@ Accepted.
 
 Scope: product direction from 2026-07-14 onward. Supersedes the **client choice** in ADR-001 and the **one-week pilot program framing**; everything else in ADR-001 (backend, Postgres, object storage, Node/TS implementation note) stands.
 
+**Update (ADR-025, 2026-07-14):** the operator "QA" step in the loop sequence cited in Decision (3) is retired; the loop design reference is now matching → render → checkout, with renders published immediately on generation success (ADR-025).
+
 ## Context
 
 ADR-001 fixed the pilot client as a native iOS (SwiftUI) app, and the approved one-week pilot build plan (`12_pilot_build_plan.md`) sequenced the work iOS-first. Since approval, the platform-neutral foundation began landing on `develop` (backend scaffold PR #21; operator console shell + operator auth PR #27), while separately a **2-day class demo** was delivered as a web app (`web-demo/`, ADR-023) with the explicit framing that it changed no product decision.

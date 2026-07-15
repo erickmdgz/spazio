@@ -73,7 +73,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend
 
 - Persist the user's style choice, style description, and budget range on the `Project`. Resolve the selected style/description against the shared **style taxonomy** for downstream matching — taxonomy definition is **Decided (pilot): one or two predefined visual styles + free-text description; no taxonomy engine — see ADR-005**.
-- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **Decided (pilot): a hosted generative image API (image-to-image / inpainting) with mandatory operator QA; no custom-trained model — see ADR-002**.
+- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **Decided (pilot): a hosted generative image API (image-to-image / inpainting); no custom-trained model — see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*.
 
 ### Database
 

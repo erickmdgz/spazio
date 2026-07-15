@@ -39,7 +39,7 @@ This feature maps to PRD §8 **step 18** — *"System shows delivery, production
 
 > **Ordering note (VERIFIED tension):** PRD §8 lists step 18 *after* step 15 (checkout) in its numbered sequence, but the authoritative rule is **before checkout** — FR-036/FR-037/FR-038, PRD BR-17/BR-18, and NFR-015 all state the information must be visible **before** the user pays. This feature follows the *before-checkout* requirement; the §8 numbering is treated as a list artifact, not a decision to show the data after payment.
 
-1. After the cart is auto-populated from the approved render (PRD §8 step 11, FEAT-008), the system reads each cart item's **supplier-declared** production/delivery lead time and displays a **per-item estimate** (FR-036 / PRD BR-17). In the pilot this per-item estimate is shown alongside price and supplier on the cart line (VERIFIED pilot scope).
+1. After the cart is auto-populated from the completed render (PRD §8 step 11, FEAT-008; renders publish immediately on generation success — ADR-025), the system reads each cart item's **supplier-declared** production/delivery lead time and displays a **per-item estimate** (FR-036 / PRD BR-17). In the pilot this per-item estimate is shown alongside price and supplier on the cart line (VERIFIED pilot scope).
 2. When an item lacks supplier estimate data, the item is flagged with a **`missing-estimate`** status **(DRAFT / PROPOSED status name)** rather than showing an invented estimate (FR-036).
 3. (Full product) The system displays an **aggregated production/delivery estimate for the full order** before checkout (FR-037).
 4. (Full product, out of pilot) The system displays each item's **supplier-declared warranty terms** before checkout (FR-038 / PRD BR-18).
