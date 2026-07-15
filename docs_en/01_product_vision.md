@@ -127,7 +127,7 @@ render-to-purchase rate = purchases / renders
 
 *(VERIFIED — PRD §10 "Known risks", summarized.)*
 
-- **Render fidelity (highest risk).** Accurately compositing a real SKU into the user's room at the correct size and appearance is hard; a poor match can drive returns and disputes. (The pilot's mitigation — mandatory operator review, FR-027 — is retired by ADR-025, 2026-07-14; renders are published immediately on generation success, so this risk is no longer mitigated by a human gate.)
+- **Render fidelity (highest risk).** Accurately compositing a real SKU into the user's room at the correct size and appearance is hard; a poor match can drive returns and disputes. (The pilot's mitigation — mandatory operator review, FR-027 — is retired by ADR-025, 2026-07-14; renders are published immediately on generation success, so this risk is no longer mitigated by a human gate.) *(ADR-026, 2026-07-14: moving the engine to self-hosted FLUX.2 Klein 4B via mflux does not change this risk — it introduces no new fidelity mitigation; the real-SKU-only invariant (BR-6/BR-14/FR-016) still bounds what may be composited.)*
 - **Keep-or-replace segmentation.** Incorrect object detection could conflict with user intent. (Cut from the pilot, so not a first-version risk.)
 - **Two-sided cold start.** Insufficient supplier coverage may produce poor results for specific styles, budgets, or locations.
 - **Inference cost.** Low conversion may lead to significant rendering expense without offsetting revenue.
@@ -144,7 +144,7 @@ render-to-purchase rate = purchases / renders
 | Decision | Decided for the one-week pilot | Tracking |
 |---|---|---|
 | Technology stack | Native iOS (SwiftUI) app + one small managed backend service + a managed Postgres DB + object storage for photos/renders; single environment/region; no multi-platform | ADR-001 |
-| Rendering / AI pipeline | Hosted generative image API (image-to-image / inpainting) compositing operator-curated products into the room photo; no custom-trained model *(the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14 — renders publish immediately on generation success; the rest of ADR-002 stands)* | ADR-002 |
+| Rendering / AI pipeline | Self-hosted **FLUX.2 Klein 4B** run locally via the **mflux** CLI (image-to-image / edit) compositing operator-curated product images into the room photo; still **no custom-trained model** (Klein is pretrained open weights) *(Updated by ADR-026, 2026-07-14 — the render engine is self-hosted Klein via mflux, superseding only ADR-002's hosted-image-API clause; the "no custom-trained model" rule stands. The mandatory-operator-QA clause was superseded earlier by ADR-025, 2026-07-14 — renders publish immediately on generation success; the rest of ADR-002 stands)* | ADR-002; ADR-026 |
 | Payment gateway & split-settlement model | Single PCI-compliant hosted checkout collecting one payment in COP; no split settlement (operator pays suppliers manually). Split settlement + COP gateway: revisit before scale | ADR-003 |
 | Merchant-of-record model | The Spazio operating entity collects the single payment and pays suppliers manually. Tax/legal (ties ADR-018): revisit before scale; confirm with an accountant | ADR-004 |
 | Style taxonomy | 1–2 predefined visual styles + free-text description; no taxonomy engine | ADR-005 |

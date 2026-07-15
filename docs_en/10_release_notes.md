@@ -194,7 +194,9 @@ below).
   migration committed; `.env` now loads natively. Verified by a 22-step
   end-to-end run on a local Postgres stack with the full NFR-006 event trail
   (`render-to-purchase` queryable). **Still not a release:** image-gen and
-  payments are fake drivers (ADR-002/003 vendors open), per-action role
+  payments are fake drivers (at #31, ADR-002/003 vendors open — the render
+  engine has since been decided as self-hosted Klein via mflux, ADR-026,
+  2026-07-14; see the engine-swap entry below), per-action role
   enforcement and most TC automation are pending, and nothing is deployed.
 
 - **Loop hardened (#34).** The §2.4 DoD security carve-outs closed: per-action
@@ -237,6 +239,30 @@ below).
   re-pointed at the surviving flows (`08_test_plan.md`); feature doc:
   `docs_en/features/FEAT-016_autonomous-render-publication.md`. Still nothing
   is deployed and no requirement is listed as covered.
+
+- **Render engine decided — self-hosted FLUX.2 Klein 4B via mflux (`ADR-026`).**
+  The product owner's 2026-07-14 decision: the render engine is **self-hosted
+  FLUX.2 Klein 4B (Apache-2.0), run locally via the mflux CLI as a child
+  process** (`mflux-generate-flux2-edit --model flux2-klein-4b`, quantized),
+  replacing the placeholder `FakeRenderPipeline` as the real implementation via a
+  new `MfluxRenderPipeline`. This **supersedes only** `ADR-002`'s
+  hosted-generative-image-API engine clause; `ADR-002`'s **no-custom-trained-model**
+  rule still stands (Klein is pretrained open weights), and the **real-SKU-only**
+  invariant (`BR-6`/`BR-14`/`FR-016`) is unchanged. New deployment constraint:
+  mflux depends on Apple MLX, so the render host **must be Apple Silicon** — the
+  engine runs on a **separate Apple-Silicon render worker** consuming the existing
+  async render-job queue (the owner's M2 for the class demo), while the API
+  backend stays as decided (`ADR-001`). No API contract or data-model structural
+  change (the `POST /renders` → `202` + poll model already fits a slow local
+  child process). Privacy upside: room photos and renders no longer egress to a
+  third-party image vendor (strengthens `BR-33`/`NFR-007`/`ADR-019`), and
+  per-render cost becomes near-zero marginal local compute rather than a metered
+  vendor call. `FakeRenderPipeline` stays the default/test/CI driver so tests and
+  CI remain hermetic; `MfluxRenderPipeline` is selected only when configured.
+  Recording a decision is not building it: no `MfluxRenderPipeline` code has
+  shipped, nothing is deployed, and no requirement is listed as covered. Feature
+  doc: `docs_en/features/FEAT-005_ai-rendering-engine.md`; decision:
+  `docs_en/decisions/ADR-026_self-hosted-render-engine.md`.
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the

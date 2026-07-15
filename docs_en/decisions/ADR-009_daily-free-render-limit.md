@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. **Update (ADR-025, 2026-07-14):** the rationale "(every render is operator-reviewed anyway)" in the Decision below no longer holds — the operator render-review gate is retired and renders are published immediately on generation success (ADR-025). The no-daily-limit-in-the-pilot decision itself stands.
+Accepted. **Update (ADR-025, 2026-07-14):** the rationale "(every render is operator-reviewed anyway)" in the Decision below no longer holds — the operator render-review gate is retired and renders are published immediately on generation success (ADR-025). The no-daily-limit-in-the-pilot decision itself stands. **Update (ADR-026, 2026-07-14):** the inference-cost premise below shifts — with the render engine now self-hosted (FLUX.2 Klein 4B via mflux, ADR-026), the per-render marginal cost is near-zero local compute rather than a metered third-party call, so the cost-control pressure that motivated any daily limit is weaker post-pilot (capacity is now bounded by render-host hardware, not per-call vendor spend). The no-limit-in-the-pilot decision is unchanged.
 
 ## Context
 

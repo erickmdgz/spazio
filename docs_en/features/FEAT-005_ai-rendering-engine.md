@@ -85,7 +85,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. The rendering/AI pipeline and stack were human decisions (PRD §12), now decided for the pilot: a hosted generative image API (image-to-image / inpainting) and no custom-trained model (ADR-002; its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14 — renders are published immediately on generation success), on a native iOS + managed-backend stack (ADR-001).*
+*High-level only. The rendering/AI pipeline and stack were human decisions (PRD §12), now decided: the render engine is **self-hosted FLUX.2 Klein 4B (Apache-2.0), run locally via the mflux CLI as a child process** — the model and hosting are now decided (**ADR-026**, 2026-07-14, superseding ADR-002's hosted-generative-image-API clause). No custom-trained model (Klein is pretrained open weights, so ADR-002's no-custom-model rule stands); ADR-002's mandatory-operator-QA clause was already superseded by ADR-025 (2026-07-14 — renders are published immediately on generation success). Stack: managed backend (ADR-001; client now the web app per ADR-024) with the render engine on a separate **Apple-Silicon render worker** consuming the async render-job queue (ADR-026).*
 
 ### Frontend
 
@@ -95,9 +95,9 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend
 
 - **Matching service** (DRAFT / PROPOSED): selects candidate SKUs from the catalog constrained by style (via the shared taxonomy, ADR-005), dimensions, budget, availability, completeness, and locality. Candidate data comes from FEAT-015 (supplier catalog) and FEAT-004 (locality/delivery).
-- **Rendering pipeline** (DRAFT / PROPOSED orchestration): composites matched SKUs into the user's photo at correct scale. The pipeline is a **hosted generative image API (image-to-image / inpainting) with no custom-trained model — decided (pilot), see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*; the specific model/hosting product and any object detection/segmentation are left to implementation on the decided **native iOS + managed-backend stack (ADR-001)**.
+- **Rendering pipeline** (orchestration): composites matched SKUs into the user's photo at correct scale. The engine is **self-hosted FLUX.2 Klein 4B (Apache-2.0), run locally via the mflux CLI as a child process (`mflux-generate-flux2-edit --model flux2-klein-4b`, quantized) — decided, see ADR-026 (2026-07-14, superseding ADR-002's hosted-API clause; the no-custom-trained-model rule still holds, as Klein is pretrained open weights)** *(ADR-002's mandatory-operator-QA clause was superseded by ADR-025, 2026-07-14)*. Concretely a new `MfluxRenderPipeline` replaces the placeholder `FakeRenderPipeline`, which stays the default/test/CI implementation and is selected only when the mflux engine is configured; any object detection/segmentation is left to implementation. The engine runs on a separate **Apple-Silicon render worker** (mflux requires Apple MLX) consuming the async render-job queue, alongside the managed backend (ADR-001; client now the web app per ADR-024).
 - **Cost & conversion instrumentation:** track **cost per render** (NFR-005) and **render-to-purchase** from day one (NFR-006); enforce a **global inference-cost threshold** (NFR-003) and **degrade gracefully** via queueing/slower rendering when exceeded (NFR-004).
-- **Real-SKU guarantee:** the pipeline must be architected so rendered items are always drawn from real catalog SKUs and can be tagged back to them (FR-016 → feeds FEAT-007). Approach is **DRAFT / PROPOSED**, aligned with the decided pipeline (ADR-002).
+- **Real-SKU guarantee:** the pipeline must be architected so rendered items are always drawn from real catalog SKUs and can be tagged back to them (FR-016 → feeds FEAT-007). Approach is **DRAFT / PROPOSED**, aligned with the decided engine (ADR-026); the real-SKU-only invariant (BR-6/BR-14/FR-016, from ADR-002) is unchanged by the engine swap — the composite is built from the matched SKU's operator-curated image and never fabricates products.
 
 ### Database
 

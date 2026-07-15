@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Update (ADR-026, 2026-07-14):** the cost-recovery rationale below shifts — with the render engine now self-hosted (FLUX.2 Klein 4B via mflux, ADR-026), the per-render marginal cost is near-zero local compute rather than a metered third-party call, so the inference-cost pressure that a paid package would offset is weaker post-pilot (the cost that remains is render-host hardware/capacity, not per-render vendor fees). The not-offered-in-the-pilot decision is unchanged.
 
 ## Context
 

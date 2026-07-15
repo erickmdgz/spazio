@@ -23,7 +23,7 @@ Native iOS (SwiftUI) app + one small managed backend service + a managed relatio
 
 Scope: one-week iOS pilot.
 
-**Implementation note (2026-07-13):** the backend language/framework left open above is now fixed for the pilot as **Node.js 22 + TypeScript (Fastify)** with **Prisma** over **Postgres** and a queue abstraction for async render jobs. The hosted rendering and COP payment vendors remain unselected and are built behind interfaces (see ADR-002, ADR-003). Recorded here as the concrete language choice; the foundation scaffold implements it (`backend/`).
+**Implementation note (2026-07-13):** the backend language/framework left open above is now fixed for the pilot as **Node.js 22 + TypeScript (Fastify)** with **Prisma** over **Postgres** and a queue abstraction for async render jobs. The COP payment vendor remains unselected and is built behind an interface (ADR-003); the render engine is now decided as self-hosted FLUX.2 Klein 4B via mflux (ADR-026, 2026-07-14), no longer an open vendor pick. Recorded here as the concrete language choice; the foundation scaffold implements it (`backend/`).
 
 ## Alternatives considered
 

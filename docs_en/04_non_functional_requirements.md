@@ -55,7 +55,7 @@ The system shall complete a typical single-room render within the confirmed rend
 
 - **PRD-stated target/example, adopted for the pilot:** approximately **2–5 minutes** for a typical single-room render (PRD §7, Performance). **Decided (pilot): ~2–5 minutes is a soft target with no hard SLA — see ADR-013.**
 - **Measure:** p50 and p95 end-to-end render latency against the confirmed target.
-- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). *(The former note "human review adds operator time (FR-027); operator-review time is additional to (outside) the soft target" is superseded by ADR-025, 2026-07-14 — there is no review step; renders are published immediately on generation success. The ~2–5 min soft target itself stands — ADR-013.)*
+- **Trace:** PRD §7; FR-015, FEAT-005 (AI rendering engine). *(The former note "human review adds operator time (FR-027); operator-review time is additional to (outside) the soft target" is superseded by ADR-025, 2026-07-14 — there is no review step; renders are published immediately on generation success. The ~2–5 min soft target itself stands — ADR-013.)* *(Re-noted for ADR-026, 2026-07-14: the render engine is now self-hosted FLUX.2 Klein 4B via mflux; on the owner's M2 (32 GB) an edit runs in a few minutes at ~13.5 GB peak RAM, consistent with the ~2–5 min soft target. Latency now depends on the Apple-Silicon render host rather than a hosted API's SLA, and remains a soft target with no hard SLA.)*
 
 ## NFR-002 - Targeted edits faster than full renders
 
@@ -77,7 +77,7 @@ The system shall complete a targeted edit (a change affecting only the requested
 The system shall enforce a global inference-cost threshold that bounds aggregate rendering spend.
 
 - **Measure:** aggregate inference cost stays at or below the configured threshold over the measurement window; breaching it triggers the degradation behavior in NFR-004.
-- **Trace:** PRD §7 (Cost control). The concrete threshold value is a human/operator setting (PRD §5 lists "monetization thresholds" as an operator responsibility) and is **TBD**.
+- **Trace:** PRD §7 (Cost control). The concrete threshold value is a human/operator setting (PRD §5 lists "monetization thresholds" as an operator responsibility) and is **TBD**. *(Cost basis updated — ADR-026, 2026-07-14: with the render engine self-hosted (FLUX.2 Klein 4B via mflux) there is no metered per-render vendor fee — the marginal cost of a render is ~zero. What this threshold bounds shifts from per-call API spend to the amortized cost of owning and running the Apple-Silicon render host (hardware, power) plus its bounded throughput; it is better read as a capacity/utilization bound than a per-call spend cap.)*
 
 ## NFR-004 - Graceful degradation on cost thresholds
 
@@ -86,7 +86,7 @@ The system shall enforce a global inference-cost threshold that bounds aggregate
 The system shall degrade gracefully — via queueing or slower rendering — when cost thresholds are exceeded, rather than failing requests outright.
 
 - **Measure:** when the NFR-003 threshold is exceeded, new render requests are queued or served at reduced speed and no request is dropped without a user-visible state.
-- **Trace:** PRD §7 (Cost control). Related cost-control levers: the configurable daily free-render limit (FR-048, PRD §7) — the PRD default of five renders/user/day applies only when metering is built post-pilot; **Decided (pilot): NO daily free-render limit (ADR-009).**
+- **Trace:** PRD §7 (Cost control). Related cost-control levers: the configurable daily free-render limit (FR-048, PRD §7) — the PRD default of five renders/user/day applies only when metering is built post-pilot; **Decided (pilot): NO daily free-render limit (ADR-009).** *(Cost basis updated — ADR-026, 2026-07-14: with a self-hosted engine the binding constraint is the render host's bounded throughput, not a metered spend cap. Graceful degradation is realized primarily by queueing render jobs on the async queue and serving them at the render worker's pace — which the async `POST /renders` → `202` + poll model already supports — rather than by throttling to stay under a per-call fee.)*
 
 ## NFR-005 - Track cost per render
 
@@ -95,7 +95,7 @@ The system shall degrade gracefully — via queueing or slower rendering — whe
 The system shall record the inference cost of every render.
 
 - **Measure:** each `RenderRequest` (generation or edit) has an associated recorded cost; cost per render is queryable and can be aggregated for NFR-003.
-- **Trace:** PRD §7 (Cost control); entity `RenderRequest`. Every generation or edit counts as one render attempt (FR-049, BR-20).
+- **Trace:** PRD §7 (Cost control); entity `RenderRequest`. Every generation or edit counts as one render attempt (FR-049, BR-20). *(Cost basis updated — ADR-026, 2026-07-14: with the self-hosted engine there is no per-call vendor invoice; the "cost per render" recorded on each `RenderRequest` is an imputed/amortized local-compute cost (render-host time, power, amortized hardware) rather than a metered API fee. The metric stays queryable and aggregable for NFR-003; only its basis changes.)*
 
 ## NFR-006 - Track render-to-purchase from day one
 
@@ -119,7 +119,7 @@ The system shall track render-to-purchase conversion from day one of operation.
 The system shall keep user room photos and generated renders private by default.
 
 - **Measure:** an uploaded/captured photo or a generated render is not accessible to any party other than its owner unless the owner explicitly shares it; sharing is not a pilot feature. *(The former operator-review access carve-out — "and the operators required to review it, FR-027" — is superseded by ADR-025, 2026-07-14.)*
-- **Trace:** PRD §7 (Security and payments) and BR-33; entities `RoomPhoto`, `Render`. Broader data-privacy rules follow the minimal-data pilot approach — **Decided (pilot): private by default, minimum data (email, phone, shipping), short privacy notice + consent at first use, aligned with Colombia Ley 1581; legal review before scale (ADR-019).**
+- **Trace:** PRD §7 (Security and payments) and BR-33; entities `RoomPhoto`, `Render`. Broader data-privacy rules follow the minimal-data pilot approach — **Decided (pilot): private by default, minimum data (email, phone, shipping), short privacy notice + consent at first use, aligned with Colombia Ley 1581; legal review before scale (ADR-019).** *(Strengthened by ADR-026, 2026-07-14: because the render engine is self-hosted (FLUX.2 Klein 4B via mflux on the render worker), room photos and renders are no longer transmitted to a third-party image-generation vendor to be composited — they stay on Spazio-controlled infrastructure. This removes an external egress path the hosted-API design had and strengthens the privacy posture (BR-33, ADR-019).)*
 
 ## NFR-008 - Authentication protects account and order data
 
@@ -217,7 +217,7 @@ The system shall let supplier onboarding scale by region.
 The system architecture shall support multiple countries and currencies.
 
 - **Measure:** the architecture can serve more than one market and currency; adding a market does not require redesign (launch remains phased — PRD §11 Assumptions).
-- **Trace:** PRD §7, PRD §11; FEAT-004 (localization & delivery coverage), entity `Market`, FR-046. The **pilot targets a single market/currency** (Bogotá, COP); **Decided (pilot): single market — Bogotá, COP (ADR-015).**
+- **Trace:** PRD §7, PRD §11; FEAT-004 (localization & delivery coverage), entity `Market`, FR-046. The **pilot targets a single market/currency** (Bogotá, COP); **Decided (pilot): single market — Bogotá, COP (ADR-015).** *(Flag — ADR-026, 2026-07-14: the render engine now requires an Apple-Silicon render host (mflux/MLX), so at multi-market scale the rendering tier is single-architecture and its capacity is bounded by owned Apple-Silicon hardware rather than being elastically scalable on commodity x86 cloud. Serving many markets from one M2 will not scale; scaling rendering means adding Apple-Silicon render workers off the async render-job queue (or revisiting the engine choice). This constrains only the render tier — the rest of the architecture stays multi-market per this NFR. See ADR-026 negative consequences.)*
 
 ## NFR-018 - Per-market taxes, payment methods, and legal config
 
