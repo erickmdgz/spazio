@@ -1,17 +1,19 @@
-// OpenAIRenderProvider — OPTIONAL real-provider stub.
+// OpenAIRenderProvider — OPTIONAL real-provider stub (web-demo's own cached-visual
+// provider layer). NOTE: this is the browser/web-demo render path, NOT the backend
+// render engine. The real Spazio render engine is self-hosted FLUX.2 Klein 4B run
+// via the mflux CLI on the backend/Apple-Silicon render worker (ADR-026); mflux is
+// intentionally NOT wired into the browser. This adapter stays a thin, always-
+// falls-back-to-cached stub so the live demo can never break.
 //
 // This adapter is ONLY constructed when process.env.IMAGE_API_KEY is set (see
 // ./index.ts). It is deliberately isolated so the demo never depends on it.
 //
-// IMPORTANT: this is a stub. Before using it against a live account you MUST
-// confirm the exact image-edit / image-generation endpoint, request shape, and
-// parameters against the current provider docs — the image-editing API surface
-// changes over time and is intentionally not hardcoded here. The pilot render
-// pipeline (ADR-002; its operator-QA clause superseded by ADR-025) is "match
-// real SKUs -> composite their product images into the room photo". A real
+// IMPORTANT: this is a stub. If it were ever wired to a real render source, the
+// render contract (ADR-026; its operator-QA clause superseded by ADR-025) is
+// "match real SKUs -> composite their product images into the room photo". A real
 // implementation would:
 //   1. Take the user's room photo + the matched catalog product images.
-//   2. Call the hosted image-edit endpoint to composite them at believable scale.
+//   2. Composite them at believable scale (backend: FLUX.2 Klein 4B via mflux).
 //   3. Return the generated image (URL/bytes) plus tag coordinates.
 //
 // On ANY failure this provider throws; the selector in ./index.ts catches it and

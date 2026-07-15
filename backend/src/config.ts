@@ -42,10 +42,17 @@ const envSchema = z.object({
   STORAGE_ACCESS_KEY: z.string().optional(),
   STORAGE_SECRET_KEY: z.string().optional(),
 
-  // Render pipeline (hosted generative image API, ADR-002). Placeholder vendor fields.
-  RENDER_DRIVER: z.enum(["fake"]).default("fake"),
-  RENDER_API_URL: z.string().optional(),
-  RENDER_API_KEY: z.string().optional(),
+  // Render engine. Default `fake` (deterministic, no external calls) keeps CI/tests
+  // hermetic. `mflux` selects the self-hosted FLUX.2 Klein 4B engine run via the
+  // mflux CLI as a child process (ADR-026; Apple-Silicon render host only). The
+  // MFLUX_* fields configure that child process — no secrets, no vendor API.
+  RENDER_ENGINE: z.enum(["fake", "mflux"]).default("fake"),
+  // Path (or bare name on PATH) of the mflux edit binary.
+  MFLUX_EDIT_BIN: z.string().default("mflux-generate-flux2-edit"),
+  // Pinned to the 4B variant (Apache-2.0, commercial use OK — ADR-026).
+  MFLUX_MODEL: z.string().default("flux2-klein-4b"),
+  MFLUX_STEPS: numberFromString(8),
+  MFLUX_QUANTIZE: numberFromString(8),
 
   // Payments (single COP capture, ADR-003/004). Placeholder vendor fields.
   PAYMENT_DRIVER: z.enum(["fake"]).default("fake"),

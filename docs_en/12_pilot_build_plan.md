@@ -2,7 +2,9 @@
 
 > **Update (ADR-024, 2026-07-14) — read before anything else:** the native-iOS client and the one-week pilot *program* are **superseded** — the product continues on the **web app** (`web-demo/`) at class-demo scale, wired to the real backend. This plan remains the reference for the loop's design (data model §1.3, API §1.4, render pipeline §1.5, operator console §1.7, scope boundaries §0.1, build order §2.1). Read iOS-specific items (the `ios/` scaffold, TestFlight/Apple enrollment, SwiftUI screens in FEAT-002/003/007) as void or as their web equivalents.
 >
-> **Update (ADR-025, 2026-07-14):** the mandatory operator render-review gate is retired **entirely** — renders are published to the user immediately on generation success. Read FEAT-006, the operator-QA/release-gate steps (§1.5 step 6, §1.7 job 2), the `pending_review → approved | rejected` review states, `reviewed_by` stamping on renders, the render-review queue, the `render_reviewer` role, and TC-051/TC-052/TC-053 (plus the render approve/reject state-machine preconditions among TC-107..109) as **Retired — ADR-025**. The render lifecycle keeps only generation states (`queued → processing → completed | failed`, per `RenderRequest.status` in 07_data_model.md). The rest of ADR-002 (hosted image API, no custom model) stands; catalog curation (FEAT-015) and manual order forwarding (FEAT-011) are unchanged. The removal of the review flow from the code is implemented by FEAT-016 (#38) (see `05_backlog.md` and `decisions/ADR-025_autonomous-render-publication.md`).
+> **Update (ADR-025, 2026-07-14):** the mandatory operator render-review gate is retired **entirely** — renders are published to the user immediately on generation success. Read FEAT-006, the operator-QA/release-gate steps (§1.5 step 6, §1.7 job 2), the `pending_review → approved | rejected` review states, `reviewed_by` stamping on renders, the render-review queue, the `render_reviewer` role, and TC-051/TC-052/TC-053 (plus the render approve/reject state-machine preconditions among TC-107..109) as **Retired — ADR-025**. The render lifecycle keeps only generation states (`queued → processing → completed | failed`, per `RenderRequest.status` in 07_data_model.md). ADR-002's **no-custom-model rule stands; its hosted-generative-image-API engine clause is superseded by ADR-026 (2026-07-14)** — the engine is now self-hosted FLUX.2 Klein 4B run locally via the mflux CLI (see the next update). Catalog curation (FEAT-015) and manual order forwarding (FEAT-011) are unchanged. The removal of the review flow from the code is implemented by FEAT-016 (#38) (see `05_backlog.md` and `decisions/ADR-025_autonomous-render-publication.md`).
+>
+> **Update (ADR-026, 2026-07-14):** the render engine is now **self-hosted FLUX.2 Klein 4B (Apache-2.0), run locally via the mflux CLI as a child process** (`mflux-generate-flux2-edit --model flux2-klein-4b`, quantized), replacing the earlier hosted-generative-image-API choice. This supersedes **only** ADR-002's hosted-API clause (its no-custom-model rule and the real-SKU-only invariant BR-6/BR-14/FR-016 are unchanged) and introduces **no API/data-model contract change** (the `POST /renders` → `202` + poll model already fits a slow local child process). New deployment constraint: mflux requires Apple MLX, so the render host **must be Apple Silicon** — the render engine runs as a **self-hosted mflux child process on a separate Apple-Silicon render worker** consuming the async render-job queue (the owner's M2 for the class demo); any residual "hosted image-gen API / vendor" phrasing below is superseded and should be read that way. In code, a new `MfluxRenderPipeline` replaces the placeholder; `FakeRenderPipeline` stays the default/test/CI implementation. See `decisions/ADR-026_self-hosted-render-engine.md`.
 
 **Status: APPROVED 2026-07-13. Build started.** Since approval, the backend §1 foundation scaffold landed on `develop` via **PR #21** (typed route stubs + Prisma schema + CI — no feature logic), the class demo via **PR #22** (`web-demo/`), and the operator console shell + operator session auth via **PR #27** (see the §1.7 as-built note). Per **#31** (post-ADR-024), the render-to-purchase loop now runs end-to-end — matching → render → operator QA → cart → estimates → checkout → forwarding — with the web app as the client over `/api/v1` and a seeded catalog (PR #32/#33), verified on a local Postgres stack; the ADR-002 image-gen and ADR-003 payment vendors remain fake drivers, and nothing is deployed. Produced by an orchestrated planning pass (foundation + 11 per-feature plans + sequencing synthesis + completeness critic) over the merged `docs_en/` and the **Accepted** ADR decisions. Per `11_implementation_flow.md`, this plan was the approval gate before any code; the §0.1 scope-boundary decisions were approved and now govern implementation.
 
@@ -17,7 +19,7 @@
 **What we build (from the Accepted ADRs — not reopened here):**
 
 - Native **iOS (SwiftUI)** app + one small **managed backend** (REST/JSON over HTTPS) + **managed Postgres** + **object storage** for private photos/renders.
-- **Rendering:** a hosted generative image API (image-to-image / inpainting) composited from operator-curated product images~~, gated by **mandatory operator QA** before the user sees it~~ (**QA gate retired — ADR-025, 2026-07-14**: renders publish immediately on generation success). No custom model. (Vendor selection is an implementation task; ADR-002 fixed the *approach*.)
+- **Rendering:** **self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a child process** (ADR-026, 2026-07-14 — supersedes ADR-002's ~~hosted generative image API~~ engine clause), compositing operator-curated product images into the room photo~~, gated by **mandatory operator QA** before the user sees it~~ (**QA gate retired — ADR-025, 2026-07-14**: renders publish immediately on generation success). No custom model (Klein is pretrained open weights). (The engine is now **decided** — no image-gen vendor pick; the open task is provisioning the Apple-Silicon render worker.)
 - **Payments:** a single **COP** capture via a hosted PCI checkout; **no split settlement** — operator pays suppliers manually; commission 10% recorded manually.
 - **Identity:** minimal contact capture at checkout (email + phone + shipping) — **no accounts, no login** (ADR-022).
 - **Catalog:** operator loads 30–60 curated SKUs by spreadsheet; every SKU carries all required fields (ADR-006/014).
@@ -63,9 +65,8 @@ This section defines the technical substrate every pilot feature is built on: th
 topology, the repository, the pilot data schema, the concrete API surface, how the
 render and payment integrations are wired, the operator console, storage/auth/config,
 CI/CD, and the cross-cutting concerns (currency, instrumentation, privacy). It builds
-strictly to the accepted ADRs (ADR-001, ADR-002, ADR-003/004, ADR-019, ADR-022) and does
-not reopen them. Where an ADR fixed an *approach* but not a *vendor* (hosted image-gen API,
-hosted PCI checkout), the vendor pick is called out as an explicit implementation task and
+strictly to the accepted ADRs (ADR-001, ADR-002, ADR-003/004, ADR-019, ADR-022, and now ADR-026 for the render engine) and does
+not reopen them. The render engine is now **decided** — self-hosted FLUX.2 Klein 4B via the mflux CLI (ADR-026), so there is no image-gen vendor pick; the remaining render-side implementation task is provisioning the Apple-Silicon render worker. For payments, where ADR-003/004 fixed an *approach* but not a *vendor* (hosted PCI checkout), the vendor pick is still called out as an explicit implementation task and
 the capability is named by role. This section was written as a plan for human approval; since
 approval, its backend scaffold landed via PR #21 (stubs only — see §1.2) and the operator console
 shell + auth via PR #27 (see §1.7), while the iOS app and all feature logic remain unbuilt.
@@ -87,10 +88,10 @@ Two runtime components plus three managed dependencies, per ADR-001:
   │  view · tags · cart  │                                    │  cart · checkout · orders│
   │  · hosted checkout   │                                    └───────┬─────────┬────────┘
   └─────────────────────┘                                            │         │
-                                                                     │         ├──▶ Hosted image-gen API
-  ┌─────────────────────┐        authenticated web             ┌─────▼───┐     │    (image-to-image / inpaint;
-  │  Operator console    │  ───────────────────────────────▶  │ Postgres │     │     ADR-002; vendor = task)
-  │  (Spazio staff, web) │                                     │ (managed)│     │
+                                                                     │         ├──▶ Apple-Silicon render worker
+  ┌─────────────────────┐        authenticated web             ┌─────▼───┐     │    (self-hosted FLUX.2 Klein 4B
+  │  Operator console    │  ───────────────────────────────▶  │ Postgres │     │     via mflux CLI child process;
+  │  (Spazio staff, web) │                                     │ (managed)│     │     ADR-026; consumes render queue)
   │  catalog · POs       │  ◀───────────────────────────────  └──────────┘     ├──▶ Hosted PCI checkout
   └─────────────────────┘                                     ┌──────────┐     │    (single COP capture;
                                                               │ Object   │◀────┘     ADR-003/004; vendor = task)
@@ -231,9 +232,8 @@ exposed and returns the fixed Bogotá/COP zone + deliverable curated suppliers, 
 ### 1.5 Rendering integration (ADR-002)
 
 Pipeline is **match → render → tag → publish** (~~operator QA → release~~ **QA step retired — ADR-025**), honouring the "AI never invents furniture"
-invariant. The image-gen approach is fixed (hosted image-to-image / inpainting API compositing
-operator-curated product images; no custom model); **vendor selection is an implementation task** and
-must be picked on Day 1.
+invariant. The engine is **decided (ADR-026): self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a child process**, compositing
+operator-curated product images into the room photo; no custom model. **There is no image-gen vendor to pick**; the render-side Day-1 task is standing up the Apple-Silicon render worker (mflux requires Apple MLX) and the compositing prompt/pipeline.
 
 1. **Upload & quality gate** — `POST /photos` stores the photo to private object storage and runs the
    quality check; unusable photos are rejected with a retake request (FR-024, TC-047). → `RoomPhoto`.
@@ -244,7 +244,7 @@ must be picked on Day 1.
    (FR-019), deliverable to Bogotá (FR-020), style/dimension-fit and within budget+10% (FR-014, FR-017,
    FR-021), with disclose/alternative behaviour on unmet budget or no match (FR-022, FR-023). Match-then-
    render is the order ADR-002 requires so nothing is fabricated.
-4. **Call hosted image-gen API** — composite the matched SKUs' curated product images into the room
+4. **Invoke the self-hosted mflux child process** (`mflux-generate-flux2-edit --model flux2-klein-4b`, quantized; ADR-026) on the Apple-Silicon render worker — composite the matched SKUs' curated product images into the room
    photo, scaled by the approximate dimensions (FR-015, FR-017). The composite is assembled *from actual
    catalog product images*, which is the structural guard for BR-6/BR-14.
 5. **Store render + tags** — persist `Render` (image_ref → private object storage, status
@@ -314,9 +314,9 @@ operations (render review retired — ADR-025). End users have no accounts (ADR-
 - **Auth model (summary):** operator console = authenticated login (Operator table). Client app = no user
   login; an anonymous per-install/session token scopes a Project's private assets (NFR-007). Contact is
   captured only at checkout and stored on the order (ADR-022).
-- **Config & secrets:** zero secrets in git (CLAUDE.md rule 4) — DB creds, object-storage creds, image-gen
-  API key, payment-gateway keys, and the operator session-signing key come from environment variables /
-  a managed secret store. Pilot constants are seeded config, not scattered literals: market = Bogotá,
+- **Config & secrets:** zero secrets in git (CLAUDE.md rule 4) — DB creds, object-storage creds,
+  payment-gateway keys, and the operator session-signing key come from environment variables /
+  a managed secret store. *(ADR-026: the render engine is now self-hosted mflux run as a child process on the Apple-Silicon render worker, so there is **no image-gen API key** — configuration is the mflux model id/quantization and the worker's queue connection, not a third-party render vendor secret.)* Pilot constants are seeded config, not scattered literals: market = Bogotá,
   currency = COP (ADR-015), budget tolerance = 10% (ADR-008), commission = 10% (ADR-007), render soft
   target ~2–5 min with no SLA (ADR-013).
 - **Environments:** a **single** managed environment/region (ADR-001) — one Postgres, one bucket set, one
@@ -376,7 +376,7 @@ settlement (FR-043), metering & packages (FR-048–050), targeted edits (FR-051/
 
 ### 1.13 Implementation tasks the ADRs left open (must resolve Day 1)
 
-- **Select the hosted image-gen API vendor** (approach fixed by ADR-002; vendor not).
+- ~~**Select the hosted image-gen API vendor**~~ **Resolved by ADR-026 (2026-07-14):** the render engine is decided — self-hosted FLUX.2 Klein 4B via the mflux CLI; no vendor to pick. The residual render-side Day-1 task is **provisioning the Apple-Silicon render worker** (mflux requires Apple MLX) and standing up the mflux child-process pipeline + compositing prompt.
 - **Select the hosted PCI checkout / payment provider** supporting COP + PCI + an iOS flow (ADR-003/004).
 - **Select the managed backend host, managed Postgres, and object-storage products** and the Git/CI host
   (all left to implementation by ADR-001).
@@ -503,8 +503,8 @@ concurrent workstreams. Each gate lists its proof TCs.
   pilot Postgres subset (§1.3), stand up object storage + private/signed-URL access, seed the
   single Bogotá/COP `Market` + `DeliveryZone` (FEAT-004 step 1), pin the client↔backend contract,
   wire CI/CD + branch protection + secret scan (§1.9).
-- **Resolve the ADR-open vendor picks today** (§1.13): hosted image-gen API, hosted PCI COP
-  checkout, backend/Postgres/object-storage hosts. These block FEAT-005 and FEAT-010.
+- **Resolve the ADR-open vendor picks today** (§1.13): hosted PCI COP
+  checkout, backend/Postgres/object-storage hosts. *(The render engine is no longer a vendor pick — decided as self-hosted FLUX.2 Klein 4B via mflux, ADR-026; the render-side Day-1 task is instead **provisioning the Apple-Silicon render worker** + mflux pipeline.)* These block FEAT-005 and FEAT-010.
 - FEAT-015 (M): finalize `Product`/`Supplier`/`Style` schema incl. curation state; operator loads
   and **approves** 30–60 real, complete, style-tagged, in-stock SKUs; seed the 1–2 `Style` rows
   shared with FEAT-003; set up the render pipeline + prompt.
@@ -623,12 +623,12 @@ Pulled from the feature sections; ranked by pilot impact.
 
 | # | Risk | Source | Mitigation | Residual |
 |---|---|---|---|---|
-| 1 | **Render fidelity** — 2D hosted inpainting can show a plausible *look-alike*, not the exact SKU (ADR-002 flags the BR-6/BR-14 tension); wrong scale from approximate dimensions erodes trust. **Highest product risk.** | FEAT-005, FEAT-002 | Composite **only** from operator-curated product images; ~~**mandatory operator QA** (FEAT-006) as the human backstop; the real-SKU guarantee is manual/visual in the pilot, not a pixel proof~~ (**QA backstop retired — ADR-025**; the structural guard is compositing from real catalog images + the `fabricated-item` check); budget explicit Day-5 fidelity tuning. | ~~Fidelity is judged by a human, not proven technically~~ (human backstop retired — ADR-025; fidelity is not proven technically and no human judges it); bad user photos still waste a cycle (no FR-024 gate — deferred). |
+| 1 | **Render fidelity** — 2D diffusion compositing (now self-hosted FLUX.2 Klein 4B via mflux — ADR-026) can show a plausible *look-alike*, not the exact SKU (ADR-002 flags the BR-6/BR-14 tension; the engine swap does not change this risk); wrong scale from approximate dimensions erodes trust. **Highest product risk.** | FEAT-005, FEAT-002 | Composite **only** from operator-curated product images; ~~**mandatory operator QA** (FEAT-006) as the human backstop; the real-SKU guarantee is manual/visual in the pilot, not a pixel proof~~ (**QA backstop retired — ADR-025**; the structural guard is compositing from real catalog images + the `fabricated-item` check); budget explicit Day-5 fidelity tuning. | ~~Fidelity is judged by a human, not proven technically~~ (human backstop retired — ADR-025; fidelity is not proven technically and no human judges it); bad user photos still waste a cycle (no FR-024 gate — deferred). |
 | 2 | **Catalog cold-start** — 30–60 SKUs under a strict *all-BR-1-fields* gate (ADR-014) makes `empty-match` / `budget-exceeded` likely; a style-tag ↔ `Product.style_attributes` drift empties every render. | FEAT-015, FEAT-003, FEAT-005 | Pre-qualify suppliers and curate only SKUs that clear the bar; one shared pilot style-tag list for `Style` seeds and product tags; COP budget hints tuned to the catalog; pilot *raises* the `empty-match`/`budget-exceeded` status and the **operator resolves edge cases by hand** (FR-022/FR-023 fallbacks deferred). | Tiny catalog limits matchable combinations; degenerate locality gate (all-Bogotá) means TC-039 must be verified synthetically. |
 | 3 | **Payments in COP** — vendor unresolved (ADR-003/004 fix approach, not vendor); merchant onboarding + PCI is an external lead-time item; webhook/confirm races; real money + tax/legal exposure (ADR-018). | FEAT-010, foundation §1.6 | Pick the COP+PCI+iOS gateway **Day 1** and start merchant onboarding *before* Day 1; idempotency on `gateway_reference` so webhook+client-confirm can't double-create/charge; card data confined to the hosted flow (NFR-009); confirm merchant-of-record/tax posture before real users. | Onboarding can exceed a week (see §2.2); real funds move in the pilot. |
 | 4 | **Operator throughput** — ~~no render SLA (ADR-013); the operator is the only thing between a queued render and the user, and~~ (render review retired — ADR-025) the operator is the only thing between a paid order and the supplier; manual stock refresh; a missed forward silently strands a paid order. | ~~FEAT-006,~~ FEAT-011, FEAT-015 | ~~Oldest-first review +~~ un-forwarded-order ~~queues~~ queue (render queue retired — ADR-025); prompt operator monitoring Days 6–7; refresh stock/price before sessions; `forwarded_at` audit surfaces stalls. | Human bottleneck ~~directly hits render-to-purchase~~ now sits on fulfilment (render queue retired — ADR-025); unautomated, no retry. |
-| 5 | **Inference cost** — per-render cost from a third party must be bounded. | FEAT-005, foundation §1.10 | Record `inference_cost` per render from Day 1 (NFR-005); enforce a global cost threshold (NFR-003) and degrade gracefully via queue/slower rendering (NFR-004). | Cost depends on the (Day-1) vendor pick and prompt iteration. |
-| 6 | **Privacy of assets leaving to a hosted API** — room photos/renders transit to third parties. | FEAT-002/005~~/006~~ (006 retired — ADR-025), NFR-007/ADR-019 | Private buckets, short-lived signed URLs scoped to owner-session~~ + reviewing operator~~ (review retired — ADR-025); minimum-data retention; consent notice at first capture (Ley 1581). | Full legal review deferred to scale. |
+| 5 | **Inference cost / render capacity** — with the engine self-hosted (ADR-026), per-render **marginal cost is near-zero local compute**, not a metered third-party call; the residual risk is **render-host capacity** (throughput bounded by the Apple-Silicon worker's hardware, ~a few min/edit). | FEAT-005, foundation §1.10 | Record `inference_cost` per render from Day 1 (NFR-005, now local-compute cost); enforce a global cost/capacity threshold (NFR-003) and degrade gracefully via queue/slower rendering (NFR-004). | Cost depends on owned hardware and prompt iteration, not a vendor meter; capacity is fixed by the render host. |
+| 6 | **Privacy of assets** — ~~room photos/renders transit to third parties~~ **largely mitigated by ADR-026**: self-hosting means room photos and renders **no longer egress to a third-party image vendor** (they stay on the owner-controlled render worker), strengthening BR-33/NFR-007/ADR-019. | FEAT-002/005~~/006~~ (006 retired — ADR-025), NFR-007/ADR-019 | Private buckets, short-lived signed URLs scoped to owner-session~~ + reviewing operator~~ (review retired — ADR-025); minimum-data retention; consent notice at first capture (Ley 1581). Assets stay on the self-hosted render worker (ADR-026). | Full legal review deferred to scale; render worker is owner-controlled, not a third party. |
 | 7 | **Login-less access control (NFR-008 partial)** — no accounts (ADR-022); buyer order status rests on an unguessable order reference. | FEAT-011, FEAT-008 | Sufficiently random order token; cart/order scoped to originating session/project; add the missing security TCs (§2.4). | Only partially meets NFR-008 until accounts (FEAT-001) return. |
 | 8 | **DRAFT status enums / scope tensions to sign off** — `PurchaseOrder.status` `forwarded` value and `no-tracking-yet` are DRAFT (FEAT-011); **FR-047 pilot inclusion** disagrees across docs; **FR-041 revalidation / FR-044 PO fan-out** are wired into `POST /checkout` by the foundation but classed out-of-pilot by FEAT-010/test-plan. | FEAT-011, FEAT-010 | Fix the enums and resolve both scope tensions by **human sign-off before build** (CLAUDE.md: AI proposes, human decides); this plan follows the FEAT/test-plan scoping (no FR-041/FR-044 automation in the pilot) and the single-order FR-047 form. | Building the wrong side wastes effort or ships an unsigned-off feature. |
 
@@ -1025,7 +1025,7 @@ All three controls live in one step of the design-input flow and write into a sh
 
 **Services:**
 - **Product matching service** (module *Product matching*): selects candidate SKUs constrained by style (via `Style`/`StyleTaxonomy`, ADR-005), room-dimension fit, budget (`budget_min/max` + 10% tolerance, ADR-008), availability (`product_type=ready_made` ⇒ `stock_quantity > 0`, FR-018), and locality/delivery (from FEAT-004, FR-020 gate). Returns a matched SKU set, or `empty-match` (FR-014 error path), or `budget-exceeded` (FR-021 error path).
-- **Rendering pipeline / orchestration service** (module *Rendering pipeline*): takes the matched SKUs + accepted `RoomPhoto` + `room_dimensions`, calls the **hosted generative image API (image-to-image / inpainting, ADR-002)** compositing the operator-curated product images into the photo at realistic scale (FR-015, FR-017), stores the result in object storage (private), and writes `Render` + `RenderItem` links.
+- **Rendering pipeline / orchestration service** (module *Rendering pipeline*): takes the matched SKUs + accepted `RoomPhoto` + `room_dimensions`, invokes the **self-hosted mflux child process (FLUX.2 Klein 4B, `mflux-generate-flux2-edit --model flux2-klein-4b`, quantized; ADR-026, superseding ADR-002's hosted-API clause)** on the Apple-Silicon render worker, compositing the operator-curated product images into the photo at realistic scale (FR-015, FR-017), stores the result in object storage (private), and writes `Render` + `RenderItem` links. In code this is `MfluxRenderPipeline`; `FakeRenderPipeline` stays the default/test/CI implementation.
 - **Real-SKU guarantee / validation** (FR-016, the central invariant): every `RenderItem` must reference an existing, purchasable `Product`; a `fabricated-item` check blocks the render from ~~reaching review~~ publishing (ADR-025) if any shown item has no backing SKU (TC-031). In the 2D-inpainting pilot this binding is *the matched set + RenderItem records*~~ + operator visual QA~~ (QA retired — ADR-025), not a pixel-level proof.
 - **Cost & conversion instrumentation:** record `RenderRequest.inference_cost` per render (NFR-005), seed the render-to-purchase counter (NFR-006), enforce a global inference-cost threshold (NFR-003) and degrade gracefully via queueing/slower rendering when exceeded (NFR-004).
 
@@ -1041,8 +1041,8 @@ No operator UI is built *inside* FEAT-005. ~~FEAT-005 sets `Render.status = pend
 
 1. Persist `RenderRequest` / `Render` / `RenderItem` and define the generation status machine (`queued → processing → completed | failed`; ~~`pending_review`~~ retired — ADR-025).
 2. Build the matching service: query active, complete, in-stock, locally-deliverable products; filter by style taxonomy; keep only those that fit the room dimensions; select a combination whose total is within `budget_max` + 10% (ADR-008). Emit `empty-match` / `budget-exceeded` when no valid set exists.
-3. **Implementation task — vendor selection:** ADR-002 fixes the *capability* (hosted generative image API~~ with mandatory operator QA~~ — QA clause superseded by ADR-025) but not the product; pick the hosted image-to-image/inpainting provider and stand up the pipeline + prompt (pilot Day 1).
-4. Build the rendering orchestration: assemble prompt + room photo + matched product images, call the hosted API, scale placement using room + product dimensions (FR-017), retrieve the composite, store privately in object storage.
+3. **Implementation task — render worker setup (no vendor):** the engine is decided (ADR-026 — self-hosted FLUX.2 Klein 4B via mflux; ADR-002's ~~hosted generative image API~~ engine clause superseded, and its ~~mandatory operator QA~~ clause superseded by ADR-025). Stand up the **Apple-Silicon render worker** (mflux requires Apple MLX), install mflux, and build the pipeline + compositing prompt (pilot Day 1).
+4. Build the rendering orchestration: assemble prompt + room photo + matched product images, invoke the mflux child process (`mflux-generate-flux2-edit --model flux2-klein-4b`, quantized), scale placement using room + product dimensions (FR-017), retrieve the composite, store privately in object storage.
 5. Bind every shown item to its real `Product` via `RenderItem`; run the `fabricated-item` validation and block on failure (FR-016).
 6. Compute `total_product_cost`, set `within_budget` against budget + 10%; raise `budget-exceeded` when the only combination exceeds tolerance (FR-021).
 7. Guardrails: block generation with `missing-dimensions` when `room_dimensions` is absent (FR-017/TC-033); record `render-failed` and show nothing to the user on generation failure (FR-015/TC-029).
@@ -1063,7 +1063,7 @@ No operator UI is built *inside* FEAT-005. ~~FEAT-005 sets `Render.status = pend
 
 ### Depends on
 
-- **foundation** — ADR-001 stack (iOS/SwiftUI app, one managed backend service, Postgres, object storage) and integration with the hosted generative image API (ADR-002).
+- **foundation** — ADR-001 stack (iOS/SwiftUI app, one managed backend service, Postgres, object storage) and the self-hosted render engine on a separate Apple-Silicon render worker (FLUX.2 Klein 4B via mflux — ADR-026, superseding ADR-002's hosted-API clause).
 - **FEAT-002** — room photo (accepted quality) + `room_dimensions`.
 - **FEAT-003** — style + budget inputs (`style_id`/`style_description`, `budget_min/max`).
 - **FEAT-004** — resolved locality / delivery zone (FR-020 gate; single fixed Bogotá zone in the pilot, ADR-015).
@@ -1072,15 +1072,15 @@ No operator UI is built *inside* FEAT-005. ~~FEAT-005 sets `Render.status = pend
 
 ### Effort & risks
 
-**Effort: XL.** Two logical modules (matching + rendering), an external vendor integration with prompt iteration, the real-SKU binding invariant, cost instrumentation, and iOS polling. Most of the effort and risk is *render-fidelity tuning* (pilot Day 5), not raw code volume — this is the make-or-break core of the pilot.
+**Effort: XL.** Two logical modules (matching + rendering), a self-hosted mflux render pipeline (FLUX.2 Klein 4B) with prompt iteration on the Apple-Silicon render worker (ADR-026), the real-SKU binding invariant, cost instrumentation, and iOS polling. Most of the effort and risk is *render-fidelity tuning* (pilot Day 5), not raw code volume — this is the make-or-break core of the pilot.
 
 **Key risks:**
-- **Render fidelity (PRD §10, the highest product risk).** A 2D hosted inpainting API can show a plausible look-alike rather than the *exact* SKU — ADR-002 explicitly flags this tension with BR-6/BR-14. Mitigation: composite from operator-curated product images~~ + mandatory operator QA (FEAT-006); the real-SKU guarantee is manual/visual in the pilot, not a technical proof~~ (QA backstop retired — ADR-025; the structural guard is the real-catalog compositing + the `fabricated-item` check, and the guarantee is not technically proven).
+- **Render fidelity (PRD §10, the highest product risk).** A 2D diffusion edit (now self-hosted FLUX.2 Klein 4B via mflux — ADR-026) can show a plausible look-alike rather than the *exact* SKU — ADR-002 explicitly flags this tension with BR-6/BR-14, and the engine swap does not change it. Mitigation: composite from operator-curated product images~~ + mandatory operator QA (FEAT-006); the real-SKU guarantee is manual/visual in the pilot, not a technical proof~~ (QA backstop retired — ADR-025; the structural guard is the real-catalog compositing + the `fabricated-item` check, and the guarantee is not technically proven).
 - **Scale realism from approximate dimensions (FR-017).** A 2D pipeline has weak 3D scale control; wrong-sized furniture erodes trust and raises returns.
-- **Vendor open (ADR-002).** Provider/product not fixed; per-render cost, latency, and availability depend on a third party and must be bounded by the global cost threshold (NFR-003/005).
+- **Engine decided, self-hosted (ADR-026).** No third-party provider — the engine is self-hosted FLUX.2 Klein 4B via mflux on an Apple-Silicon render worker. Per-render marginal cost is near-zero local compute; latency (~a few min/edit) and throughput now depend on **owned hardware capacity**, bounded by the global cost/capacity threshold (NFR-003/005). New operational dependency: the Apple-Silicon render host (mflux requires Apple MLX).
 - **Tiny catalog (30–60 SKUs).** `empty-match`/`budget-exceeded` are likely; the pilot returns the status but the FR-022/FR-023 fallbacks are deferred, so the operator resolves edge cases manually.
 - **Latency + no SLA.** ~2–5 min generation~~ plus operator-review time~~ (review retired — ADR-025); the wait UX must not read as a failure.
-- **Privacy.** Room photos and renders leave to a hosted API; must stay private-by-default and access-controlled (NFR-007, ADR-019) even in transit to the third party.
+- **Privacy (improved by ADR-026).** Room photos and renders **no longer leave to a third-party image vendor** — they stay on the owner-controlled Apple-Silicon render worker; they must still be private-by-default and access-controlled (NFR-007, ADR-019).
 
 
 ## FEAT-006 — Render review & moderation

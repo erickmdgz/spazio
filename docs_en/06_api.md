@@ -8,9 +8,11 @@
 > the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
 > backend service + Postgres + object storage (**ADR-001**; client since changed
 > to the **web app** by **ADR-024**, 2026-07-14), the rendering/AI
-> pipeline is a hosted generative image API (**ADR-002**; its mandatory
-> operator-QA clause is superseded by **ADR-025**, 2026-07-14 — renders are
-> published immediately on generation success), and checkout is a single PCI-compliant COP capture with **no
+> engine is **self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a
+> child process** (**ADR-026**, 2026-07-14, superseding ADR-002's
+> hosted-generative-image-API clause; ADR-002's no-custom-model rule stands, and
+> its mandatory operator-QA clause was superseded by **ADR-025**, 2026-07-14 —
+> renders are published immediately on generation success), and checkout is a single PCI-compliant COP capture with **no
 > split settlement**, the operator paying suppliers manually (**ADR-003**,
 > **ADR-004**). Treat every path, verb, and JSON body below as *illustrative
 > structuring*, not a committed interface. **Update (PR #21):** the pilot subset
@@ -27,8 +29,13 @@
 > /styles` exists (FR-007); `GET /renders/{id}/items` and `GET /cart` carry a
 > product summary (name, price, supplier — FR-028/032); `GET /cart/estimates` is
 > live (FR-036); matching + cart auto-populate + checkout with commission run
-> against seeded catalog data. Image-gen and payments remain FAKE drivers —
-> vendor picks are still open ADR-002/003 tasks.
+> against seeded catalog data. As of #31, image-gen and payments were both FAKE
+> drivers with vendors open.
+> **Update (ADR-026, 2026-07-14):** the render engine is now **decided** —
+> self-hosted FLUX.2 Klein 4B run locally via the mflux CLI (a new
+> `MfluxRenderPipeline`; `FakeRenderPipeline` stays the default/test/CI driver).
+> The render vendor pick is **CLOSED**; only the payment vendor (ADR-003) stays
+> open.
 > **Update (ADR-025, 2026-07-14):** the operator render-review gate is retired —
 > renders are published to the requesting user immediately on generation
 > success. FR-027 and FEAT-006 are retired; the render approve/reject endpoints
@@ -256,7 +263,7 @@ endpoints are effectively constant in the pilot.
 ## 5. Render generation & targeted edit
 
 **Capability area:** FEAT-005 (rendering) + FEAT-014 (targeted edit) + FEAT-013 (metering) *(FEAT-006 operator review retired — ADR-025, 2026-07-14)*.
-This is the heart of the product. **The pipeline is decided — a hosted generative image API (ADR-002; its mandatory operator-QA clause is superseded by ADR-025); the concrete contracts below are still DRAFT.**
+This is the heart of the product. **The engine is decided — self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a child process (ADR-026, 2026-07-14, superseding ADR-002's hosted-generative-image-API clause; ADR-002's no-custom-model rule stands, its mandatory operator-QA clause superseded by ADR-025); the concrete contracts below are still DRAFT and unchanged by the engine swap (async submit → poll).**
 The core render is **pilot core**; renders are published immediately on generation success (ADR-025).
 
 ### `POST /api/v1/renders`  *(representative — full contract, illustrative)*
@@ -578,7 +585,8 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-10; see the ADR registry). Each shapes part of the surface above; the concrete contract shapes remain DRAFT:
 
 - **ADR-001** technology stack — Accepted: native iOS (SwiftUI) app + one managed backend service + Postgres + object storage, single environment/region. Shapes base path, auth, storage, async model (concrete tool/product choices left to implementation). *Client choice superseded by **ADR-024** (web app).*
-- **ADR-002** rendering / AI pipeline — Accepted: a hosted generative image API (image-to-image / inpainting), no custom-trained model. Shapes the render section (§5). *Mandatory-operator-QA clause superseded by **ADR-025** (2026-07-14) — renders publish immediately on generation success.*
+- **ADR-002** rendering / AI pipeline — Accepted: no custom-trained model. Shapes the render section (§5). *Hosted-generative-image-API engine clause superseded by **ADR-026** (2026-07-14) — self-hosted FLUX.2 Klein 4B via mflux; the no-custom-model rule still stands. Mandatory-operator-QA clause superseded by **ADR-025** (2026-07-14) — renders publish immediately on generation success.*
+- **ADR-026** self-hosted render engine — Accepted (2026-07-14): the render engine is self-hosted FLUX.2 Klein 4B (Apache-2.0) run locally via the mflux CLI as a child process, on a separate Apple-Silicon render worker consuming the async render-job queue. Supersedes only ADR-002's hosted-API clause. **No API path/verb/body change** — the async `POST /renders` → `202` + poll model already fits a slow local child process. The render vendor pick is now closed.
 - **ADR-003 / ADR-004** payment & merchant of record — Accepted: a single PCI-compliant hosted COP capture with **no split settlement**, the operator paying suppliers manually (**ADR-003**); the Spazio operating entity is the merchant of record for the pilot (**ADR-004**, revisit before scale). Shapes checkout & payment (§9).
 - **ADR-005** style taxonomy — Accepted: 1–2 predefined visual styles + free-text, no taxonomy engine. Shapes `GET /styles`, catalog style mapping.
 - **ADR-006** supplier ingestion channels — Accepted: operator-loaded CSV/Excel of 30–60 curated SKUs, no self-service ingestion in the pilot. Shapes supplier self-ingest (§11).

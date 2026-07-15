@@ -3,7 +3,11 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { getPrisma } from "./db.js";
 import { LocalDiskStorage } from "./services/storage.js";
-import { FakeRenderPipeline } from "./services/render/pipeline.js";
+import {
+  FakeRenderPipeline,
+  MfluxRenderPipeline,
+  type RenderPipeline,
+} from "./services/render/pipeline.js";
 import { FakePaymentGateway } from "./services/payments.js";
 import { InMemoryQueue, type RenderJob } from "./jobs/queue.js";
 import { registerRenderWorker } from "./jobs/renderWorker.js";
@@ -15,7 +19,17 @@ async function main(): Promise<void> {
 
   const prisma = getPrisma();
   const storage = new LocalDiskStorage(config.STORAGE_LOCAL_DIR);
-  const renderPipeline = new FakeRenderPipeline();
+  // Render engine (ADR-026): default fake keeps things hermetic; mflux runs the
+  // self-hosted FLUX.2 Klein 4B engine as a child process (Apple-Silicon host).
+  const renderPipeline: RenderPipeline =
+    config.RENDER_ENGINE === "mflux"
+      ? new MfluxRenderPipeline(storage, prisma, {
+          editBin: config.MFLUX_EDIT_BIN,
+          model: config.MFLUX_MODEL,
+          steps: config.MFLUX_STEPS,
+          quantize: config.MFLUX_QUANTIZE,
+        })
+      : new FakeRenderPipeline();
   const payments = new FakePaymentGateway();
   const queue = new InMemoryQueue<RenderJob>();
 

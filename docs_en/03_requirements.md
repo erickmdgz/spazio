@@ -260,7 +260,7 @@ The system shall, when a user enters a free-text style description, persist that
 
 ### Business rules
 
-- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose approach is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14) → ADR-002.
+- The free-text style description is optional (VERIFIED, pilot scope). It is interpreted by the rendering/matching pipeline, whose engine is self-hosted FLUX.2 Klein 4B run locally via the mflux CLI; no custom-trained model *(Updated by ADR-026, 2026-07-14 — self-hosted Klein via mflux supersedes only ADR-002's hosted-image-API clause; the "no custom-trained model" rule stands; the mandatory-operator-QA clause was superseded by ADR-025, 2026-07-14)* → ADR-002, ADR-026.
 
 ## FR-009 — Enter a budget range (minimum and maximum)
 
@@ -359,7 +359,7 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 
 ### Business rules
 
-- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The matching/rendering pipeline approach is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14) → ADR-002.
+- Every matched item must be a real, purchasable SKU (VERIFIED, PRD §4 BR-6 → FR-016). The rendering engine is self-hosted FLUX.2 Klein 4B run locally via the mflux CLI; no custom-trained model *(Updated by ADR-026, 2026-07-14 — self-hosted Klein via mflux supersedes only ADR-002's hosted-image-API clause; the "no custom-trained model" rule stands; the mandatory-operator-QA clause was superseded by ADR-025, 2026-07-14)* → ADR-002, ADR-026. The real-SKU-only invariant is unchanged by the engine swap.
 
 ## FR-015 — Generate a photorealistic render compositing matched SKUs into the room photo
 
@@ -377,7 +377,7 @@ The system shall, when matched SKUs and a valid room photo are available, genera
 
 ### Business rules
 
-- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007). *(The former rule 'must be operator-approved before being shown' (FR-027) is superseded by ADR-025, 2026-07-14 — renders are published immediately on generation success.)* The rendering pipeline is decided for the pilot (a hosted generative image API; no custom-trained model — the mandatory-operator-QA clause is superseded by ADR-025) → ADR-002; the render-time target (~2–5 min) is adopted for the pilot as a soft target with no hard SLA → ADR-013 / NFR-001.
+- Renders are private by default (VERIFIED, PRD §4 BR-33 → NFR-007). *(The former rule 'must be operator-approved before being shown' (FR-027) is superseded by ADR-025, 2026-07-14 — renders are published immediately on generation success.)* The rendering engine is self-hosted FLUX.2 Klein 4B run locally via the mflux CLI on a separate Apple-Silicon render worker; no custom-trained model *(Updated by ADR-026, 2026-07-14 — self-hosted Klein via mflux supersedes only ADR-002's hosted-image-API clause; the "no custom-trained model" rule stands; the mandatory-operator-QA clause was superseded by ADR-025)* → ADR-002, ADR-026; the render-time target (~2–5 min) is adopted for the pilot as a soft target with no hard SLA → ADR-013 / NFR-001. The observable results and acceptance criteria (and their TCs) are unchanged by the engine swap.
 
 ## FR-016 — Restrict every rendered item to a real, purchasable SKU and never fabricate products
 

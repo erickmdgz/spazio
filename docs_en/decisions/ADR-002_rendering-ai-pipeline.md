@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. **Operator-QA clause superseded by ADR-025 (2026-07-14):** the MANDATORY operator QA of every render is retired; renders are published immediately on generation success (ADR-025). The hosted generative image API / no-custom-trained-model decision below stands.
+Accepted. **Operator-QA clause superseded by ADR-025 (2026-07-14):** the MANDATORY operator QA of every render is retired; renders are published immediately on generation success (ADR-025). **Hosted-API clause superseded by ADR-026 (2026-07-14):** the "hosted generative image API" engine choice is replaced by self-hosted FLUX.2 Klein 4B run locally via the mflux CLI; the **no-custom-trained-model** rule still stands (Klein is pretrained open weights), as does the real-SKU-only invariant (BR-6/BR-14/FR-016).
 
 ## Context
 
@@ -19,17 +19,17 @@ This is the product's core and highest-risk area:
 
 ## Decision
 
-A hosted generative image API (image-to-image / inpainting) that composites the operator-curated product images into the user's room photo, with MANDATORY operator QA of every render before the user sees it. No custom-trained model.
+A hosted generative image API (image-to-image / inpainting) that composites the operator-curated product images into the user's room photo, with MANDATORY operator QA of every render before the user sees it. No custom-trained model. **[Superseded by ADR-026, 2026-07-14: the hosted-API engine is replaced by self-hosted FLUX.2 Klein 4B via the mflux CLI; "no custom-trained model" still holds. The MANDATORY operator QA was already retired by ADR-025.]**
 
 Scope: one-week iOS pilot.
 
 ## Alternatives considered
 
-1. **Hosted image-generation / inpainting API (2D diffusion-based compositing of product images into the room photo).**
+1. **Hosted image-generation / inpainting API (2D diffusion-based compositing of product images into the room photo).** **[ADR-026, 2026-07-14: this was the chosen engine; now rejected in favor of Alternative #2.]**
    - Pros: Fast to stand up for the one-week pilot; no GPU infrastructure; can iterate on prompts quickly.
    - Cons: Hard to guarantee a rendered object is the exact real SKU rather than a plausible look-alike (tension with BR-6/BR-14); per-render cost and latency depend on a third party; less control over cost threshold enforcement.
 
-2. **Self-hosted open image models (diffusion / segmentation run on own or rented GPUs).**
+2. **Self-hosted open image models (diffusion / segmentation run on own or rented GPUs).** **[ADR-026, 2026-07-14: now chosen — self-hosted FLUX.2 Klein 4B via the mflux CLI, proven on the owner's M2; the "too heavy for a one-week pilot" con is overtaken (pilot window no longer governs per ADR-024).]**
    - Pros: Full control over cost per render (NFR-005), data privacy for user photos (BR-33, NFR-007), and pipeline behavior; no per-call vendor fees.
    - Cons: Significant setup and MLOps effort, likely too heavy for a one-week pilot; still needs strong SKU-fidelity controls.
 

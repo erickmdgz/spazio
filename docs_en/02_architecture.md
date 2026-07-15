@@ -13,7 +13,7 @@
 
 ## Overview
 
-This is a logical, technology-neutral description of how Spazio works end to end. It follows the basic flow in PRD §8 and the invariants in PRD §4. It names no concrete technology; the platform stack is decided for the pilot and recorded in ADR-001 (see [Technology stack](#technology-stack)); vendor/product picks for hosting, image generation, and payments remain open.
+This is a logical, technology-neutral description of how Spazio works end to end. It follows the basic flow in PRD §8 and the invariants in PRD §4. It names no concrete technology; the platform stack is decided for the pilot and recorded in ADR-001 (see [Technology stack](#technology-stack)); vendor/product picks for hosting and payments remain open. *(Updated by ADR-026, 2026-07-14: the render engine is no longer an open image-generation vendor pick — it is self-hosted FLUX.2 Klein 4B run locally via the mflux CLI; see [Technology stack](#technology-stack).)*
 
 The core promise is that the AI never invents furniture: every rendered item must correspond to a real, purchasable SKU already loaded into the marketplace (PRD §1, BR-6, BR-14; FR-016).
 
@@ -41,7 +41,7 @@ End-to-end logical flow:
 
 ## Technology stack
 
-**The platform stack is decided for the pilot (ADR-001).** PRD §12 reserved the technology stack for humans; that human decision has been made for the one-week iOS pilot. Each line below shows the value adopted for the pilot and references the governing decision record. The remaining open product/tool picks are hosting, the image-generation vendor, and the payment gateway (ADR-001).
+**The platform stack is decided for the pilot (ADR-001).** PRD §12 reserved the technology stack for humans; that human decision has been made for the one-week iOS pilot. Each line below shows the value adopted for the pilot and references the governing decision record. The remaining open product/tool picks are hosting and the payment gateway (ADR-001). *(Updated by ADR-026, 2026-07-14: the image-generation vendor is no longer open — the render engine is self-hosted FLUX.2 Klein 4B via mflux; see the rendering-pipeline note and the render-host deployment invariant below.)*
 
 | Layer | Choice | Decision |
 |---|---|---|
@@ -51,8 +51,12 @@ End-to-end logical flow:
 | Authentication | No accounts or login in the pilot; minimal contact capture at checkout (see ADR-022) | ADR-001; ADR-022 |
 | Hosting | Single managed environment/region (see ADR-001) | ADR-001 |
 | Repository | Managed Git hosting running the `main` + `develop` PR workflow (CLAUDE.md); specific product left to implementation (see ADR-001) | ADR-001 |
+| Rendering engine | Self-hosted **FLUX.2 Klein 4B** (Apache-2.0) run locally via the **mflux** CLI (`mflux-generate-flux2-edit`, model `flux2-klein-4b`, quantized) as a child process; `MfluxRenderPipeline` replaces the placeholder as the real implementation, while `FakeRenderPipeline` stays the default/test/CI implementation (see ADR-026) | ADR-002; ADR-026 |
+| Render host | **Apple-Silicon render worker** (mflux requires Apple MLX) consuming the async render-job queue, kept separate from the x86-capable API backend; the owner's M2 is that worker for the class demo (see ADR-026) | ADR-026 |
 
-The rendering/AI pipeline is decided for the pilot: a hosted generative image API (image-to-image / inpainting) that composites operator-curated product images into the user's room photo, with no custom-trained model (see ADR-002; the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14 — renders publish immediately on generation success).
+The rendering/AI pipeline is decided: self-hosted **FLUX.2 Klein 4B** run locally through the **mflux** CLI (`mflux-generate-flux2-edit`, model `flux2-klein-4b`, quantized) as a child process, compositing operator-curated product images into the user's room photo, with **no custom-trained model** (Klein is pretrained open weights). *(Updated by ADR-026, 2026-07-14: this supersedes only ADR-002's hosted-generative-image-API clause; ADR-002's "no custom-trained model" rule stands. The mandatory-operator-QA clause was superseded earlier by ADR-025, 2026-07-14 — renders publish immediately on generation success.)*
+
+> **Render-host deployment invariant (ADR-026, 2026-07-14).** mflux depends on Apple MLX, so the render host **must be Apple Silicon**. Typical managed Node backends are x86 Linux and cannot run mflux; the engine therefore runs on a **separate Apple-Silicon render worker** that consumes the existing async render-job queue (`POST /renders` → `202` + poll), kept out of the API process. For the class demo the owner's M2 is that worker. Tests and CI stay hermetic on `FakeRenderPipeline` (no MLX/Apple-Silicon dependency); `MfluxRenderPipeline` is selected only when explicitly configured.
 
 > **Note on the repository.** The version-control *workflow* is already defined in `CLAUDE.md` (a `main` + `develop` model with pull requests). The hosting/tooling that implements it remains part of ADR-001 and is not asserted here as a chosen product.
 
@@ -86,8 +90,8 @@ Technology-neutral. Boxes are logical responsibilities, not deployment units or 
                          │  │ Accounts & guest          │ │
                          │  │ Localization & delivery   │ │
                          │  │ Product matching          │ │
-                         │  │ Rendering pipeline ───────┼─┼──▶ AI rendering provider
-                         │  │ Style taxonomy            │ │      [hosted image API — ADR-002]
+                         │  │ Rendering pipeline ───────┼─┼──▶ Self-hosted render worker
+                         │  │ Style taxonomy            │ │      [Apple-Silicon: FLUX.2 Klein 4B via mflux — ADR-026]
                          │  │ Cart & stock holds        │ │
                          │  │ Checkout & payments ──────┼─┼──▶ PCI-compliant gateway
                          │  │ Orders & purchase orders  │ │      [hosted PCI checkout — ADR-003/004]
@@ -122,7 +126,7 @@ Logical modules and their responsibilities. Feature and requirement IDs point ba
 | **Accounts & guest** | Create accounts, authenticate, manage basic profile and preferences, and support guest sessions with validated email, phone, and shipping info. *(Excluded from the pilot.)* | FEAT-001; FR-001, FR-002, FR-003, FR-004 (BR-26) |
 | **Catalog & supplier ingestion** | Hold real, purchasable SKUs with required attributes (photos, dimensions, price, colors, materials, stock, category, style, lead time, warranty); classify products as in-stock ready-made or made-to-order; synchronize supplier data (real time for ready-made stock); expose ingestion channels for suppliers. Operator curation lives in the Operator console. *(Pilot: catalog is small and manually curated; automated ingestion excluded.)* | FEAT-015; FR-055, FR-057, FR-058, FR-060 (BR-1–BR-5, BR-32); ADR-006, ADR-012, ADR-014 |
 | **Style taxonomy** | Maintain the shared classification that maps products and user style choices to a common vocabulary; map each product to it. Feeds both style selection and matching. | FEAT-003 (style side); FR-007, FR-059 (BR-16); ADR-005 |
-| **Rendering pipeline** | Accept room photo(s), dimensions, style, and budget; run photo-quality validation; generate the photorealistic render compositing matched SKUs at realistic scale; produce product tags; enforce render-time and inference-cost controls and (post-pilot) daily render metering and targeted edits. | FEAT-002, FEAT-005 (render side), FEAT-007 (tagging), FEAT-013/FEAT-014 (post-pilot); FR-005, FR-006, FR-011, FR-015, FR-016, FR-017, FR-018, FR-024, FR-028, FR-029 (BR-2, BR-6, BR-7, BR-14, BR-15); ADR-002, ADR-013 |
+| **Rendering pipeline** | Accept room photo(s), dimensions, style, and budget; run photo-quality validation; generate the photorealistic render compositing matched SKUs at realistic scale; produce product tags; enforce render-time and inference-cost controls and (post-pilot) daily render metering and targeted edits. The engine is self-hosted FLUX.2 Klein 4B run locally via the mflux CLI on a **separate Apple-Silicon render worker** off the async render-job queue (ADR-026); `FakeRenderPipeline` stays the default/test/CI implementation. | FEAT-002, FEAT-005 (render side), FEAT-007 (tagging), FEAT-013/FEAT-014 (post-pilot); FR-005, FR-006, FR-011, FR-015, FR-016, FR-017, FR-018, FR-024, FR-028, FR-029 (BR-2, BR-6, BR-7, BR-14, BR-15); ADR-002, ADR-013, ADR-026 |
 | **Product matching** | Match real, currently available SKUs to style, dimensions, budget, and locality; keep total cost within budget plus tolerance; disclose unmet budgets and offer the closest alternative; suggest similar products or mark items unavailable when no strong match exists. | FEAT-005 (matching side); FR-014, FR-019, FR-021, FR-022, FR-023 (BR-2, BR-9, BR-10, BR-13); ADR-008 |
 | **Cart & stock holds** | Auto-populate the cart from the render; let the user review, remove, or swap items; require explicit confirmation before payment; place and expire time-boxed stock holds; surface per-item estimates and warranty for display. | FEAT-008, FEAT-009 (display); FR-030–FR-035, FR-036, FR-038, FR-039, FR-040 (BR-17, BR-18, BR-22, BR-23, BR-31); ADR-011 |
 | **Checkout & payments** | Take a single in-app payment across suppliers; revalidate price and availability before capture; support guest checkout; drive split settlement, multi-supplier payouts, multi-currency, and automatic commission retention through the PCI-compliant gateway. | FEAT-010; FR-004, FR-041, FR-042, FR-043, FR-045 (BR-24, BR-28); ADR-003, ADR-004, ADR-007 |
@@ -171,7 +175,7 @@ All of the following are **Accepted** for the one-week iOS pilot (Status: Accept
 | ADR | Decision | Area | Decision (accepted for the pilot) |
 |---|---|---|---|
 | ADR-001 | Technology stack | Architecture | Native iOS (SwiftUI) app + one small managed backend + managed Postgres + object storage; single environment/region; product/tool picks left to implementation. |
-| ADR-002 | Rendering / AI pipeline | AI & Rendering | Hosted generative image API (image-to-image / inpainting) compositing operator-curated product images; no custom-trained model. *(The 'mandatory operator QA of every render' clause is superseded by ADR-025, 2026-07-14; the rest stands.)* |
+| ADR-002 | Rendering / AI pipeline | AI & Rendering | Self-hosted FLUX.2 Klein 4B via the mflux CLI compositing operator-curated product images; still no custom-trained model (Klein is pretrained open weights). *(Updated by ADR-026, 2026-07-14 — self-hosted Klein via mflux supersedes only ADR-002's hosted-image-API clause; the "no custom-trained model" rule stands. The 'mandatory operator QA of every render' clause was superseded by ADR-025, 2026-07-14; the rest stands.)* |
 | ADR-003 | Payment gateway & split-settlement model | Payments | One PCI-compliant hosted checkout, single payment in COP; no split settlement (operator pays suppliers manually). Split settlement + gateway/provider selection: revisit before scale. |
 | ADR-004 | Merchant-of-record model | Payments & Legal | The Spazio operating entity collects the single payment and pays suppliers manually. Tax/legal implications (ties ADR-018): revisit before scale; confirm with an accountant. |
 | ADR-005 | Style taxonomy | Catalog & AI | 1–2 predefined visual styles + free-text description; no taxonomy engine. |
@@ -203,7 +207,7 @@ See the `/docs_en/decisions` folder for the individual ADR records.
 
 The demo is a scoped **visual** walkthrough of the render-to-purchase happy path. It is **not** production, **not** real payments, and **not** the full pilot.
 
-> **Update (#31, PR #32/#33 — post-ADR-024):** this section describes the demo **as originally delivered**. The app has since been wired to the real backend: the wizard runs over `/api/v1` (Next.js rewrite → `backend/`, Fastify + Prisma + Postgres), renders wait for real operator approval, the cart/checkout/order rows are real, and the catalog is seeded in Postgres (`backend/prisma/seed.ts`). Still fake: the composite image (cached asset — ADR-002 vendor open) and the payment capture (ADR-003 vendor open). **Update (ADR-025, 2026-07-14):** the operator-approval wait is retired — renders are published immediately on generation success; the code change is implemented by FEAT-016 (#38).
+> **Update (#31, PR #32/#33 — post-ADR-024):** this section describes the demo **as originally delivered**. The app has since been wired to the real backend: the wizard runs over `/api/v1` (Next.js rewrite → `backend/`, Fastify + Prisma + Postgres), renders wait for real operator approval, the cart/checkout/order rows are real, and the catalog is seeded in Postgres (`backend/prisma/seed.ts`). Still fake: the composite image (cached asset; the production render engine is now self-hosted FLUX.2 Klein 4B via mflux — ADR-026, 2026-07-14 — which the demo does not run) and the payment capture (ADR-003 vendor open). **Update (ADR-025, 2026-07-14):** the operator-approval wait is retired — renders are published immediately on generation success; the code change is implemented by FEAT-016 (#38).
 
 **Deliverable.** `web-demo/` — a **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app. **No database**; in-memory state only (`src/lib/store.tsx`). *(As originally delivered — see the update note above.)*
 
@@ -216,7 +220,7 @@ The demo is a scoped **visual** walkthrough of the render-to-purchase happy path
 - **ADR-006 / ADR-012 / ADR-015** — a seeded in-code catalog instead of operator/self-service ingestion.
 - **Database** — no database at all (vs. managed Postgres).
 
-**Render pipeline (fallback-first).** `CachedRenderProvider` is the default: offline, backed by local SVG assets, and it always works. `OpenAIRenderProvider` is an isolated stub used only if `IMAGE_API_KEY` is set (invoked server-side via `src/app/actions.ts`), with silent fallback to the cached provider. In the demo the render is **faked/cached** and there is **no operator QA**, so ADR-002 is only partially realized. *(Per ADR-025, 2026-07-14, operator QA is no longer required by ADR-002.)*
+**Render pipeline (fallback-first).** `CachedRenderProvider` is the default: offline, backed by local SVG assets, and it always works. `OpenAIRenderProvider` is an isolated stub used only if `IMAGE_API_KEY` is set (invoked server-side via `src/app/actions.ts`), with silent fallback to the cached provider. In the demo the render is **faked/cached** and there is **no operator QA**, so ADR-002 is only partially realized. *(Per ADR-025, 2026-07-14, operator QA is no longer required by ADR-002.)* *(ADR-026, 2026-07-14: the production render engine is now self-hosted FLUX.2 Klein 4B run locally via the mflux CLI, not a hosted image API. The demo's `OpenAIRenderProvider` / `IMAGE_API_KEY` stub is a legacy hosted-API placeholder that predates ADR-026 and is not the chosen engine; the class demo does not run mflux and keeps the cached asset. The real engine is `MfluxRenderPipeline` in the backend, with `FakeRenderPipeline` as the default/test/CI implementation.)*
 
 **Routes / flow.**
 

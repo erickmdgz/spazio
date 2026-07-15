@@ -46,7 +46,7 @@ Where the PRD gives a number only as an example or default, an ADR has now settl
 The AI coding agent — and the runtime pipeline it builds — is expected to:
 
 - **Generate and maintain the application codebase**: client, backend, database, and APIs (PRD §12).
-- **Build and maintain the rendering pipeline** that composites products into the user's room photo (PRD §12; `FEAT-005`).
+- **Build and maintain the rendering pipeline** that composites products into the user's room photo (PRD §12; `FEAT-005`). *(Engine decided — ADR-026, 2026-07-14: self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a child process, replacing the earlier hosted-image-API choice of ADR-002; the no-custom-model rule and the hard rule below — never render a non-catalog product, BR-6/BR-14 — are unchanged.)*
 - **Interpret visual styles and natural-language style descriptions** (PRD FR-03; `FR-007`, `FR-008`).
 - **Apply approximate room dimensions** to scale rendered products realistically (PRD FR-15, BR-7; `FR-017`).
 - **Apply keep-or-replace decisions** so kept items stay in the render and are excluded from cart and budget (PRD FR-16, BR-8; `FR-025`, `FR-026`) — note this is out of the one-week pilot.
