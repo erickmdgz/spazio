@@ -50,9 +50,17 @@ function makeFakeSpawner(recorded: Recorded, exitCode = 0, stderr = ""): MfluxSp
   };
 }
 
+// Faithful to LocalDiskStorage: get() throws on a missing key. The pipeline now
+// tries storage.get(ref) for each product image (FEAT-017 / FEAT-005 fix), so a
+// stub that returned bytes for every key would mask the storage-key vs FS-fallback
+// branches. Callers pre-seed the room photo (and any product keys) into `stored`.
 function makeStorage(stored: Map<string, Buffer>): ObjectStorage {
   return {
-    get: vi.fn(async () => ROOM_BYTES),
+    get: vi.fn(async (key: string) => {
+      const value = stored.get(key);
+      if (value === undefined) throw new Error(`storage: no such key ${key}`);
+      return value;
+    }),
     put: vi.fn(async (key: string, data: Buffer) => {
       stored.set(key, data);
       return key;
@@ -61,6 +69,8 @@ function makeStorage(stored: Map<string, Buffer>): ObjectStorage {
     getSignedUrl: vi.fn(async (key: string) => `local://${key}`),
   };
 }
+
+const ROOM_KEY = "photos/room.png";
 
 function makePrisma(photosById: Record<string, string[]>) {
   return {
@@ -111,8 +121,10 @@ describe("MfluxRenderPipeline", () => {
 
   it("spawns the binary with room + product image paths and stores the output bytes", async () => {
     const recorded: Recorded = {};
-    const stored = new Map<string, Buffer>();
+    const stored = new Map<string, Buffer>([[ROOM_KEY, ROOM_BYTES]]);
     const storage = makeStorage(stored);
+    // photos[0] is an on-disk path here (not a storage key): exercises the legacy
+    // FS-fallback branch — storage.get(path) throws, then the file resolves on disk.
     const prisma = makePrisma({ "prod-1": [productImagePath] });
 
     const pipeline = new MfluxRenderPipeline(storage, prisma, OPTIONS, makeFakeSpawner(recorded));
@@ -151,10 +163,37 @@ describe("MfluxRenderPipeline", () => {
     ]);
   });
 
-  it("skips SKUs with no local image file and still composites (room-only floor)", async () => {
+  it("resolves a product image from object storage by key (FEAT-017 / FEAT-005 fix)", async () => {
     const recorded: Recorded = {};
-    const stored = new Map<string, Buffer>();
+    const productKey = "catalog/public/abo-sofa.jpg";
+    const stored = new Map<string, Buffer>([
+      [ROOM_KEY, ROOM_BYTES],
+      [productKey, Buffer.from("ABO_PRODUCT_IMAGE_BYTES")],
+    ]);
     const storage = makeStorage(stored);
+    // photos[0] is an ObjectStorage key (as FEAT-017 seeds public products and the
+    // worker stores curated images) — the pipeline fetches the bytes from storage.
+    const prisma = makePrisma({ "prod-1": [productKey] });
+
+    const pipeline = new MfluxRenderPipeline(storage, prisma, OPTIONS, makeFakeSpawner(recorded));
+    await pipeline.generate(baseInput({ candidateProductIds: ["prod-1"] }));
+
+    // The product image was fetched from storage by its key...
+    expect(storage.get).toHaveBeenCalledWith(productKey);
+    // ...and materialized into the work dir as a real file handed to mflux.
+    const args = recorded.args ?? [];
+    const ipIndex = args.indexOf("--image-paths");
+    const productArg = args.slice(ipIndex + 2).find((a) => /product-0\.jpg$/.test(a));
+    expect(productArg).toBeDefined();
+    // The composite is still stored under the render key.
+    expect(stored.get("renders/render-1/composite.png")?.toString()).toBe(OUTPUT_BYTES);
+  });
+
+  it("skips SKUs with no resolvable image and still composites (room-only floor)", async () => {
+    const recorded: Recorded = {};
+    const stored = new Map<string, Buffer>([[ROOM_KEY, ROOM_BYTES]]);
+    const storage = makeStorage(stored);
+    // Neither a storage key nor an on-disk file — resolves to nothing, is skipped.
     const prisma = makePrisma({ "prod-missing": ["/no/such/file.png"] });
 
     const pipeline = new MfluxRenderPipeline(storage, prisma, OPTIONS, makeFakeSpawner(recorded));
@@ -175,7 +214,7 @@ describe("MfluxRenderPipeline", () => {
 
   it("throws when the mflux child exits non-zero", async () => {
     const recorded: Recorded = {};
-    const storage = makeStorage(new Map());
+    const storage = makeStorage(new Map([[ROOM_KEY, ROOM_BYTES]]));
     const prisma = makePrisma({});
 
     const pipeline = new MfluxRenderPipeline(

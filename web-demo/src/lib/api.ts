@@ -62,6 +62,27 @@ export interface BackendStyle {
   description: string | null;
 }
 
+/**
+ * Where a product comes from (ADR-027, FR-062..065). A `supplier` product is a
+ * curated, purchasable Spazio SKU (the default, unchanged behavior). A `public`
+ * product is a display-only Amazon Berkeley Objects (ABO) bootstrap-fallback
+ * item — "not sold by Spazio": never carted/checked out, surfaced with a
+ * "View at retailer" outbound link and CC BY 4.0 attribution instead.
+ */
+export type ProductSource = "supplier" | "public";
+
+/**
+ * CC BY 4.0 attribution for a display-only ABO product (ADR-027, FR-065). Mirrors
+ * the backend `Attribution` object emitted by productSummary(); present only for
+ * source=public products, null for supplier SKUs.
+ */
+export interface Attribution {
+  sourceName: string;
+  sourceUrl: string;
+  sourceImageUrl: string;
+  imageLicense: string;
+}
+
 export interface ProductSummary {
   productId: string;
   sku: string;
@@ -73,6 +94,21 @@ export interface ProductSummary {
   deliveryLeadTimeDays: number;
   productionLeadTimeDays: number | null;
   supplierName: string | null;
+  // --- ADR-027 public-catalog fallback (additive, optional) ---
+  // Absent or "supplier" => a normal supplier SKU. "public" => a display-only
+  // ABO product; the fields below are then populated (CC BY 4.0, FR-063/FR-065)
+  // and the UI must show the "not sold by Spazio" label + the "View at retailer"
+  // link instead of any add-to-cart affordance (FR-064). These mirror exactly
+  // what the backend productSummary() serializer emits.
+  source?: ProductSource;
+  notSoldBySpazio?: boolean;
+  outboundUrl?: string | null;
+  attribution?: Attribution | null;
+}
+
+/** True for a display-only ABO bootstrap-fallback product (ADR-027, FR-062..065). */
+export function isPublicProduct(product: ProductSummary): boolean {
+  return product.source === "public";
 }
 
 export interface BackendRenderItem {

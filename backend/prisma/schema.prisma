@@ -49,6 +49,17 @@ enum ProductClassification {
   made_to_order // manufacturable (BR-3 / BR-5)
 }
 
+// Product provenance (ADR-027, 2026-07-15; FR-062..065, NFR-019).
+// `supplier` products are the founding, purchasable-SKU track (BR-6/BR-14/FR-016
+// unchanged). `public` products are the temporary bootstrap fallback from the
+// Amazon Berkeley Objects dataset (CC BY 4.0): real, attributed, but DISPLAY-ONLY
+// / non-purchasable — never carted, checked out, ordered, commissioned, or made
+// merchant-of-record, and excluded from the render-to-purchase metric (NFR-006).
+enum ProductSource {
+  supplier
+  public
+}
+
 enum ProductCompletenessStatus {
   incomplete // missing one or more BR-1 fields -> excluded from rendering (BR-2)
   complete
@@ -199,11 +210,21 @@ model Supplier {
 // A real, purchasable SKU. Carries all BR-1 fields (photos, dimensions, price,
 // colors, materials, stock, category, style attributes, lead times, warranty).
 model Product {
-  id         String @id @default(uuid())
-  supplierId String
-  sku        String @unique
-  name       String
-  category   String
+  id String @id @default(uuid())
+
+  // Provenance (ADR-027). Defaults to `supplier` so every existing SKU and every
+  // curated SKU created through the operator console stays on the purchasable
+  // track exactly as before. `public` products are the display-only bootstrap
+  // fallback (FR-062..065).
+  source ProductSource @default(supplier)
+
+  // Owning supplier. Required for source=supplier; NULL for source=public
+  // (public products have no Spazio supplier — ADR-027 / 07_data_model.md).
+  supplierId String?
+
+  sku      String @unique
+  name     String
+  category String
 
   photos          String[] // BR-1
   colors          String[] // BR-1
@@ -228,10 +249,19 @@ model Product {
   completenessStatus ProductCompletenessStatus @default(incomplete)
   approvalStatus     ProductApprovalStatus     @default(pending)
 
+  // CC BY 4.0 attribution (ADR-027; FR-063/FR-065). Required for source=public;
+  // NULL for source=supplier. sourceImageUrl is the provenance of the CC BY image
+  // and must propagate into any render that composites it (a derivative work —
+  // FR-065, NFR-019, ADR-026).
+  sourceName     String?
+  sourceUrl      String?
+  sourceImageUrl String?
+  imageLicense   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
   renderItems RenderItem[]
   cartItems   CartItem[]
 
@@ -309,6 +339,20 @@ model RenderItem {
   productId        String
   tagPosition      Json? // { x, y } on-image tag coordinates (FR-028/029)
   priceCopSnapshot Int // price captured at render time
+
+  // Provenance copied from the Product at render time (ADR-027; 07_data_model.md).
+  // A source=public item is display-only ("not sold by Spazio"), excluded from the
+  // cart (FR-064), and carries its CC BY 4.0 attribution + "View at retailer" link.
+  source ProductSource @default(supplier)
+
+  // CC BY 4.0 attribution captured for a source=public item and propagated onto the
+  // stored render (a derivative work — FR-065, NFR-019, ADR-026). Required when
+  // source=public; NULL for source=supplier.
+  attribution Json?
+
+  // "View at retailer" outbound link shown instead of add-to-cart for a
+  // source=public item (FR-064). Not a monetized affiliate link.
+  outboundUrl String?
 
   render  Render  @relation(fields: [renderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

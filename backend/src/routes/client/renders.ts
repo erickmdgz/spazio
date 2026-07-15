@@ -72,6 +72,14 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
       });
 
       await queue.enqueue({ renderId: render.id });
+      // NFR-006/TC-119: a render-to-purchase metric must exclude renders that
+      // contain only source=public products (they can never convert). Provenance
+      // is not known here — matching runs in the worker — so RENDER_CREATED cannot
+      // carry a publicOnly flag yet. No metric engine exists today (public items
+      // simply never reach checkout/commission), so this is deferred per the
+      // FEAT-017 memo: whoever builds the metric must segment public-only renders
+      // out of the denominator using the render items' `source` rather than the
+      // event stream alone.
       await emit(prisma, {
         type: EVENTS.RENDER_CREATED,
         projectId,
@@ -145,14 +153,24 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
 
       return reply.code(200).send({
         renderId: render.id,
-        items: render.items.map((it) => ({
-          id: it.id,
-          productId: it.productId,
-          tagPosition: it.tagPosition,
-          priceCopSnapshot: it.priceCopSnapshot,
-          // The tag carries name, price, supplier (FR-028; plan §1.5 step 5).
-          product: productSummary(it.product),
-        })),
+        items: render.items
+          // A source=public item missing its required CC BY attribution is not
+          // displayed (FR-065/TC-118 — defensive; the worker already drops it).
+          .filter((it) => it.source !== "public" || it.attribution != null)
+          .map((it) => ({
+            id: it.id,
+            productId: it.productId,
+            tagPosition: it.tagPosition,
+            priceCopSnapshot: it.priceCopSnapshot,
+            // Provenance so the UI can label + link (FR-063/FR-065). A public item
+            // is display-only ("not sold by Spazio") with a "View at retailer"
+            // outbound link and CC BY 4.0 attribution instead of add-to-cart (FR-064).
+            source: it.source,
+            attribution: it.attribution ?? null,
+            outboundUrl: it.outboundUrl ?? null,
+            // The tag carries name, price, supplier (FR-028; plan §1.5 step 5).
+            product: productSummary(it.product),
+          })),
       });
     },
   );

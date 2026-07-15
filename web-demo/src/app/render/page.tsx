@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestRender } from "@/app/actions";
 import { ProductSheet } from "@/components/ProductSheet";
+import { isPublicProduct, type ProductSummary } from "@/lib/api";
 import { formatCop } from "@/lib/format";
 import { getScenario, getRoom, getStyle } from "@/lib/scenarios";
 import { useDemo } from "@/lib/store";
@@ -34,7 +35,7 @@ export default function RenderPage() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
   const [msgIndex, setMsgIndex] = useState(0);
-  const [openProduct, setOpenProduct] = useState<string | null>(null);
+  const [openProduct, setOpenProduct] = useState<ProductSummary | null>(null);
   const startedKey = useRef<string | null>(null);
 
   // Soft guard.
@@ -137,7 +138,8 @@ export default function RenderPage() {
       const curated = scenario?.items.find((s) => s.productId === item.product.sku);
       return {
         key: item.id,
-        sku: item.product.sku,
+        product: item.product,
+        isPublic: isPublicProduct(item.product),
         name: item.product.name,
         priceCop: item.priceCopSnapshot,
         xPct: curated?.xPct ?? (item.tagPosition ? item.tagPosition.x * 100 : 50),
@@ -236,17 +238,27 @@ export default function RenderPage() {
           <button
             key={spot.key}
             type="button"
-            onClick={() => setOpenProduct(spot.sku)}
-            aria-label={`${spot.name}, ${formatCop(spot.priceCop)}`}
+            onClick={() => setOpenProduct(spot.product)}
+            aria-label={
+              spot.isPublic
+                ? `${spot.name}, style suggestion, not sold by Spazio`
+                : `${spot.name}, ${formatCop(spot.priceCop)}`
+            }
             className="group absolute -translate-x-1/2 -translate-y-1/2"
             style={{ left: `${spot.xPct}%`, top: `${spot.yPct}%` }}
           >
             <span className="absolute inset-0 -m-1 animate-ping2 rounded-full bg-cream-50/70" />
-            <span className="relative grid h-7 w-7 place-items-center rounded-full bg-cream-50 text-xs font-bold text-forest-900 shadow-card ring-2 ring-forest-800 transition group-hover:scale-110">
+            <span
+              className={`relative grid h-7 w-7 place-items-center rounded-full bg-cream-50 text-xs font-bold text-forest-900 shadow-card ring-2 transition group-hover:scale-110 ${
+                spot.isPublic ? "ring-wood" : "ring-forest-800"
+              }`}
+            >
               {i + 1}
             </span>
             <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-forest-900 px-2.5 py-1 text-xs text-cream-50 opacity-0 shadow-card transition group-hover:opacity-100 group-focus:opacity-100">
-              {spot.name} · {formatCop(spot.priceCop)}
+              {spot.isPublic
+                ? `${spot.name} · not sold by Spazio`
+                : `${spot.name} · ${formatCop(spot.priceCop)}`}
             </span>
           </button>
         ))}
@@ -289,7 +301,7 @@ export default function RenderPage() {
         </div>
       </div>
 
-      <ProductSheet productId={openProduct} onClose={() => setOpenProduct(null)} />
+      <ProductSheet product={openProduct} onClose={() => setOpenProduct(null)} />
     </div>
   );
 }

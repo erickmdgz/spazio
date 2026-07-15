@@ -20,7 +20,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve as resolvePath } from "node:path";
+import { extname, join, resolve as resolvePath } from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import type { ObjectStorage } from "../storage.js";
 
@@ -137,7 +137,7 @@ export class MfluxRenderPipeline implements RenderPipeline {
       const roomPath = join(workDir, "room.png");
       await writeFile(roomPath, roomBytes);
 
-      const productPaths = await this.resolveProductImagePaths(input.candidateProductIds);
+      const productPaths = await this.resolveProductImagePaths(input.candidateProductIds, workDir);
       const outPath = join(workDir, "composite.png");
 
       const args = [
@@ -178,12 +178,23 @@ export class MfluxRenderPipeline implements RenderPipeline {
   }
 
   /**
-   * Resolve up to MAX_PRODUCT_IMAGES local image files for the matched SKUs.
-   * A SKU whose image reference has no readable local file is skipped (the
-   * seeded catalog may lack real image files; the integrator wires a real sample
-   * for the live test). This never adds a SKU not already in candidateProductIds.
+   * Resolve up to MAX_PRODUCT_IMAGES image files for the matched SKUs, writing each
+   * into workDir as a real local file mflux can read.
+   *
+   * A Product's photos[0] is an ObjectStorage KEY (BR-33 / NFR-007): the render
+   * worker's own composites and the FEAT-017 public-catalog images (catalog/public/
+   * <sku>.jpg) both live in storage. So we first try ObjectStorage.get(key) and
+   * materialize the bytes into workDir — this is what fixes the FEAT-005 room-only
+   * limitation, where curated SKUs had no readable image file. If the reference is
+   * not a storage key (e.g. a legacy on-disk/web asset path), we fall back to
+   * treating it as a local filesystem path. A SKU with no resolvable image is
+   * skipped (room-only edit is the graceful floor). Never adds a SKU not already in
+   * candidateProductIds (BR-6/BR-14 real-SKU-only invariant preserved).
    */
-  private async resolveProductImagePaths(candidateProductIds: string[]): Promise<string[]> {
+  private async resolveProductImagePaths(
+    candidateProductIds: string[],
+    workDir: string,
+  ): Promise<string[]> {
     if (candidateProductIds.length === 0) return [];
 
     const products = await this.prisma.product.findMany({
@@ -197,12 +208,26 @@ export class MfluxRenderPipeline implements RenderPipeline {
       if (paths.length >= MfluxRenderPipeline.MAX_PRODUCT_IMAGES) break;
       const ref = photosById.get(id)?.[0];
       if (!ref) continue;
+
+      const ext = extname(ref) || ".jpg";
+      const localCopy = join(workDir, `product-${paths.length}${ext}`);
+
+      // Preferred path: the reference is an ObjectStorage key — fetch the bytes.
+      try {
+        const bytes = await this.storage.get(ref);
+        await writeFile(localCopy, bytes);
+        paths.push(localCopy);
+        continue;
+      } catch {
+        // Not a storage key (or missing in storage) — try a legacy on-disk path.
+      }
+
       const filePath = resolvePath(ref);
       try {
         await access(filePath);
         paths.push(filePath);
       } catch {
-        // No local image file for this SKU — skip it (room-only edit is the floor).
+        // No resolvable image for this SKU — skip it (room-only edit is the floor).
       }
     }
     return paths;
