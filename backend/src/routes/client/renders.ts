@@ -17,10 +17,11 @@ interface CreateRenderBody {
  *                              (FR-014..018/021)
  *  - GET  /renders/:id         poll generation status (queued/processing/completed/failed);
  *                              a completed render is immediately visible (ADR-025)
+ *  - GET  /renders/:id/image   stream the stored render image bytes (FR-015)
  *  - GET  /renders/:id/items   tagged products; emits render_viewed (FR-028/029, §0.1#8)
  */
 export const renderRoutes: FastifyPluginAsync = async (app) => {
-  const { prisma, queue } = app.deps;
+  const { prisma, queue, storage } = app.deps;
 
   app.post<{ Body: CreateRenderBody }>(
     "/renders",
@@ -120,6 +121,42 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
         status: render.renderRequest.status,
         imageKey: render.imageKey,
       });
+    },
+  );
+
+  // Serve the stored render image bytes (FR-015). An <img> tag cannot send the
+  // device-token header, so the client fetches this with the header and turns the
+  // response into an object URL. Device-scoped: a foreign device answers 404
+  // (no existence leak, NFR-007). A render with no imageKey yet (still
+  // generating/failed) answers 404 so the client keeps polling.
+  app.get<{ Params: { id: string } }>(
+    "/renders/:id/image",
+    {
+      schema: {
+        params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
+      },
+    },
+    async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const render = await prisma.render.findUnique({
+        where: { id: request.params.id },
+        select: { imageKey: true, project: { select: { deviceToken: true } } },
+      });
+      // Another device's render answers 404 — no existence leak (NFR-007).
+      if (!render || render.project.deviceToken !== token) {
+        return reply.code(404).send({ error: "not_found", message: "Render not found." });
+      }
+      // No image stored yet (still generating or failed) — keep polling.
+      if (!render.imageKey) {
+        return reply.code(404).send({ error: "not_ready", message: "Render image not ready." });
+      }
+      const bytes = await storage.get(render.imageKey);
+      return reply
+        .code(200)
+        .header("Content-Type", "image/png")
+        .header("Cache-Control", "private")
+        .send(bytes);
     },
   );
 

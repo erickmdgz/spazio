@@ -204,8 +204,10 @@ The system shall, when a guest provides a validated email, a phone number, and s
 
 ## FR-005 — Upload a room photo
 
-**Actor:** Homeowner/renter · **Priority:** High · **Status:** Proposed
+**Actor:** Homeowner/renter · **Priority:** High · **Status:** Proposed · *(As built as a byte upload — FEAT-002, 2026-07-15)*
 **Origin:** PRD FR-02 (§6); PRD §4 BR-33; Spazio_One_Week_iOS_Pilot.md (Included); 01_product_vision.md
+
+> **As built — FEAT-002 (2026-07-15).** FR-005 is now implemented as a **real image-byte upload**. `POST /api/v1/projects/:id/photos` accepts the raw file bytes (`Content-Type: image/jpeg|image/png|image/webp`, not JSON, parsed via a Fastify `addContentTypeParser` buffer — no new dependency; route `bodyLimit` ~20 MB), stores them in object storage under `rooms/<projectId>/<uuid>.<ext>`, creates the `RoomPhoto` (`qualityStatus` `pending`) and returns `201 { id, storageKey }`. The upload is **device-scoped** (foreign/unknown device or unowned project → 404, NFR-007); a non-image content-type or an empty body → 400; a body over ~20 MB → 413. Room dimensions are not part of this body (they stay on `PATCH /projects/:id`, FR-011). The web app now sends the user's real chosen file instead of substituting a preset room key, so the render engine (ADR-026) composites the actual uploaded photo. See `06_api.md` (§2) and `features/FEAT-002_room-capture-inputs.md`; validated by **TC-120 / TC-121** and the 400/empty-body case **TC-125** (`08_test_plan.md`).
 
 ### Description
 
@@ -218,7 +220,7 @@ The system shall, when a user uploads a supported image file, store it, associat
 
 ### Business rules
 
-- User photos are private by default (VERIFIED, PRD §4 BR-33 → NFR-007). Supported formats/size limits are **DRAFT/PROPOSED**.
+- User photos are private by default (VERIFIED, PRD §4 BR-33 → NFR-007). Supported formats/size limits are **DRAFT/PROPOSED**. *(As built — FEAT-002, 2026-07-15: accepted image types are `image/jpeg`, `image/png`, `image/webp`; the per-request size limit is ~20 MB at the route level. The upload is device-scoped — NFR-007.)*
 
 ## FR-006 — Capture a room photo with the in-app camera
 
@@ -369,8 +371,10 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 
 ## FR-015 — Generate a photorealistic render compositing matched SKUs into the room photo
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(Real render now displayed — FEAT-002, 2026-07-15)*
 **Origin:** PRD FR-06 (§6); PRD §1; Spazio_One_Week_iOS_Pilot.md ("the one core thing"); 01_product_vision.md
+
+> **As built — render display (FEAT-002, 2026-07-15).** The render *output* is now served to and displayed by the client. A new device-scoped `GET /api/v1/renders/:id/image` streams the stored render (`Render.imageKey`) from object storage with an image content-type; once `GET /renders/:id` reports `completed`, the web app fetches this route with `x-device-token` and shows the **real backend render** (the cached preset visual is kept only as the while-generating placeholder / fetch-failure fallback; supplier + public product tags per ADR-027 still overlay). A foreign/unknown device → 404, and a render with no `imageKey` yet → 404 (client keeps polling), so no other device's render is leaked (NFR-007). See `06_api.md` (§5), `features/FEAT-005_ai-rendering-engine.md`, `features/FEAT-007_product-tagging-interaction.md`; validated by **TC-122 / TC-123 / TC-124** (`08_test_plan.md`).
 
 ### Description
 

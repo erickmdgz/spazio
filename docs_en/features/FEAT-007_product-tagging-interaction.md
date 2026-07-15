@@ -8,6 +8,8 @@ Turn the completed render into a **shoppable image** (renders publish immediatel
 
 - **Pilot scope (VERIFIED):** *"Tappable product tags on the render"* (pilot "Included" list). Implemented as FR-028 (tagging) and FR-029 (tap to view details).
 
+> **As built — tags overlay the real render (FEAT-002, 2026-07-15).** The shoppable image now shows the **real backend render**: the web app fetches `GET /api/v1/renders/:id/image` (device-scoped, with `x-device-token`) once the render is `completed` and displays those stored bytes (FR-015), with the supplier + public (ADR-027) product tags overlaid on top exactly as before. The cached preset visual is kept only as the while-generating placeholder / fetch-failure fallback. Tagging behavior (FR-028/FR-029) is unchanged; this branch changes the underlying image the tags sit on from a cached preset to the actual render. See FEAT-005, FR-015, and `06_api.md` (§5).
+
 ## 2. Problem or need
 
 The product's whole value is connecting **inspiration directly to purchase** (PRD §1). For that to work the user must be able to see **which real products** are in the render and their key facts — **name, price, supplier, warranty, and listing link** — and act on them. **Delivery time and warranty strongly influence purchase decisions**, and **price, delivery, and warranty must be visible before checkout** (PRD §5; NFR-015). Tagging also makes the render auditable against the real-SKU guarantee (FR-016).

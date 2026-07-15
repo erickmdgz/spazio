@@ -296,6 +296,32 @@ below).
   `docs_en/features/FEAT-017_public-catalog-fallback.md`; decision:
   `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
 
+- **Real photo upload + render display wired end-to-end (FEAT-002, 2026-07-15).**
+  The image pipeline is connected to the UI at both ends, closing two gaps the
+  render loop (#31) left open: the room photo was not actually uploaded (the web
+  app substituted a preset sample and sent a preset **key string**; the backend
+  photos route only recorded a `storageKey`, with no byte-ingest endpoint) and the
+  real render was not shown (the web page displayed a cached preset visual and no
+  route served the stored `Render.imageKey`). As built: `POST
+  /api/v1/projects/:id/photos` now ingests the **raw image bytes**
+  (`image/jpeg|image/png|image/webp`, parsed via a Fastify `addContentTypeParser`
+  buffer — **no new dependency**, no `@fastify/multipart`; ~20 MB route limit),
+  stores them in object storage under `rooms/<projectId>/<uuid>.<ext>`, creates the
+  `RoomPhoto` and returns `201 { id, storageKey }` (**FR-005**); a **new**
+  device-scoped `GET /api/v1/renders/:id/image` streams the stored render so the
+  web app displays the **real backend render** (`MfluxRenderPipeline`, ADR-026)
+  instead of a cached preset (**FR-015**; FEAT-005 / FEAT-007), keeping the cached
+  visual only as the while-generating placeholder / fetch-failure fallback. Both
+  new paths preserve device scoping — a foreign/unknown device answers **404**, and
+  a render with no `imageKey` yet answers **404** so the client keeps polling
+  (**NFR-007**). New test cases **TC-120..TC-125** (`08_test_plan.md`, Status
+  Pending); `FakeRenderPipeline` stays the hermetic test default. No new ADR — this
+  implements existing FRs (FR-005 / FR-015) with no new decision. Docs updated:
+  `06_api.md`, `03_requirements.md`, `08_test_plan.md`, `05_backlog.md`,
+  `features/FEAT-002_room-capture-inputs.md`, `features/FEAT-005_ai-rendering-engine.md`,
+  `features/FEAT-007_product-tagging-interaction.md`. Still on a feature branch:
+  **nothing is deployed or released and no requirement is listed as covered.**
+
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
   class-project demo is delivered. **For the demo scope only** it supersedes

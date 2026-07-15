@@ -39,7 +39,10 @@ export function operatorSessionCookie(overrides: Partial<OperatorSession> = {}):
  * Build a Fastify app with an injected Prisma mock so the suite never needs a live
  * database. Pass overrides to shape specific model method return values / spies.
  */
-export async function buildTestApp(prismaOverrides: Partial<Record<string, unknown>> = {}) {
+export async function buildTestApp(
+  prismaOverrides: Partial<Record<string, unknown>> = {},
+  depsOverrides: Partial<AppDeps> = {},
+) {
   const prisma = {
     $disconnect: vi.fn().mockResolvedValue(undefined),
     event: { create: vi.fn().mockResolvedValue({ id: "evt_1" }) },
@@ -53,6 +56,7 @@ export async function buildTestApp(prismaOverrides: Partial<Record<string, unkno
     renderPipeline: new FakeRenderPipeline(),
     payments: new FakePaymentGateway(),
     queue: new InMemoryQueue<RenderJob>(),
+    ...depsOverrides,
   };
 
   const app = await buildApp(deps);

@@ -24,6 +24,20 @@ export function deviceToken(): string {
   return token;
 }
 
+const UNREACHABLE = "Could not reach the Spazio service — is the backend running?";
+
+/** Turns a non-2xx response into an ApiError, preferring the backend's message. */
+async function throwForResponse(response: Response): Promise<never> {
+  let message = `Request failed (${response.status})`;
+  try {
+    const body = (await response.json()) as { message?: string };
+    if (body.message) message = body.message;
+  } catch {
+    // non-JSON error body — keep the generic message
+  }
+  throw new ApiError(message, response.status);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -37,18 +51,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
     });
   } catch {
-    throw new ApiError("Could not reach the Spazio service — is the backend running?", 0);
+    throw new ApiError(UNREACHABLE, 0);
   }
-  if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-    try {
-      const body = (await response.json()) as { message?: string };
-      if (body.message) message = body.message;
-    } catch {
-      // non-JSON error body — keep the generic message
-    }
-    throw new ApiError(message, response.status);
-  }
+  if (!response.ok) await throwForResponse(response);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
@@ -182,11 +187,51 @@ export function patchProject(
   return request(`/projects/${projectId}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
-export function addRoomPhoto(projectId: string, storageKey: string): Promise<{ id: string }> {
-  return request(`/projects/${projectId}/photos`, {
-    method: "POST",
-    body: JSON.stringify({ storageKey }),
-  });
+/**
+ * Uploads the raw bytes of a room photo (FR-005). The backend
+ * `POST /projects/:id/photos` route ingests the image body directly (no JSON) —
+ * the Content-Type is the file's own MIME (image/jpeg | image/png | image/webp),
+ * the bytes are stored under a server-assigned key, and the created RoomPhoto is
+ * returned. Device-scoped (NFR-007) via the x-device-token header.
+ */
+export async function uploadRoomPhoto(
+  projectId: string,
+  photo: Blob,
+): Promise<{ id: string; storageKey: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/projects/${projectId}/photos`, {
+      method: "POST",
+      headers: {
+        "x-device-token": deviceToken(),
+        "content-type": photo.type || "application/octet-stream",
+      },
+      body: photo,
+    });
+  } catch {
+    throw new ApiError(UNREACHABLE, 0);
+  }
+  if (!response.ok) await throwForResponse(response);
+  return (await response.json()) as { id: string; storageKey: string };
+}
+
+/**
+ * Fetches the stored render image bytes for the owning device (NFR-007). An
+ * <img> tag cannot send the x-device-token header, so the caller turns the
+ * returned Blob into an object URL. A render still generating (or not owned by
+ * this device) returns non-2xx — the caller falls back to the cached visual.
+ */
+export async function fetchRenderImage(renderId: string): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/renders/${renderId}/image`, {
+      headers: { "x-device-token": deviceToken() },
+    });
+  } catch {
+    throw new ApiError(UNREACHABLE, 0);
+  }
+  if (!response.ok) await throwForResponse(response);
+  return response.blob();
 }
 
 export function listStyles(): Promise<{ styles: BackendStyle[] }> {
