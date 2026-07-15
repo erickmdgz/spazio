@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Scoped by ADR-027 (2026-07-15):** the commission model here governs **supplier-track** purchases unchanged. **No commission** applies to `source=public` public-catalog bootstrap products (Amazon Berkeley Objects, CC BY 4.0) — they are **never purchased through Spazio** (display-only, "not sold by Spazio", "View at retailer" outbound link) and so carry no marketplace fee. See `decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
 
 ## Context
 

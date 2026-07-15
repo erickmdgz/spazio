@@ -31,6 +31,8 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 > **Update (ADR-025, 2026-07-14):** the human render-review gate is retired. FR-027 is Deprecated (superseded by ADR-025); renders are published to the requesting user immediately upon successful generation. Review-gate preconditions in FR-015, FR-028, FR-029, and FR-031 are updated accordingly; TC-051/TC-052/TC-053 are retired with FR-027 (see `08_test_plan.md`).
 
+> **Update (ADR-027, 2026-07-15):** a temporary, additive **public-catalog bootstrap fallback** is introduced (FEAT-017, issue #43). While Spazio has no onboarded suppliers, when no supplier catalog satisfies the matching constraints the system may present products from the **Amazon Berkeley Objects** public dataset (CC BY 4.0) as a clearly-labeled, **non-purchasable, display-only** `source=public` track (new FR-062–FR-065). This **qualifies — does not delete** — the founding real-purchasable-SKU-only invariant: **FR-016** is scoped to the **supplier track** (a public product is real and attributed but not purchasable), and **FR-018**'s current-availability gate is carved out for the non-purchasable public track. The supplier track (BR-6/BR-14/FR-016, in-app checkout, commission, MoR) stays fully in force and unchanged. Same dated-marker precedent as ADR-024/ADR-025/ADR-026. See `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md` and `docs_en/features/FEAT-017_public-catalog-fallback.md`.
+
 ## Requirements index
 
 <!-- Catalog at a glance; the detail lives in each FR-XXX block below. -->
@@ -98,6 +100,10 @@ This document catalogs what the system must do. Each functional requirement (FR)
 | FR-059 | Map each product to the shared style taxonomy | High |
 | FR-060 | Synchronize supplier catalog data regularly, and in real time for ready-made stock | High |
 | FR-061 | Operator manually forwards each confirmed order to the supplier | High |
+| FR-062 | Present public-dataset (ABO) products as a fallback when no supplier catalog satisfies the constraints *(ADR-027, bootstrap/demo)* | Medium |
+| FR-063 | Tag every product with its source and distinguish public products across matching, render tags, and cart *(ADR-027)* | Medium |
+| FR-064 | Keep public products display-only with a "View at retailer" link; exclude them from cart, checkout, orders, commission, and MoR *(ADR-027)* | Medium |
+| FR-065 | Record and surface required CC BY 4.0 attribution for public products and propagate provenance into composited renders *(ADR-027)* | Medium |
 
 > **Deferred / not yet catalogued (PRD Must-have coverage gap).** Two PRD §3 "Must have" items are **deliberately not yet written as FRs**. They are recorded here so the gap is visible instead of lost; no FR is invented for them yet.
 >
@@ -381,8 +387,10 @@ The system shall, when matched SKUs and a valid room photo are available, genera
 
 ## FR-016 — Restrict every rendered item to a real, purchasable SKU and never fabricate products
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(Scoped by ADR-027, 2026-07-15 — qualified, not deleted)*
 **Origin:** PRD FR-06 (§6); PRD §1; PRD §4 BR-6, BR-14; Spazio_One_Week_iOS_Pilot.md; 01_product_vision.md
+
+> **Scoped by ADR-027 (2026-07-15) — qualified, not deleted.** This invariant governs the **supplier track**. During the bootstrap/demo period, when no supplier catalog satisfies the constraints, a clearly-labeled, **non-purchasable, display-only** `source=public` track (Amazon Berkeley Objects, CC BY 4.0) may present real, attributed products that are **not** purchasable SKUs (FR-062–FR-065). Public products are real and attributed — never fabricated — so **BR-14's no-fabrication rule still holds for them**; they are the explicit, labeled exception to **BR-6's purchasable-SKU rule** and are quarantined from cart/checkout/commission/MoR (FR-064). The description, criteria, and rule below are unchanged and remain fully in force for `source=supplier` products.
 
 ### Description
 
@@ -395,7 +403,7 @@ The system shall, when a render is produced, ensure every rendered item referenc
 
 ### Business rules
 
-- Every rendered item must correspond to a real, purchasable SKU (VERIFIED, PRD §4 BR-6); the system must never fabricate unavailable products (VERIFIED, PRD §4 BR-14). This is the central product invariant (PRD §1).
+- Every rendered item must correspond to a real, purchasable SKU (VERIFIED, PRD §4 BR-6); the system must never fabricate unavailable products (VERIFIED, PRD §4 BR-14). This is the central product invariant (PRD §1). *(Scoped by ADR-027, 2026-07-15: this rule applies to the supplier track; `source=public` bootstrap products are a labeled, non-purchasable, real-and-attributed exception to the purchasable-SKU clause — see FR-062–FR-065. Not deleted.)*
 
 ## FR-017 — Use approximate room dimensions to scale rendered products realistically
 
@@ -417,8 +425,10 @@ The system shall, when generating a render, use the project's approximate room d
 
 ## FR-018 — Restrict rendering to currently available products (never render unavailable ready-made stock)
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(Carve-out by ADR-027, 2026-07-15 for the non-purchasable public track)*
 **Origin:** PRD FR-06 (§6); PRD §4 BR-4; Spazio_One_Week_iOS_Pilot.md (Included, in-stock only); 01_product_vision.md
+
+> **Carve-out — ADR-027 (2026-07-15).** The current-availability (in-stock) gate governs the **supplier track**. `source=public` bootstrap products are **display-only and non-purchasable** (FR-064), carry no live supplier stock feed, and are therefore **outside** this in-stock availability gate; they remain real and attributed (FR-062, FR-065) and are excluded from cart/checkout so no unavailable purchasable item is ever sold. The description, criteria, and rule below are unchanged and remain fully in force for `source=supplier` products.
 
 ### Description
 
@@ -431,7 +441,7 @@ The system shall, when matching and rendering, restrict ready-made products to t
 
 ### Business rules
 
-- Ready-made items require current stock data and must never be rendered when unavailable (VERIFIED, PRD §4 BR-4). Made-to-order items are handled via lead-time data (PRD §4 BR-5 → FR-058).
+- Ready-made items require current stock data and must never be rendered when unavailable (VERIFIED, PRD §4 BR-4). Made-to-order items are handled via lead-time data (PRD §4 BR-5 → FR-058). *(Carve-out by ADR-027, 2026-07-15: `source=public` bootstrap products are display-only/non-purchasable and are not subject to this live-stock availability gate — see FR-062, FR-064.)*
 
 ## FR-019 — Exclude catalog entries with incomplete required data from rendering eligibility
 
@@ -1165,3 +1175,75 @@ The system shall, when an operator forwards a confirmed (paid) order, transmit i
 ### Business rules
 
 - In the pilot the operator forwards the confirmed order manually because no automated split payment or supplier integration is built in week one (VERIFIED, pilot). This is a pilot bridge for FR-043/FR-044.
+
+## FR-062 — Present public-dataset (ABO) products as a fallback when no supplier catalog satisfies the constraints
+
+**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Origin:** ADR-027 (2026-07-15); FEAT-017 (issue #43); PRD §10 (two-sided cold-start risk); ADR-024 (web app), ADR-023 (class demo)
+
+### Description
+
+The system shall, when no supplier catalog satisfies the project's matching constraints (style, dimensions, budget, locality), draw candidate products from the seeded public-dataset (Amazon Berkeley Objects, `source=public`) fallback so that matching and rendering can proceed during the bootstrap/demo period.
+
+### Acceptance criteria
+
+- [ ] Given no supplier product satisfies the constraints (empty supplier match — e.g. no supplier is onboarded), when matching runs, then the system draws candidates from the `source=public` ABO subset and returns a match set of public products. → TC-110
+- [ ] Given a supplier catalog that does satisfy the constraints, when matching runs, then the public fallback stays inactive and no `source=public` product is presented (the supplier track is unchanged). → TC-111
+
+### Business rules
+
+- The public fallback is a temporary, additive bootstrap/demo track governed by **ADR-027** (2026-07-15); it activates only when no supplier catalog satisfies the constraints and it does not weaken the supplier track (quarantine, not dilute). The source is the Amazon Berkeley Objects dataset, licensed CC BY 4.0; attribution is required (FR-065, NFR-019). Public products are non-purchasable and clearly labeled (FR-063, FR-064). Scraping named retailers is forbidden (NFR-019).
+
+## FR-063 — Tag every product with its source and distinguish public products across matching, render tags, and cart
+
+**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Origin:** ADR-027 (2026-07-15); FEAT-017; data-model spec `07_data_model.md` (`Product.source`)
+
+### Description
+
+The system shall, for every catalog product, carry a `source` of `supplier` or `public`, and shall keep `source=public` products distinguishable from supplier products through matching, the render tag, and the cart, labeling every public product "not sold by Spazio".
+
+### Acceptance criteria
+
+- [ ] Given products of both provenances, when they are matched and rendered, then each carries its `source` (`supplier`|`public`) and every `source=public` item is visibly labeled "not sold by Spazio" in its render tag and detail. → TC-112
+- [ ] Given a `source=supplier` product, when it is matched/rendered, then it is not labeled as public and retains the full purchasable-SKU treatment (BR-6/BR-14/FR-016 unchanged for it). → TC-112
+
+### Business rules
+
+- Provenance is a first-class product attribute (`Product.source`, spec in `07_data_model.md`) introduced by **ADR-027**. The supplier-track invariant (FR-016/BR-6/BR-14) is unchanged; public products are the labeled exception. The exclusion of public products from cart/checkout/orders/commission/MoR is specified in FR-064; attribution in FR-065.
+
+## FR-064 — Keep public products display-only with a labeled "View at retailer" outbound link, excluded from cart, checkout, orders, commission, and merchant-of-record
+
+**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Origin:** ADR-027 (2026-07-15); FEAT-017; scopes ADR-004 (MoR), ADR-007 (commission)
+
+### Description
+
+The system shall, for a `source=public` product, present it as display-only with a labeled "View at retailer" outbound link instead of an add-to-cart affordance, and shall exclude it from cart, checkout, orders, commission, and the merchant-of-record path.
+
+### Acceptance criteria
+
+- [ ] Given a `source=public` product shown in a render or in its detail, when the user views it, then a labeled "View at retailer" outbound link is presented and no add-to-cart affordance is offered. → TC-114
+- [ ] Given an attempt to add a `source=public` product to the cart or checkout, when it is processed, then it is rejected with a `not-purchasable` status and the product is absent from any order, commission, and merchant-of-record record. → TC-115 (add refused); TC-113 (cart/checkout/order/commission/MoR exclusion)
+
+### Business rules
+
+- Public products are **display-only** and **never** purchasable in-app (**ADR-027**, quarantine-not-dilute). This is **not** a monetized affiliate program — the outbound link is informational. Merchant-of-record (ADR-004) does not cover public products and no commission (ADR-007) applies, because they are never purchased through Spazio. Public renders are excluded from the render-to-purchase metric (NFR-006, segmented — see `04_non_functional_requirements.md`).
+
+## FR-065 — Record and surface required CC BY 4.0 attribution for public products and propagate image provenance into composited renders
+
+**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Origin:** ADR-027 (2026-07-15); FEAT-017; NFR-019; ADR-026 (render engine — derivative work)
+
+### Description
+
+The system shall, for a `source=public` product, record and display its required attribution (source name, source URL, source image URL, image license), and shall propagate that image provenance and attribution into any render that composites the public product image (a derivative work).
+
+### Acceptance criteria
+
+- [ ] Given a `source=public` product with complete attribution, when it is displayed and when its image is composited into a render, then the required CC BY 4.0 attribution (source name, source URL, image license) is displayed with the product and is propagated onto the stored render. → TC-116 (recorded/surfaced); TC-117 (propagated into the derivative render)
+- [ ] Given a `source=public` product missing required attribution, when rendering eligibility is evaluated, then it is excluded with a `missing-attribution` flag and is neither displayed nor composited. → TC-118
+
+### Business rules
+
+- CC BY 4.0 requires attribution both for use and for derivative works (**ADR-027**, **NFR-019**). A render compositing a public image is a derivative work (**ADR-026**); the attribution must flow from the source into the stored render and its display. Attribution fields (`source_name`, `source_url`, `source_image_url`, `image_license`) are specified on `Product` in `07_data_model.md`. Failure to carry attribution is a license violation (NFR-019).

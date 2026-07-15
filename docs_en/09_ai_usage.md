@@ -51,7 +51,7 @@ The AI coding agent — and the runtime pipeline it builds — is expected to:
 - **Apply approximate room dimensions** to scale rendered products realistically (PRD FR-15, BR-7; `FR-017`).
 - **Apply keep-or-replace decisions** so kept items stay in the render and are excluded from cart and budget (PRD FR-16, BR-8; `FR-025`, `FR-026`) — note this is out of the one-week pilot.
 - **Cross-reference the supplier catalog** to match real, available SKUs to style, dimensions, budget, and locality (PRD FR-06; `FR-014`).
-- **Generate photorealistic renders** composed only of matched SKUs (PRD FR-06; `FR-015`).
+- **Generate photorealistic renders** composed only of matched SKUs (PRD FR-06; `FR-015`). *(Scoped caveat — ADR-027, 2026-07-15: matched SKUs are supplier-track products, or — while no supplier catalog exists — real, attributed **public-catalog fallback** products (Amazon Berkeley Objects, CC BY 4.0). When the render composites a public product image, the stored render is a **derivative work** and the CC BY attribution/provenance must propagate into it — see `FR-065`, `NFR-019`. Public products remain display-only and non-purchasable.)*
 - **Implement targeted edits** that change only the requested element (PRD FR-18; `FR-052`) — out of the pilot.
 - **Enforce the business rules**: budget-plus-tolerance (BR-9), locality (BR-11), delivery coverage and fallback (BR-12), photo-quality validation (BR-15), stock holds and revalidation (BR-22–24), and render-usage limits (BR-19–21). See `FR-018`, `FR-021`, `FR-024`, `FR-039`–`FR-041`, `FR-048`–`FR-050`.
 - **Implement sponsored-placement tie-breaking** that only breaks ties between similarly relevant products and never overrides relevance, quality, budget, locality, or availability (PRD §9, BR-29, BR-30; `FR-054`).
@@ -84,6 +84,8 @@ Concretely, this means the AI must not:
 - Fill a budget or style gap by inventing a product instead of disclosing the gap and offering the closest real alternative (PRD BR-10; `FR-022`).
 
 If matching real SKUs cannot satisfy the request, the correct behavior is to disclose the limitation and offer real alternatives or mark the item unavailable — **never** to fabricate.
+
+> **Scoped caveat (ADR-027, 2026-07-15) — the never-fabricate rule stays intact.** The rule above is unchanged: the AI must never invent or render a product that does not exist. It is **scoped**, not weakened, for the public-catalog bootstrap fallback: while no supplier catalog exists, the AI may render, tag, and display real **public-catalog products** (Amazon Berkeley Objects, CC BY 4.0) that carry **real** dimensions, materials, and images and required **attribution**. These count as **real, attributed, non-fabricated inventory** for **display** — they are not hallucinated furniture, so rendering them does not violate the hard rule. What changes is *purchasability, not reality*: `source=public` products are **display-only**, labeled "not sold by Spazio", offered with a "View at retailer" outbound link, and **never** priced for in-app purchase or added to cart/checkout/orders/commission/MoR. The **purchasable-SKU** guarantee (real, in-stock, purchasable, deliverable supplier SKU with in-app checkout) still holds fully for the **supplier track**. Fabrication — showing a plausible item with **no** backing record — remains forbidden for both tracks. See FEAT-017, FR-062..065, NFR-019.
 
 ## Tasks that must be decided by humans
 

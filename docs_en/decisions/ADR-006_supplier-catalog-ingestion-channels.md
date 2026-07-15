@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Scoped by ADR-027 (2026-07-15):** the four supplier ingestion channels this ADR governs (software integration / Excel / API / FTP) are **unchanged**. A **public-dataset fetch/import** (Amazon Berkeley Objects, CC BY 4.0) is a **new ingestion channel distinct from those four** — it is not supplier self-service and feeds the display-only `source=public` bootstrap track, not the supplier catalog. This introduces external egress the closed supplier catalog did not have (recorded under NFR-019). See `decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
 
 ## Context
 

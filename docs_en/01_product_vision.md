@@ -45,11 +45,17 @@ Enable a user to generate a realistic, purchasable interior design for their own
 
 The central constraint that makes this a marketplace rather than an inspiration tool: **the AI never invents furniture. Every rendered item must correspond to a real, purchasable SKU already loaded into the marketplace** (VERIFIED — PRD §1, BR-6, BR-14; canonical FR-016).
 
+> **Scoped caveat (ADR-027, 2026-07-15).** This main-goal constraint stays fully in force for the **supplier track**. Because Spazio has no onboarded suppliers yet, a clearly-labeled, temporary **public-catalog bootstrap fallback** (real products from the Amazon Berkeley Objects dataset, CC BY 4.0, attributed) may additionally be shown so the demo has real products to match, render, and display. These `source=public` products are **display-only** — labeled "not sold by Spazio", offered with a "View at retailer" outbound link, and **never** added to cart/checkout/orders/commission/merchant-of-record. They are real, attributed, non-fabricated inventory that sits **outside** the purchasable-SKU guarantee; they do not weaken it and are not "invented furniture". The guarantee is qualified with this narrow dated exception, not rewritten. See FEAT-017, FR-062..065, NFR-019.
+
 Success toward this goal is measured by **render-to-purchase**: the share of AI-generated renders that lead to a completed in-app purchase of one or more products shown in the render, in the same session, without the user leaving Spazio to search elsewhere. Style accuracy, catalog completeness, and rendering quality matter only insofar as they improve this metric. (Detailed in *Success criteria*.)
+
+> **Success-metric note (ADR-027, 2026-07-15).** Public-catalog fallback products are **non-purchasable** (display-only), so renders that show only `source=public` products cannot produce an in-app purchase. They are **segmented out** of the render-to-purchase denominator so the metric measures the purchasable supplier track only and is not distorted by the temporary bootstrap track (NFR-006 segmentation; NFR-019).
 
 ## Initial scope
 
 The **first version = the one-week iOS pilot**. The scope below is the pilot's "Included" list (VERIFIED — pilot doc), which proves a single loop: *a real person, in one city, sees their own room furnished with real furniture and buys at least one piece.* The broader full-product scope lives in the PRD "Must have" list (§3) and is **not** part of the first version.
+
+> **Scope note — public-catalog fallback (ADR-027, 2026-07-15).** The local-supplier marketplace stays fully in scope and fully built (demoed with seeded fake-supplier data, ADR-023). Additively, because there are **no onboarded suppliers yet**, a **public-catalog bootstrap fallback** (FEAT-017) provides real ABO products (CC BY 4.0, attributed) so the app can demonstrate matching → render → display. This fallback track is **temporary demo scaffolding** — non-purchasable, clearly labeled "not sold by Spazio", and expected to be removed once real suppliers are onboarded. It does not remove or weaken any supplier-track capability.
 
 FR/FEAT references below map pilot capabilities to the canonical registry for traceability (DRAFT — author's mapping).
 

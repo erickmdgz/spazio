@@ -264,6 +264,38 @@ below).
   doc: `docs_en/features/FEAT-005_ai-rendering-engine.md`; decision:
   `docs_en/decisions/ADR-026_self-hosted-render-engine.md`.
 
+- **Public-catalog bootstrap fallback decided and specified — docs only
+  (`ADR-027`, `FEAT-017`, Issue #43).** The product owner's 2026-07-15 decision:
+  because Spazio has **no onboarded suppliers yet**, a clearly-labeled, temporary
+  **`source=public`** product track sourced from the **Amazon Berkeley Objects
+  (ABO)** dataset (**CC BY 4.0**, attribution required) is added so the app has
+  real products — real dimensions/materials/images — to match, render, and
+  display for the demo. Public products are **display-only**: labeled **"not sold
+  by Spazio"** with a **"View at retailer" outbound link**, and are **never**
+  added to cart, checkout, orders, commission, or merchant-of-record, and are
+  **excluded from the render-to-purchase metric** (NFR-006). This is **quarantine,
+  not dilution**: the founding real-purchasable-SKU guarantee (**BR-6 / BR-14 /
+  FR-016**) stays fully in force for the **supplier track** (built and demoed with
+  seeded fake-supplier data); FR-016 and the CLAUDE.md §1 / vision thesis are
+  **qualified with a narrow dated caveat, not rewritten or deleted** (same
+  dated-marker precedent as ADR-024/025/026). ABO images are CC BY and legal to
+  composite **with attribution**, so image provenance/attribution propagates into
+  any render that composites a public product image (a derivative work, tied to
+  ADR-026). This pass adds **FR-062..FR-065** (`03_requirements.md`), **NFR-019**
+  (legal/compliance + attribution, `04_non_functional_requirements.md`), and test
+  cases from **TC-110** (`08_test_plan.md`), records the dual-track catalog in the
+  build/demo docs, and adds dated scope markers to **ADR-004** (MoR excludes public
+  products), **ADR-006** (a public-dataset fetch is a new ingestion channel),
+  **ADR-007** (no commission on public products), **ADR-014** (completeness gate
+  kept via complete ABO records, or a documented relaxed `source=public`
+  profile), and **ADR-023** (the demo's seeded catalog gains a seeded ABO subset).
+  This is the **docs-first** half (the owner chose docs before code); recording a
+  decision is not building it: **no application code has shipped**, nothing is
+  deployed, and no requirement is listed as covered — the code lands in a later PR
+  after these docs are approved. Feature doc:
+  `docs_en/features/FEAT-017_public-catalog-fallback.md`; decision:
+  `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
+
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
   class-project demo is delivered. **For the demo scope only** it supersedes

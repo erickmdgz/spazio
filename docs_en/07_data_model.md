@@ -112,11 +112,14 @@ A local furniture/decor vendor whose catalog powers the marketplace, with onboar
 
 A real, purchasable SKU with photos, dimensions, price, colors, materials, stock, category, style attributes, lead time, and warranty (PRD §4 BR-1, BR-3–BR-6). Every rendered item must map to one of these (BR-6, BR-14).
 
+> **Provenance spec (ADR-027, 2026-07-15) — PROPOSED, doc only (not `schema.prisma`).** A Product now carries a `source` of `supplier` or `public`. The purchasable-SKU invariant (BR-6/BR-14, FR-016) governs `source=supplier` products. `source=public` bootstrap products (Amazon Berkeley Objects, CC BY 4.0) are real and attributed but **display-only / non-purchasable** — a scoped, labeled exception (FR-062–FR-065). `supplier_id` is present only for supplier products; the `source_*` attribution fields are required for public products. Their required-attribute completeness follows the ADR-027 stance: prefer seeding **complete** ABO records so the BR-1/FR-019/ADR-014 gate holds unchanged; only a documented relaxed completeness profile for `source=public` is acceptable (ADR-014 carve-out). Supplier-only fields such as `warranty_terms` and lead times may be absent for public products, which are never checked out (NFR-015).
+
 | Field | Type | Required | Description |
 |---|---|---|---|
 | id | UUID | Yes | Primary key **(proposed)**. |
-| supplier_id | UUID (FK) | Yes | Owning supplier (PRD FR-07) → `Supplier`. |
-| sku | String | Yes | Real, purchasable SKU identifier (PRD BR-6). |
+| source | Enum | Yes | Product provenance: `supplier` or `public`; **default `supplier`** **(proposed — ADR-027, 2026-07-15)**. `public` products come from the Amazon Berkeley Objects dataset (CC BY 4.0) and are display-only / non-purchasable (FR-062–FR-064). |
+| supplier_id | UUID (FK) | Conditional | Owning supplier (PRD FR-07) → `Supplier`. **Required when `source=supplier`; null when `source=public`** (public products have no Spazio supplier — ADR-027, 2026-07-15). |
+| sku | String | Yes | Product identifier. For `source=supplier`, a real, purchasable SKU (PRD BR-6). For `source=public`, the dataset item identifier — **not** an in-app-purchasable SKU (display-only — ADR-027, 2026-07-15). |
 | name | String | Yes | Product name; used in the render tag (PRD BR-1, FR-07). |
 | description | Text | No | Product description **(proposed)**. |
 | category | String | Yes | Product category (PRD BR-1). |
@@ -129,11 +132,15 @@ A real, purchasable SKU with photos, dimensions, price, colors, materials, stock
 | product_type | Enum | Yes | `ready_made` (in-stock) or `made_to_order` (manufacturable) (PRD BR-3). |
 | stock_quantity | Integer | Conditional | Current stock; **required for `ready_made`** and never rendered when unavailable (PRD BR-4). May be null for `made_to_order`. |
 | production_lead_time | String / Integer | Conditional | Supplier-declared production time; **required for `made_to_order`** (PRD BR-5); shown as an estimate before checkout (BR-17). |
-| delivery_lead_time | String / Integer | Yes | Supplier-declared delivery time (PRD BR-1); shown as an estimate before checkout (BR-17). |
-| warranty_terms | Text | Yes | Supplier-declared warranty terms (PRD BR-1); displayed before checkout (BR-18). |
+| delivery_lead_time | String / Integer | Conditional | Supplier-declared delivery time (PRD BR-1); shown as an estimate before checkout (BR-17). **Required for `source=supplier`; may be absent for `source=public`** (display-only, not sold by Spazio — ADR-027, 2026-07-15; NFR-015). |
+| warranty_terms | Text | Conditional | Supplier-declared warranty terms (PRD BR-1); displayed before checkout (BR-18). **Required for `source=supplier`; may be absent for `source=public`** (display-only — ADR-027, 2026-07-15; NFR-015). |
 | style_attributes | JSON / Array | Yes | Style attributes (PRD BR-1), mapped to the shared taxonomy (BR-16) → `StyleTaxonomy`. Vocabulary decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005. |
 | listing_url | URL | No | Listing link surfaced in the product tag (PRD FR-07). |
-| is_complete | Boolean | No | Derived flag **(proposed)**: true only if all required attributes are present. Incomplete entries are excluded from rendering (PRD BR-2). |
+| source_name | String | Conditional | **Attribution (ADR-027, 2026-07-15).** Human-readable source/creator name for a `source=public` product; CC BY 4.0 requires attribution. **Required when `source=public`; null when `source=supplier`**. |
+| source_url | URL | Conditional | **Attribution (ADR-027).** Canonical source/dataset URL for the public product. **Required when `source=public`; null when `source=supplier`**. |
+| source_image_url | URL | Conditional | **Attribution (ADR-027).** Source URL of the CC BY image used; this provenance must propagate into any render that composites the image (a derivative work — FR-065, NFR-019, ADR-026). **Required when `source=public`; null when `source=supplier`**. |
+| image_license | String / Enum | Conditional | **Attribution (ADR-027).** Data/image licence for the public product, e.g. `CC-BY-4.0`. **Required when `source=public`; null when `source=supplier`**. |
+| is_complete | Boolean | No | Derived flag **(proposed)**: true only if all required attributes are present. Incomplete entries are excluded from rendering (PRD BR-2). *(ADR-027: for `source=public`, completeness follows the ADR-027 stance — prefer complete ABO records; a documented relaxed profile is an ADR-014 carve-out.)* |
 | last_synced_at | DateTime | No | Last catalog sync **(proposed)**; supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32). Frequency decided (pilot): manual / on-demand refresh by the operator; no automated sync - see ADR-012. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
@@ -220,6 +227,8 @@ A single render or edit request; counts as one attempt against the daily limit a
 
 A generated photorealistic image of the furnished room, private by default and published to the requesting user immediately on generation success (PRD FR-06, BR-33; ADR-025, 2026-07-14 — the FR-027 operator review is retired).
 
+> **Derivative-work / attribution note (ADR-027, 2026-07-15).** When a render composites one or more `source=public` product images, the stored render is a **derivative of CC BY 4.0 images** and must carry the propagated attribution (held per-item on `RenderItem.attribution` and surfaced with the render — FR-065, NFR-019, ADR-026). A render made only of `source=public` products is display-only and is **excluded from the render-to-purchase metric** (NFR-006, segmented).
+
 | Field | Type | Required | Description |
 |---|---|---|---|
 | id | UUID | Yes | Primary key **(proposed)**. |
@@ -246,9 +255,12 @@ The link between a Render and a shown Product, carrying tag data: position, name
 | tag_position | JSON | No | On-image tag coordinates for tap-to-view **(proposed)** (PRD FR-07b). |
 | display_name | String | Yes | Product name captured at render time (PRD FR-07). |
 | captured_price | Decimal | Yes | Price captured at render time (PRD FR-07). |
-| supplier_id | UUID (FK) | Yes | Supplier shown in the tag (PRD FR-07) → `Supplier`. |
-| warranty_terms | Text | No | Warranty shown in the tag (PRD FR-07, BR-18). |
+| supplier_id | UUID (FK) | Conditional | Supplier shown in the tag (PRD FR-07) → `Supplier`. Present for `source=supplier` items; null for `source=public` **(ADR-027, 2026-07-15)**. |
+| warranty_terms | Text | No | Warranty shown in the tag (PRD FR-07, BR-18). May be absent for `source=public` items (ADR-027). |
 | listing_url | URL | No | Listing link shown in the tag (PRD FR-07). |
+| source | Enum | No | Provenance copied from the `Product` at render time: `supplier` or `public` **(proposed — ADR-027, 2026-07-15)**. A `source=public` item is display-only, labeled "not sold by Spazio", carries attribution, and is excluded from the cart (FR-063, FR-064). |
+| attribution | JSON | Conditional | CC BY 4.0 attribution captured for a `source=public` item (source name / URL / image URL / licence) and **propagated onto the stored render** — a derivative work (FR-065, NFR-019, ADR-026). **Required when `source=public`** **(ADR-027, 2026-07-15)**. |
+| outbound_url | URL | Conditional | "View at retailer" outbound link shown instead of add-to-cart for a `source=public` item **(ADR-027, 2026-07-15)**; **required when `source=public`** (FR-064). Not a monetized affiliate link. |
 | rendered_scale | JSON | No | Applied scale/placement metadata **(proposed)** (PRD BR-7, FR-15). |
 | is_kept_item | Boolean | No | Marks an existing item kept by the user **(proposed)** (PRD BR-8). Kept items remain in the render but are excluded from cart and budget. Keep-or-replace is **excluded from the pilot**. |
 
@@ -453,11 +465,13 @@ PRD-derived invariants that constrain the data model. Each cites its source. Dec
 - **Classification.** Every product is either `ready_made` (in-stock) or `made_to_order`/manufacturable (PRD BR-3). Ready-made requires current stock (BR-4); made-to-order requires supplier-declared production and delivery times (BR-5).
 - **Shared taxonomy.** Products must be mapped to the shared style taxonomy (PRD BR-16); the taxonomy vocabulary decided (pilot): 1-2 predefined visual styles + free-text description; no taxonomy engine - see ADR-005.
 - **Catalog synchronization.** Supplier data must synchronize regularly, and in real time for ready-made stock (PRD BR-32); frequency decided (pilot): manual / on-demand refresh by the operator; no automated sync - see ADR-012.
+- **Product provenance (ADR-027, 2026-07-15).** Every `Product` carries a `source` of `supplier` or `public` (default `supplier`). `supplier_id` is required for `supplier` and null for `public`; `public` products carry CC BY 4.0 attribution fields (`source_name`, `source_url`, `source_image_url`, `image_license`). Public products (Amazon Berkeley Objects) are display-only / non-purchasable (FR-062–FR-064) and follow the ADR-027 completeness stance — prefer complete ABO records so the BR-1/BR-2 gate holds; a documented relaxed profile for `source=public` is an ADR-014 carve-out.
 
 ### Rendering
 
-- **Real SKUs only.** Every rendered item must correspond to a real, purchasable SKU; the system must never fabricate products (PRD BR-6, BR-14). Each `RenderItem` references a `Product`.
-- **Availability gate.** Ready-made items must never be rendered when unavailable (PRD BR-4).
+- **Real SKUs only.** Every rendered item must correspond to a real, purchasable SKU; the system must never fabricate products (PRD BR-6, BR-14). Each `RenderItem` references a `Product`. *(Scoped by ADR-027, 2026-07-15: this governs `source=supplier` products. `source=public` bootstrap products are real and attributed — never fabricated, so BR-14 holds — but display-only / non-purchasable, the labeled exception to BR-6's purchasable-SKU clause; see the public-catalog track rule below.)*
+- **Public-catalog bootstrap track (ADR-027, 2026-07-15).** When no supplier catalog satisfies the constraints, matching/rendering may fall back to `source=public` products (Amazon Berkeley Objects, CC BY 4.0). These are display-only and **non-purchasable**: excluded from cart, checkout, orders, commission, and merchant-of-record (FR-064), quarantined from the supplier-track guarantee (BR-6/BR-14/FR-016 unchanged for supplier products). CC BY 4.0 attribution is required, recorded on the product, and propagated into any composited render — a derivative work (FR-065, NFR-019, ADR-026). Public renders are excluded from the render-to-purchase metric (NFR-006, segmented). *(Bootstrap/demo only; additive and temporary.)*
+- **Availability gate.** Ready-made items must never be rendered when unavailable (PRD BR-4). *(Carve-out by ADR-027, 2026-07-15: applies to the supplier track; `source=public` products are display-only/non-purchasable and carry no live stock feed — FR-018 carve-out.)*
 - **Locality gate.** Only products deliverable to the user's locality may be rendered (PRD BR-11); when local delivery is unavailable, the system may offer nearby regions, alternative shipping, or pickup (BR-12).
 - **Scale to room.** Approximate room dimensions must be used to scale products realistically (PRD BR-7, FR-15).
 - **Budget bound.** Total product cost should not exceed the budget beyond an agreed tolerance — decided (pilot) **10%** - see ADR-008 (PRD BR-9). If the budget cannot be met, the system discloses this and offers the closest available alternative (BR-10). When no strong match exists, it suggests similar available products or marks the item unavailable (BR-13).
