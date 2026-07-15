@@ -219,7 +219,7 @@ below).
   (FEAT-015/curator) and order forwarding (FEAT-011/handler) keep their
   operator flows. Recording a decision is not building it: the code on
   `develop` still implements the review flow; the docs are now the target spec
-  for the next development iteration (work item in `05_backlog.md`, issue TBD).
+  for the next development iteration (work item in `05_backlog.md`, issue #38).
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the

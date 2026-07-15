@@ -26,7 +26,7 @@ On 2026-07-14 the product owner decided the trade-off differently: **the renderi
    - Test cases TC-051, TC-052, TC-053, and TC-108 are retired with the gate.
 3. **This is a pure removal.** No automated QA, ML moderation, or confidence-threshold gating replaces the operator. Where a document needs to state the new behavior, it is: *renders are published immediately on generation success (ADR-025)*.
 4. **Everything else around rendering stands:** ADR-002's pipeline choice (hosted image API, no custom model), render privacy (NFR-007 — photos and renders stay private to the requesting user by default), render-to-purchase tracking (NFR-006), render limits and pricing (ADR-009, ADR-010), and the render-time target (ADR-013), except where their text assumes the review step.
-5. **Code is not changed in this iteration.** `backend/` and `web-demo/` still implement the review flow; the docs updated under this ADR are the target spec for the next development iteration, tracked as a backlog item in 05_backlog.md (issue number TBD).
+5. **Code is not changed in this iteration.** `backend/` and `web-demo/` still implement the review flow; the docs updated under this ADR are the target spec for the next development iteration, tracked as a backlog item in 05_backlog.md (FEAT-016, issue #38).
 
 ## Alternatives considered
 
@@ -45,7 +45,7 @@ On 2026-07-14 the product owner decided the trade-off differently: **the renderi
 
 - **The PRD's highest risk is now unmitigated by review.** Render fidelity (PRD §10 — a real SKU composited at correct size and appearance; a poor match could increase returns and disputes) loses its named mitigation while the AI is still unproven. Bad or unfaithful renders reach users directly, and exposure to returns and disputes increases. This ADR knowingly accepts that risk and introduces no replacement mitigation.
 - Fewer eyes on failures: operators no longer see every render, so fidelity regressions and SKU mismatches will surface through downstream signals (user complaints, disputes, conversion movements in NFR-006 tracking) rather than before publication. NFR-007 privacy itself is unaffected — photos and renders remain private by default.
-- Docs and code diverge until the next iteration: the backend and the web app still implement the review flow, so the running system enforces a gate the spec has removed. The gap is closed by the backlogged implementation work (issue TBD).
+- Docs and code diverge until the next iteration: the backend and the web app still implement the review flow, so the running system enforces a gate the spec has removed. The gap is closed by the backlogged implementation work (FEAT-016, issue #38).
 - FR-027's acceptance criteria and FEAT-006's rationale were traceable to the pilot source and the PRD's operator responsibilities (§5 render-quality monitoring); retiring them removes that documented accountability for render quality without assigning it elsewhere.
 
 ## Date
