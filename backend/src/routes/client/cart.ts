@@ -78,6 +78,18 @@ export const cartRoutes: FastifyPluginAsync = async (app) => {
       if (!existing || existing.cart.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Cart item not found." });
       }
+      // A source=public product is display-only and can never be carted (FR-064,
+      // ADR-027): refuse a swap onto one with a `display_only` status (TC-115).
+      const target = await prisma.product.findUnique({
+        where: { id: request.body.productId },
+        select: { source: true },
+      });
+      if (target?.source === "public") {
+        return reply.code(400).send({
+          error: "display_only",
+          message: "This product is not sold by Spazio (display-only, FR-064).",
+        });
+      }
       const item = await prisma.cartItem.update({
         where: { id: existing.id },
         data: { productId: request.body.productId },

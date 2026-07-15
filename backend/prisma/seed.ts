@@ -1,7 +1,11 @@
-import { pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { PrismaClient } from "@prisma/client";
+import { loadConfig } from "../src/config.js";
 import { loadDotEnv } from "../src/env.js";
 import { completenessOf } from "../src/services/completeness.js";
+import { LocalDiskStorage } from "../src/services/storage.js";
 
 /**
  * Dev/pilot catalog seed (FEAT-015 minimal, #31 increment 3): the demo's three
@@ -66,6 +70,150 @@ export const SEED_PRODUCTS: SeedProduct[] = [
   { sku: "table-lamp-clay", name: "Clay Table Lamp", category: "Lighting", supplier: "lumina", priceCop: 290_000, styleAttributes: ["mediterranean", "scandinavian", "minimalist"], classification: "ready_made", stock: 11, productionLeadTimeDays: null, deliveryLeadTimeDays: 5, widthCm: 22, depthCm: 22, heightCm: 40, colors: ["clay", "linen"], materials: ["clay", "linen"], photos: ["/products/table-lamp-clay.svg"], warrantyTerms: WARRANTY },
 ];
 
+// ---------------------------------------------------------------------------
+// Public-catalog bootstrap fallback (FEAT-017 / ADR-027; FR-062..065, NFR-019).
+//
+// Real, attributed products from the Amazon Berkeley Objects dataset (CC BY 4.0),
+// vendored under prisma/seed-data/abo/ so seeding is reproducible without
+// re-fetching. These are seeded as source=public: DISPLAY-ONLY / non-purchasable
+// ("not sold by Spazio"), with a "View at retailer" outbound link (sourceUrl) and
+// CC BY 4.0 attribution. They are excluded from cart/checkout/orders/commission/
+// merchant-of-record and from the render-to-purchase metric (that exclusion lives
+// in the matching/cart/metric layers). The supplier track is untouched.
+// ---------------------------------------------------------------------------
+
+const ABO_SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), "seed-data", "abo");
+
+// Canonical bucket for the CC BY 4.0 images (ADR-027 attribution). The vendored
+// JSON carries imagePath (the dataset-internal path); the source image URL is the
+// original in the public ABO S3 bucket — recorded so it can propagate into a
+// render composited from the image (a derivative work — FR-065, NFR-019, ADR-026).
+const ABO_IMAGE_BASE = "https://amazon-berkeley-objects.s3.amazonaws.com/images/original";
+
+interface AboRecord {
+  sku: string;
+  name: string;
+  category: string;
+  productType: string;
+  brand: string;
+  colors: string[];
+  materials: string[];
+  widthCm: number | null;
+  depthCm: number | null;
+  heightCm: number | null;
+  sourceName: string;
+  sourceUrl: string;
+  imageLicense: string;
+  imagePath: string;
+}
+
+// DEMO reference price by category (COP). Public products are display-only, so the
+// price is purely informational — a clearly-synthesized demo estimate, never a
+// figure Spazio charges (public items never reach cart/checkout — FR-064).
+const PUBLIC_DEMO_PRICE_COP: Record<string, number> = {
+  Sofa: 3_500_000,
+  Bed: 4_000_000,
+  Table: 1_200_000,
+  Chair: 1_500_000,
+  Ottoman: 800_000,
+  Rug: 950_000,
+  Lamp: 380_000,
+  Bench: 700_000,
+};
+const PUBLIC_DEMO_PRICE_FALLBACK_COP = 1_000_000;
+
+// Public products carry no supplier warranty; they are not sold by Spazio (ADR-020
+// warranty display and BR-18 apply to the supplier track — never surfaced here).
+const PUBLIC_WARRANTY = "Display-only public-catalog item — not sold by Spazio (ADR-027).";
+
+/**
+ * Seed the ~12 non-swatch ABO products as source=public. Each image is stored in
+ * the object storage (the same LocalDiskStorage the server/render worker use) under
+ * catalog/public/<sku>.jpg, and Product.photos holds that storage key so the render
+ * pipeline resolves it via ObjectStorage.get (fixes the FEAT-005 room-only limit).
+ *
+ * BR-1 / ADR-014 curator gate BYPASS (documented — ADR-027 §completeness carve-out):
+ * public products are NOT Spazio-curated, so they do not pass through the operator
+ * catalog_curator / completenessOf() BR-1 gate. They are written directly as
+ * completenessStatus=complete + approvalStatus=approved so they are RENDERABLE and
+ * DISPLAY-ONLY. This bypass is scoped strictly to source=public; source=supplier
+ * SKUs still go through completenessOf() above and operator curation (FR-056..059).
+ * Idempotent by sku.
+ */
+async function seedPublicCatalog(prisma: PrismaClient): Promise<number> {
+  const config = loadConfig();
+  const storage = new LocalDiskStorage(config.STORAGE_LOCAL_DIR);
+
+  const raw = await readFile(join(ABO_SEED_DIR, "abo_seed.json"), "utf8");
+  const records = JSON.parse(raw) as AboRecord[];
+
+  // Fabric swatches are not furniture — exclude them (leaves the ~12 real products).
+  const products = records.filter((r) => !/swatch/i.test(r.name));
+
+  let seeded = 0;
+  for (const rec of products) {
+    // CC BY 4.0 requires attribution: a public product missing required attribution
+    // is not seeded (FR-065). sourceImageUrl is derived from the dataset image path.
+    const sourceImageUrl = `${ABO_IMAGE_BASE}/${rec.imagePath}`;
+    if (!rec.sourceName || !rec.sourceUrl || !rec.imageLicense || !rec.imagePath) {
+      console.warn(`Skipping ABO ${rec.sku}: incomplete CC BY attribution (FR-065).`);
+      continue;
+    }
+
+    // Store the vendored image into object storage; photos holds the storage key.
+    const storageKey = `catalog/public/${rec.sku}.jpg`;
+    let imageBytes: Buffer;
+    try {
+      imageBytes = await readFile(join(ABO_SEED_DIR, "img", `${rec.sku}.jpg`));
+    } catch {
+      console.warn(`Skipping ABO ${rec.sku}: no vendored image file.`);
+      continue;
+    }
+    await storage.put(storageKey, imageBytes, "image/jpeg");
+
+    const data = {
+      source: "public" as const,
+      supplierId: null,
+      name: rec.name,
+      category: rec.category,
+      photos: [storageKey],
+      // Fill demo-safe fallbacks so display and matching have values to work with.
+      colors: rec.colors.length > 0 ? rec.colors : ["assorted"],
+      materials: rec.materials.length > 0 ? rec.materials : ["mixed materials"],
+      // Tag with every demo style so a public product can surface as a fallback
+      // regardless of the selected style (matchability — FR-062).
+      styleAttributes: STYLES.map((s) => s.code),
+      widthCm: rec.widthCm,
+      depthCm: rec.depthCm,
+      heightCm: rec.heightCm,
+      priceCop: PUBLIC_DEMO_PRICE_COP[rec.category] ?? PUBLIC_DEMO_PRICE_FALLBACK_COP,
+      // Display-only: no live stock feed (FR-018 carve-out — ADR-027). Classified
+      // ready_made purely to satisfy the required enum; never checked out (NFR-015).
+      classification: "ready_made" as const,
+      stock: null,
+      productionLeadTimeDays: null,
+      deliveryLeadTimeDays: 0,
+      warrantyTerms: PUBLIC_WARRANTY,
+      // Curator/BR-1 gate bypass (ADR-027 / ADR-014 carve-out — see fn docstring).
+      completenessStatus: "complete" as const,
+      approvalStatus: "approved" as const,
+      // CC BY 4.0 attribution (ADR-027; FR-063/FR-065).
+      sourceName: rec.sourceName,
+      sourceUrl: rec.sourceUrl,
+      sourceImageUrl,
+      imageLicense: rec.imageLicense,
+    };
+
+    await prisma.product.upsert({
+      where: { sku: rec.sku },
+      create: { sku: rec.sku, ...data },
+      update: data,
+    });
+    seeded += 1;
+  }
+  return seeded;
+}
+
 async function main(): Promise<void> {
   loadDotEnv();
   const prisma = new PrismaClient();
@@ -126,8 +274,14 @@ async function main(): Promise<void> {
       });
     }
 
+    // Public-catalog bootstrap fallback (FEAT-017 / ADR-027) — seeded AFTER the
+    // supplier catalog so the supplier track is fully in place first.
+    const publicSeeded = await seedPublicCatalog(prisma);
+
     console.log(
-      `Seeded ${STYLES.length} styles, ${SUPPLIERS.length} suppliers, ${SEED_PRODUCTS.length} SKUs (all BR-1-complete, approved).`,
+      `Seeded ${STYLES.length} styles, ${SUPPLIERS.length} suppliers, ${SEED_PRODUCTS.length} supplier SKUs ` +
+        `(all BR-1-complete, approved), and ${publicSeeded} source=public ABO products ` +
+        `(display-only, CC BY 4.0 — ADR-027).`,
     );
   } finally {
     await prisma.$disconnect();

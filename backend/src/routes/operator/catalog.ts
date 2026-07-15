@@ -91,7 +91,10 @@ export const operatorCatalogRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const where: Prisma.ProductWhereInput = {};
+      // Curation is a supplier-only surface (ADR-027): source=public bootstrap
+      // products are seeded approved+complete and bypass the catalog_curator/BR-1
+      // gate, so they must not appear in (or be editable from) this console.
+      const where: Prisma.ProductWhereInput = { source: "supplier" };
       switch (request.query.filter) {
         case "incomplete":
           where.completenessStatus = "incomplete";

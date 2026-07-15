@@ -80,6 +80,33 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
           .send({ error: "cart_not_confirmed", message: "Cart must be confirmed (BR-31)." });
       }
 
+      // Public-catalog products are display-only and must never be purchased
+      // (FR-064, ADR-027). They are excluded at cart population (populateCartFromRender)
+      // and blocked from being swapped in (PUT /cart/items), so a confirmed cart
+      // should never hold one; this is the defensive floor at the checkout boundary.
+      // A public product carried through here would also skew commission/MoR, so it
+      // must be refused before any Order/PurchaseOrder/commission is computed
+      // (FR-064/TC-113, NFR-006/TC-119).
+      if (cart.items.some((it) => it.product.source === "public")) {
+        return reply.code(400).send({
+          error: "display_only",
+          message: "Cart contains a display-only public-catalog product (FR-064).",
+        });
+      }
+
+      // Integrity floor: a source=supplier item must carry a supplierId to generate
+      // the PurchaseOrder that fulfils it. The FEAT-017 migration sets Product.supplierId
+      // null ON DELETE, so a deleted supplier row could orphan an item; refuse the
+      // checkout rather than charge the buyer (subtotal/commission below) for something
+      // no PO can fulfil. Public items are already blocked above; this only catches an
+      // orphaned supplier item.
+      if (cart.items.some((it) => it.product.source === "supplier" && !it.product.supplierId)) {
+        return reply.code(409).send({
+          error: "integrity_error",
+          message: "Cart contains a supplier product with no supplier to fulfil it.",
+        });
+      }
+
       await emit(prisma, {
         type: EVENTS.CHECKOUT_STARTED,
         projectId: cart.projectId,
@@ -95,8 +122,13 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
       const totalCop = subtotalCop; // buyer pays the product total (single COP capture)
 
       // Distinct suppliers -> one PurchaseOrder each (§0.1#1, BR-25).
+      // supplierId is null only for source=public products (ADR-027), which are
+      // display-only and must never reach the cart/checkout (FR-064 — enforced at
+      // cart population). This guard is defensive: a public product carries no
+      // supplier to forward a PurchaseOrder to, so it never contributes one.
       const bySupplier = new Map<string, number>();
       for (const it of cart.items) {
+        if (!it.product.supplierId) continue;
         const prev = bySupplier.get(it.product.supplierId) ?? 0;
         bySupplier.set(it.product.supplierId, prev + it.priceCopSnapshot * it.quantity);
       }

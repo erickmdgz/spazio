@@ -1,8 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type { Queue, RenderJob } from "./queue.js";
 import type { RenderPipeline } from "../services/render/pipeline.js";
 import { matchProducts } from "../services/matching.js";
 import { populateCartFromRender } from "../services/cart.js";
+import { attributionOf } from "../services/attribution.js";
 
 /**
  * Render worker: match → render → persist → publish (plan §1.5; ADR-025).
@@ -56,15 +57,34 @@ export function registerRenderWorker(
 
       // Fabrication guard (FR-016, TC-031): persist only items that resolve to a
       // matched, real product; price snapshots come from the Product row, never
-      // from the pipeline.
+      // from the pipeline. Provenance (source) is copied from the Product, and a
+      // source=public item carries the CC BY 4.0 attribution + "View at retailer"
+      // outbound link, propagated onto the render — a derivative work (FR-065,
+      // NFR-019, ADR-026/ADR-027). A public item missing required attribution is
+      // dropped (FR-065/TC-118 — not composited; matching already excludes it, this
+      // is the defensive floor).
       const items = result.items
         .filter((item) => productsById.has(item.productId))
-        .map((item) => ({
-          renderId,
-          productId: item.productId,
-          tagPosition: item.tagPosition,
-          priceCopSnapshot: productsById.get(item.productId)?.priceCop ?? 0,
-        }));
+        .map((item) => {
+          const product = productsById.get(item.productId)!;
+          const isPublic = product.source === "public";
+          const attribution = isPublic ? attributionOf(product) : null;
+          return {
+            renderId,
+            productId: item.productId,
+            tagPosition: item.tagPosition,
+            priceCopSnapshot: product.priceCop,
+            source: product.source,
+            attribution: attribution
+              ? (attribution as unknown as Prisma.InputJsonValue)
+              : undefined,
+            outboundUrl: isPublic ? (product.sourceUrl ?? undefined) : undefined,
+            isPublic,
+            hasAttribution: attribution !== null,
+          };
+        })
+        .filter((item) => !item.isPublic || item.hasAttribution)
+        .map(({ isPublic: _isPublic, hasAttribution: _hasAttribution, ...data }) => data);
       if (items.length > 0) {
         await prisma.renderItem.createMany({ data: items });
       }

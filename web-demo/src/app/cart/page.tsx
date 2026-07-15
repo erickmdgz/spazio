@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ProductSheet } from "@/components/ProductSheet";
+import { isPublicProduct, type ProductSummary } from "@/lib/api";
 import { getProduct } from "@/lib/catalog";
 import { formatCop, leadTimeLabel } from "@/lib/format";
 import { useDemo } from "@/lib/store";
@@ -13,7 +14,7 @@ import { useDemo } from "@/lib/store";
 export default function CartPage() {
   const router = useRouter();
   const { cart, budgetCop, reloadCart, removeItem } = useDemo();
-  const [openProduct, setOpenProduct] = useState<string | null>(null);
+  const [openProduct, setOpenProduct] = useState<ProductSummary | null>(null);
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +68,10 @@ export default function CartPage() {
         <ul className="flex flex-col gap-3">
           {items.map((item) => {
             const local = getProduct(item.product.sku);
+            // Defensive: the backend never auto-populates source=public products
+            // into the cart (FR-064). If one ever surfaces here we still label it
+            // "not sold by Spazio" and offer the retailer link instead of Remove.
+            const isPublic = isPublicProduct(item.product);
             const fulfilment =
               item.product.classification === "made_to_order" ? "made-to-order" : "ready-made";
             const leadDays =
@@ -77,7 +82,7 @@ export default function CartPage() {
               <li key={item.id} className="card flex gap-4 p-3">
                 <button
                   type="button"
-                  onClick={() => setOpenProduct(item.product.sku)}
+                  onClick={() => setOpenProduct(item.product)}
                   className="shrink-0 overflow-hidden rounded-xl"
                   aria-label={`View ${item.product.name}`}
                 >
@@ -98,29 +103,52 @@ export default function CartPage() {
                     <div className="min-w-0">
                       <button
                         type="button"
-                        onClick={() => setOpenProduct(item.product.sku)}
+                        onClick={() => setOpenProduct(item.product)}
                         className="truncate text-left font-semibold text-forest-900 hover:underline"
                       >
                         {item.product.name}
                       </button>
-                      <p className="text-xs text-muted/70">{item.product.supplierName}</p>
-                      <span className="chip mt-1 bg-forest-800/8 text-forest-900">
-                        {leadTimeLabel(fulfilment, leadDays)}
-                      </span>
+                      <p className="text-xs text-muted/70">
+                        {isPublic
+                          ? (item.product.attribution?.sourceName ?? "External retailer")
+                          : item.product.supplierName}
+                      </p>
+                      {isPublic ? (
+                        <span className="chip mt-1 bg-forest-900 text-cream-50">
+                          Not sold by Spazio
+                        </span>
+                      ) : (
+                        <span className="chip mt-1 bg-forest-800/8 text-forest-900">
+                          {leadTimeLabel(fulfilment, leadDays)}
+                        </span>
+                      )}
                     </div>
                     <span className="whitespace-nowrap font-serif text-lg text-forest-900">
                       {formatCop(item.priceCopSnapshot)}
                     </span>
                   </div>
                   <div className="mt-auto flex gap-3 pt-2 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => remove(item.id)}
-                      disabled={busyItem === item.id}
-                      className="font-medium text-wood-dark hover:underline disabled:opacity-40"
-                    >
-                      {busyItem === item.id ? "Removing…" : "Remove"}
-                    </button>
+                    {isPublic ? (
+                      (item.product.outboundUrl ?? item.product.attribution?.sourceUrl) && (
+                        <a
+                          href={item.product.outboundUrl ?? item.product.attribution?.sourceUrl ?? undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-forest-900 hover:underline"
+                        >
+                          View at retailer <span aria-hidden>↗</span>
+                        </a>
+                      )
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => remove(item.id)}
+                        disabled={busyItem === item.id}
+                        className="font-medium text-wood-dark hover:underline disabled:opacity-40"
+                      >
+                        {busyItem === item.id ? "Removing…" : "Remove"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -177,7 +205,7 @@ export default function CartPage() {
         </aside>
       </div>
 
-      <ProductSheet productId={openProduct} onClose={() => setOpenProduct(null)} />
+      <ProductSheet product={openProduct} onClose={() => setOpenProduct(null)} />
     </div>
   );
 }
