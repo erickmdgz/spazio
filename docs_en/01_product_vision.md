@@ -51,6 +51,8 @@ Success toward this goal is measured by **render-to-purchase**: the share of AI-
 
 > **Success-metric note (ADR-027, 2026-07-15).** Public-catalog fallback products are **non-purchasable** (display-only), so renders that show only `source=public` products cannot produce an in-app purchase. They are **segmented out** of the render-to-purchase denominator so the metric measures the purchasable supplier track only and is not distorted by the temporary bootstrap track (NFR-006 segmentation; NFR-019).
 
+> **Flow note — user-curated selection (ADR-028, 2026-07-15).** The furnishing flow is **inverted** from AI auto-furnish (PRD §8) to **browse-and-pick** (FEAT-018): the user chooses a **source** (Local suppliers = `source=supplier` | Brand suppliers = `source=public`) and a **style**, **browses the real catalog, selects up to 3 products**, and renders **exactly those** into the room photo, iterating ("try other furniture") until satisfied before buying. This strengthens the render-to-purchase promise — the user is choosing real, purchasable SKUs from the real catalog, not receiving a black-box AI selection — and the **3-item cap** matches the render engine's ~2–3 reference-image limit (ADR-026). Auto-match (FR-014/FR-015) stays available as an **optional fallback**. The real-purchasable-SKU constraint above is unchanged. See FEAT-018, FR-066..069.
+
 ## Initial scope
 
 The **first version = the one-week iOS pilot**. The scope below is the pilot's "Included" list (VERIFIED — pilot doc), which proves a single loop: *a real person, in one city, sees their own room furnished with real furniture and buys at least one piece.* The broader full-product scope lives in the PRD "Must have" list (§3) and is **not** part of the first version.

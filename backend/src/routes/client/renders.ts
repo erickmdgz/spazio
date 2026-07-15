@@ -3,12 +3,22 @@ import { emit, EVENTS } from "../../events.js";
 import { productSummary } from "../../services/productSummary.js";
 import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
 
+/** Hard cap on a user-curated selection (ADR-028): the Klein engine composites
+ * ~2-3 reference images (ADR-026), so at most 3 products may be rendered. */
+const MAX_SELECTED_PRODUCTS = 3;
+
 interface CreateRenderBody {
   projectId: string;
   styleId?: string;
   freeText?: string;
   budgetMinCop?: number;
   budgetMaxCop?: number;
+  /**
+   * The user's curated selection (ADR-028/FR-068): up to 3 productIds. When
+   * present the worker composites EXACTLY these (after validating them); when
+   * omitted it falls back to auto-match (FR-014/FR-015, now optional).
+   */
+  productIds?: string[];
 }
 
 /**
@@ -36,17 +46,28 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
             freeText: { type: "string" },
             budgetMinCop: { type: "integer" },
             budgetMaxCop: { type: "integer" },
+            productIds: { type: "array", items: { type: "string" } },
           },
         },
       },
     },
     async (request, reply) => {
-      const { projectId, styleId, freeText, budgetMinCop, budgetMaxCop } = request.body;
+      const { projectId, styleId, freeText, budgetMinCop, budgetMaxCop, productIds } =
+        request.body;
 
       const token = await requireDeviceToken(request, reply);
       if (!token) return;
       if (!(await projectOwnedByDevice(prisma, projectId, token))) {
         return reply.code(404).send({ error: "not_found", message: "Project not found." });
+      }
+
+      // Hard 3-item cap on a user-curated selection (ADR-028/FR-067). Enforced
+      // server-side; the worker re-validates each id's existence/approval/stock.
+      if (productIds && productIds.length > MAX_SELECTED_PRODUCTS) {
+        return reply.code(400).send({
+          error: "too_many_products",
+          message: `Select at most ${MAX_SELECTED_PRODUCTS} products.`,
+        });
       }
 
       const render = await prisma.$transaction(async (tx) => {
@@ -72,7 +93,13 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
         });
       });
 
-      await queue.enqueue({ renderId: render.id });
+      // Thread the user's selection onto the job (ADR-028/FR-068). When present the
+      // worker composites EXACTLY these (validated) products; when absent it
+      // auto-matches (backward compatible).
+      await queue.enqueue({
+        renderId: render.id,
+        productIds: productIds && productIds.length > 0 ? productIds : undefined,
+      });
       // NFR-006/TC-119: a render-to-purchase metric must exclude renders that
       // contain only source=public products (they can never convert). Provenance
       // is not known here — matching runs in the worker — so RENDER_CREATED cannot

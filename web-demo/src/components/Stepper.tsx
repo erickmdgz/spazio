@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 const STEPS = [
   { label: "Room", path: "/room" },
   { label: "Style", path: "/style" },
+  { label: "Select", path: "/select" },
   { label: "Render", path: "/render" },
   { label: "Cart", path: "/cart" },
   { label: "Checkout", path: "/checkout" },

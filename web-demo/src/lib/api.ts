@@ -116,6 +116,18 @@ export function isPublicProduct(product: ProductSummary): boolean {
   return product.source === "public";
 }
 
+/**
+ * A browseable catalog product (ADR-028, FR-066). It is a `ProductSummary`
+ * enriched by the backend catalog route with a ready-to-render `imageUrl`:
+ *  - source=public  -> "/api/v1/catalog/products/<id>/image" (streamed ABO photo)
+ *  - source=supplier -> the product's web-asset path, e.g. "/products/<sku>.svg"
+ * Either resolves same-origin, so a plain <img src> works (no device token needed
+ * — the catalog GET routes are intentionally unauthenticated public data).
+ */
+export interface CatalogProduct extends ProductSummary {
+  imageUrl: string;
+}
+
 export interface BackendRenderItem {
   id: string;
   productId: string;
@@ -238,6 +250,23 @@ export function listStyles(): Promise<{ styles: BackendStyle[] }> {
   return request("/styles");
 }
 
+/**
+ * Browses the catalog for a source + style (ADR-028, FR-066). Returns the
+ * approved, renderable products of that `source` whose style attributes match
+ * `styleId`, optionally capped at `budgetMaxCop`. Public data — not device-scoped
+ * (like GET /styles). Each product carries a ready-to-render `imageUrl`.
+ */
+export function getCatalog(
+  source: ProductSource,
+  styleId: string,
+  budgetMaxCop?: number,
+): Promise<{ products: CatalogProduct[] }> {
+  const params = new URLSearchParams({ source });
+  if (styleId) params.set("styleId", styleId);
+  if (budgetMaxCop != null) params.set("budgetMaxCop", String(Math.round(budgetMaxCop)));
+  return request(`/catalog?${params.toString()}`);
+}
+
 // Generation lifecycle (docs_en/06_api.md §5): queued → processing → completed | failed.
 // A completed render is published to the user immediately (ADR-025).
 export type RenderGenerationStatus = "queued" | "processing" | "completed" | "failed";
@@ -247,6 +276,12 @@ export function createRender(input: {
   styleId?: string;
   freeText?: string;
   budgetMaxCop?: number;
+  /**
+   * The user's curated selection (ADR-028, FR-068): at most 3 product ids. When
+   * present the worker composites exactly these (validated) products; when
+   * omitted it falls back to auto-match (FR-014/015, now optional). >3 -> 400.
+   */
+  productIds?: string[];
 }): Promise<{ renderId: string; status: RenderGenerationStatus }> {
   return request("/renders", { method: "POST", body: JSON.stringify(input) });
 }

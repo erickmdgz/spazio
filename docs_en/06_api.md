@@ -346,6 +346,35 @@ endpoints are effectively constant in the pilot.
 This is the heart of the product. **The engine is decided — self-hosted FLUX.2 Klein 4B run locally via the mflux CLI as a child process (ADR-026, 2026-07-14, superseding ADR-002's hosted-generative-image-API clause; ADR-002's no-custom-model rule stands, its mandatory operator-QA clause superseded by ADR-025); the concrete contracts below are still DRAFT and unchanged by the engine swap (async submit → poll).**
 The core render is **pilot core**; renders are published immediately on generation success (ADR-025).
 
+> **Flow inverted — user-curated selection (ADR-028, 2026-07-15; FEAT-018).** The furnishing flow is now **browse → select up to 3 → render exactly the selection**, not AI auto-furnish (PRD §8). Two **public** (not device-scoped, like `GET /styles`) client browse endpoints back the browse step (`GET /catalog`, `GET /catalog/products/:id/image`, below), and `POST /renders` accepts an optional `productIds` selection. When `productIds` is present the render composites exactly those validated products (≤3, `400 too_many_products` otherwise — FR-067/FR-068); when absent, auto-match (FR-014/FR-015) runs as the fallback (backward compatible). Provenance is unchanged (ADR-027): a `source=supplier` selection populates the cart (FR-031), a `source=public` selection is display-only and yields an empty cart (FR-064). **DRAFT.**
+
+### `GET /api/v1/catalog` *(client browse — ADR-028, 2026-07-15)*
+
+- **Purpose (ADR-028):** back the browse-and-select step (FEAT-018). Return the **approved, renderable** products of a given source and style so the user can pick up to 3 to render (**FR-066**). Reuses `services/productSummary` and the `styleId → style` matching helper used by matching (FR-014); adds an `imageUrl` per product.
+- **Query params:** `source` (`supplier` | `public`, required), `styleId` (required), `budgetMaxCop` (integer, optional — filter to products at or under this price). **`budgetMaxCop` applies to the `supplier` track only** — for `source=public` it is accepted but ignored, because public prices are informational for display-only items (ADR-027) and the web budget meter is a local-supplier concern (2026-07-15).
+- **Auth / scope:** **public**, **not** device-scoped (catalog is public data, like `GET /styles`, FR-066).
+- **Response:** `200 { "products": ProductSummary[] }` — each `ProductSummary` gains an `imageUrl`: for `source=public` → `/api/v1/catalog/products/<id>/image`; for `source=supplier` → the product's web-asset `photos[0]` (e.g. `/products/<sku>.svg`). `source=public` entries also carry the display-only fields (`source=public`, `outboundUrl`/`sourceUrl`, CC BY 4.0 `attribution`, "not sold by Spazio" label — FR-063/FR-064/FR-065). When no product matches, `products` is an empty array.
+
+| Code | Cause |
+|---|---|
+| 200 | Zero or more matching approved, renderable products of that source+style (optionally budget-filtered) |
+| 400 | Missing/invalid `source` or `styleId` |
+
+- **Related requirements:** FR-066 *(ADR-028)*; FR-014 (shared style matching), FR-018/FR-019 (availability/completeness gates); FR-063–FR-065 *(ADR-027, public labeling)*.
+
+### `GET /api/v1/catalog/products/:id/image` *(client browse — ADR-028, 2026-07-15)*
+
+- **Purpose (ADR-028):** stream a product's stored image for the browse grid (**FR-066**). For a `source=public` product this returns `ObjectStorage.get(photos[0])` (stored under `catalog/public/<sku>.jpg`) with its content-type.
+- **Auth / scope:** **public**, **not** device-scoped (FR-066).
+- **Response:** `200` with the stored image bytes and the image content-type.
+
+| Code | Cause |
+|---|---|
+| 200 | Product exists and has a stored image; bytes returned |
+| 404 | Product does not exist, or has no stored image |
+
+- **Related requirements:** FR-066 *(ADR-028)*; FR-065 *(ADR-027, public image provenance)*.
+
 ### `POST /api/v1/renders`  *(representative — full contract, illustrative)*
 
 #### Purpose
@@ -372,9 +401,12 @@ gate is retired).
   "styleDescription": "light colors, natural wood, beige sofa",  // FR-008, optional
   "changeDescription": "furnish the empty living room",          // FR-010, optional
   "budget": { "min": 3000000, "max": 6000000, "currency": "COP" },// FR-009
-  "dimensions": { "widthCm": 400, "lengthCm": 550, "heightCm": 260, "approximate": true } // FR-011/FR-017
+  "dimensions": { "widthCm": 400, "lengthCm": 550, "heightCm": 260, "approximate": true }, // FR-011/FR-017
+  "productIds": ["prd_sofa", "prd_lamp", "prd_rug"] // ADR-028 — optional user selection, AT MOST 3 (FR-067/FR-068)
 }
 ```
+
+> **`productIds` (optional, ADR-028 — FEAT-018).** When present, the render composites **exactly** these validated products instead of auto-matching (FR-068): at most 3 (`400 too_many_products` otherwise — FR-067). The only route-level rejection is the >3 cap; individual ids are **validated in the render worker**, which composites just those that are existing, approved, renderable SKUs (in-stock if ready-made) and silently drops any that are not (so an invalid id lowers the item count, it does not fail the request). When **omitted**, auto-match (FR-014/FR-015) runs as before (backward compatible). "Try other furniture" (FR-069) re-submits this route on the same project with a different selection.
 
 #### Successful response
 
@@ -394,11 +426,11 @@ gate is retired).
 
 | Code | Cause |
 |---|---|
-| 400 | Missing photo/style/budget/dimensions inputs |
+| 400 | Missing photo/style/budget/dimensions inputs; **or `productIds` contains more than 3 entries (`too_many_products`, ADR-028/FR-067)**. *(An individual selected id that is non-existent / unapproved / non-renderable / out-of-stock is **not** a 400 — the render is accepted and the render worker silently drops that id during selection validation, comping only the valid ones — ADR-028/FR-067.)* |
 | 402 | Daily free-render limit reached — return next day or buy a package (BR-21). *The pilot has NO daily limit (metering excluded *(the operator-review rationale was retired by ADR-025)*) — the PRD default of five applies only when metering is built post-pilot (**ADR-009**); render packages are not offered in the pilot (**ADR-010**).* |
 | 404 | `photoId` not found |
 | 409 | Budget cannot be met within tolerance — see fallback behaviour below (BR-10) |
-| 422 | No strong match for one or more items (BR-13) |
+| 422 | No strong match for one or more items (BR-13) *(auto-match path only; not raised when `productIds` is provided — ADR-028)* |
 
 > **Budget / no-match fallbacks (VERIFIED behaviour, DRAFT shape):** when the
 > budget cannot be met the system must disclose it and offer the closest available
@@ -410,9 +442,10 @@ gate is retired).
 
 #### Related requirements
 
-- FR-014 (match real available SKUs), FR-015 (generate composite), FR-016 (real SKUs only — BR-6/BR-14)
+- FR-066 (browse by source+style), FR-067 (select ≤3 — `too_many_products`), FR-068 (composite the selection), FR-069 (iterate) *(ADR-028)*
+- FR-014 (match real available SKUs — **optional fallback, ADR-028**), FR-015 (generate composite), FR-016 (real SKUs only — BR-6/BR-14)
 - FR-017 (scale by dimensions — BR-7), FR-018 (available stock only — BR-4), FR-021 (within budget+tolerance — BR-9)
-- FR-022 / FR-023 (budget & no-match fallbacks), FR-019 (incomplete catalog entries excluded — BR-2)
+- FR-022 / FR-023 (budget & no-match fallbacks — auto-match path), FR-019 (incomplete catalog entries excluded — BR-2)
 - FR-048 / FR-049 (daily limit and attempt counting — metering, not in pilot)
 - NFR-001 (render-time target — ~2–5 min soft target, no hard SLA in the pilot, **ADR-013**), NFR-003/NFR-005 (cost threshold / cost per render)
 

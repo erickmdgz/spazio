@@ -18,7 +18,15 @@ import {
 import type { RenderResult } from "./render/types";
 import { BUDGET_DEFAULT, getRoom } from "./scenarios";
 import * as api from "./api";
-import type { BackendCart, BackendRenderItem, BackendStyle, CheckoutResult, Contact } from "./api";
+import type {
+  BackendCart,
+  BackendRenderItem,
+  BackendStyle,
+  CatalogProduct,
+  CheckoutResult,
+  Contact,
+  ProductSource,
+} from "./api";
 
 export type { Contact } from "./api";
 
@@ -71,6 +79,15 @@ export interface PlacedOrder extends CheckoutResult {
 interface DemoState {
   room?: RoomSelection;
   style?: StyleSelection;
+  /**
+   * Which catalog the user is browsing (ADR-028): "supplier" = Local suppliers
+   * (purchasable Spazio SKUs) | "public" = Brand suppliers (display-only ABO
+   * items, never carted). Drives the /select catalog query and the cart
+   * expectation on /render.
+   */
+  source: ProductSource;
+  /** The user's curated furniture selection — product ids, at most 3 (ADR-028). */
+  selectedProductIds: string[];
   projectId?: string;
   backendStyleId?: string;
   renderVisual?: RenderResult;
@@ -87,6 +104,14 @@ interface DemoStore extends DemoState {
   beginRoom: (room: RoomSelection) => Promise<void>;
   /** Style/budget selected: resolve the backend style by code and patch the project. */
   applyStyle: (style: StyleSelection) => Promise<void>;
+  /** Persist the chosen catalog source (Local vs Brand suppliers — ADR-028). */
+  setSource: (source: ProductSource) => void;
+  /** Browse the catalog for the current source + style + budget (FR-066). */
+  loadCatalog: () => Promise<CatalogProduct[]>;
+  /** Persist the user's curated selection (product ids, at most 3 — ADR-028). */
+  setSelection: (productIds: string[]) => void;
+  /** Iterate (FR-069): drop the selection, keep photo/source/style/project. */
+  clearSelection: () => void;
   setRenderVisual: (render: RenderResult) => void;
   /** Submit the render job (202 + poll — plan §1.1). */
   submitRender: () => Promise<void>;
@@ -104,7 +129,12 @@ interface DemoStore extends DemoState {
 
 const DemoContext = createContext<DemoStore | null>(null);
 
-const INITIAL: DemoState = { renderStatus: "idle", renderItems: [] };
+const INITIAL: DemoState = {
+  renderStatus: "idle",
+  renderItems: [],
+  source: "supplier",
+  selectedProductIds: [],
+};
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DemoState>(INITIAL);
@@ -149,18 +179,44 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, style, backendStyleId: backendStyle?.id }));
   }, []);
 
+  const setSource = useCallback((source: ProductSource) => {
+    // Switching the catalog invalidates any prior selection (different products).
+    setState((s) => (s.source === source ? s : { ...s, source, selectedProductIds: [] }));
+  }, []);
+
+  const loadCatalog = useCallback(async (): Promise<CatalogProduct[]> => {
+    const { source, backendStyleId, style } = stateRef.current;
+    if (!style) throw new Error("Pick a style first.");
+    // Match the render pipeline: prefer the resolved backend style id; fall back
+    // to the style code when the row is not seeded (the route maps either).
+    const styleId = backendStyleId ?? style.id;
+    const { products } = await api.getCatalog(source, styleId, style.budgetCop);
+    return products;
+  }, []);
+
+  const setSelection = useCallback((productIds: string[]) => {
+    setState((s) => ({ ...s, selectedProductIds: productIds.slice(0, 3) }));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setState((s) => ({ ...s, selectedProductIds: [] }));
+  }, []);
+
   const setRenderVisual = useCallback((render: RenderResult) => {
     setState((s) => ({ ...s, renderVisual: render }));
   }, []);
 
   const submitRender = useCallback(async () => {
-    const { projectId, backendStyleId, style } = stateRef.current;
+    const { projectId, backendStyleId, style, selectedProductIds } = stateRef.current;
     if (!projectId || !style) throw new Error("Missing room or style.");
     const created = await api.createRender({
       projectId,
       ...(backendStyleId ? { styleId: backendStyleId } : {}),
       ...(style.note.trim() ? { freeText: style.note.trim() } : {}),
       budgetMaxCop: style.budgetCop,
+      // Composite exactly the user's picks (ADR-028, FR-068). Omitted when empty
+      // so the backend keeps its auto-match fallback (backward compatible).
+      ...(selectedProductIds.length ? { productIds: selectedProductIds } : {}),
     });
     setState((s) => ({
       ...s,
@@ -242,6 +298,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       budgetCop: state.style?.budgetCop ?? BUDGET_DEFAULT,
       beginRoom,
       applyStyle,
+      setSource,
+      loadCatalog,
+      setSelection,
+      clearSelection,
       setRenderVisual,
       submitRender,
       refreshRender,
@@ -256,6 +316,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       state,
       beginRoom,
       applyStyle,
+      setSource,
+      loadCatalog,
+      setSelection,
+      clearSelection,
       setRenderVisual,
       submitRender,
       refreshRender,

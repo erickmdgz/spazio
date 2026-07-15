@@ -6,6 +6,7 @@ import { projectRoutes } from "./routes/client/projects.js";
 import { styleRoutes } from "./routes/client/styles.js";
 import { localizationRoutes } from "./routes/client/localization.js";
 import { renderRoutes } from "./routes/client/renders.js";
+import { catalogRoutes } from "./routes/client/catalog.js";
 import { cartRoutes } from "./routes/client/cart.js";
 import { checkoutRoutes } from "./routes/client/checkout.js";
 import { operatorCatalogRoutes } from "./routes/operator/catalog.js";
@@ -58,6 +59,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       await client.register(styleRoutes);
       await client.register(localizationRoutes);
       await client.register(renderRoutes);
+      // Browse-and-select catalog surface (ADR-028; FR-066). Public data, no device
+      // token — like styleRoutes; the render/cart routes keep their device scoping.
+      await client.register(catalogRoutes);
       await client.register(cartRoutes);
       await client.register(checkoutRoutes);
     },

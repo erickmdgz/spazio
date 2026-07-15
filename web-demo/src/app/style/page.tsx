@@ -10,10 +10,24 @@ import {
 } from "@/lib/scenarios";
 import { formatCop } from "@/lib/format";
 import { useDemo } from "@/lib/store";
+import type { ProductSource } from "@/lib/api";
+
+const SOURCES: { id: ProductSource; label: string; blurb: string }[] = [
+  {
+    id: "supplier",
+    label: "Local suppliers",
+    blurb: "Real Bogotá SKUs you can buy and check out in Spazio.",
+  },
+  {
+    id: "public",
+    label: "Brand suppliers",
+    blurb: "Real brand products for inspiration — viewed at the retailer.",
+  },
+];
 
 export default function StylePage() {
   const router = useRouter();
-  const { room, style, applyStyle } = useDemo();
+  const { room, style, applyStyle, source, setSource } = useDemo();
   const [selected, setSelected] = useState<string>(style?.id ?? "");
   const [note, setNote] = useState<string>(style?.note ?? "");
   const [saving, setSaving] = useState(false);
@@ -27,14 +41,15 @@ export default function StylePage() {
     if (!room) router.replace("/room");
   }, [room, router]);
 
-  // Persists style + budget on the backend project (FR-007/008/009).
+  // Persists style + budget on the backend project (FR-007/008/009), then moves
+  // on to browse & select real products for the chosen source (ADR-028).
   async function next() {
     if (!selected || saving) return;
     setSaving(true);
     setError(null);
     try {
       await applyStyle({ id: selected, note: note.trim(), budgetCop: budget });
-      router.push("/render");
+      router.push("/select");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save your style.");
       setSaving(false);
@@ -53,7 +68,41 @@ export default function StylePage() {
         budget.
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      {/* Catalog source: which suppliers to browse (ADR-028). */}
+      <div className="mt-8">
+        <h2 className="font-semibold text-forest-900">Where should we shop?</h2>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          {SOURCES.map((s) => {
+            const active = source === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSource(s.id)}
+                aria-pressed={active}
+                className={`card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sheet ${
+                  active ? "ring-2 ring-forest-800" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold text-forest-900">{s.label}</h3>
+                    <p className="mt-1 text-xs text-muted/70">{s.blurb}</p>
+                  </div>
+                  {active && (
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-forest-800 text-xs text-cream-50">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <h2 className="mt-8 font-semibold text-forest-900">Pick a style</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-3">
         {STYLES.map((s) => {
           const active = selected === s.id;
           return (
@@ -152,7 +201,7 @@ export default function StylePage() {
           disabled={!selected || saving}
           className="btn-primary"
         >
-          {saving ? "Saving…" : "Generate render"} <span aria-hidden>→</span>
+          {saving ? "Saving…" : "Browse furniture"} <span aria-hidden>→</span>
         </button>
       </div>
     </div>

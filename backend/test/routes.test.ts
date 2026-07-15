@@ -14,6 +14,9 @@ const EXPECTED_ROUTES: Array<{ method: HTTPMethods; url: string }> = [
   { method: "POST", url: "/api/v1/renders" },
   { method: "GET", url: "/api/v1/renders/:id" },
   { method: "GET", url: "/api/v1/renders/:id/items" },
+  // Browse-and-select catalog surface (ADR-028; FR-066)
+  { method: "GET", url: "/api/v1/catalog" },
+  { method: "GET", url: "/api/v1/catalog/products/:id/image" },
   { method: "GET", url: "/api/v1/cart" },
   { method: "PUT", url: "/api/v1/cart/items/:id" },
   { method: "DELETE", url: "/api/v1/cart/items/:id" },
