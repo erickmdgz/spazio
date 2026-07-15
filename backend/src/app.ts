@@ -9,7 +9,6 @@ import { renderRoutes } from "./routes/client/renders.js";
 import { cartRoutes } from "./routes/client/cart.js";
 import { checkoutRoutes } from "./routes/client/checkout.js";
 import { operatorCatalogRoutes } from "./routes/operator/catalog.js";
-import { operatorRenderRoutes } from "./routes/operator/renders.js";
 import { operatorOrderRoutes } from "./routes/operator/orders.js";
 import { operatorSessionRoutes } from "./routes/operator/session.js";
 import { operatorConsoleRoutes } from "./routes/operator/console.js";
@@ -74,7 +73,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     async (operator) => {
       operator.addHook("preHandler", operatorGuard);
       await operator.register(operatorCatalogRoutes);
-      await operator.register(operatorRenderRoutes);
       await operator.register(operatorOrderRoutes);
     },
     { prefix: `${API_PREFIX}/operator` },

@@ -1,10 +1,10 @@
 import type { PrismaClient } from "@prisma/client";
 
 /**
- * Auto-populate the project's cart from an approved render (FR-031, BR-31).
- * Called from the operator approval action (plan §1.5 step 7): the cart never
- * materializes from an unapproved render. Replaces the draft cart's lines with
- * the render's items; a cart the user already confirmed is left untouched.
+ * Auto-populate the project's cart from a render (FR-031, BR-31).
+ * Called from the render worker on generation success (ADR-025 — the operator
+ * approval trigger is retired). Replaces the draft cart's lines with the
+ * render's items; a cart the user already confirmed is left untouched.
  */
 export async function populateCartFromRender(
   prisma: PrismaClient,

@@ -34,7 +34,8 @@ export interface StyleSelection {
   budgetCop: number;
 }
 
-export type ReviewStatus = "idle" | "pending_review" | "approved" | "rejected";
+/** Generation status as tracked by the wizard; "idle" until a job is submitted. */
+export type RenderStatus = "idle" | api.RenderGenerationStatus;
 
 export interface PlacedOrder extends CheckoutResult {
   contact: Contact;
@@ -50,7 +51,7 @@ interface DemoState {
   backendStyleId?: string;
   renderVisual?: RenderResult;
   renderId?: string;
-  reviewStatus: ReviewStatus;
+  renderStatus: RenderStatus;
   renderItems: BackendRenderItem[];
   cart?: BackendCart;
   order?: PlacedOrder;
@@ -65,8 +66,8 @@ interface DemoStore extends DemoState {
   setRenderVisual: (render: RenderResult) => void;
   /** Submit the render job (202 + poll — plan §1.1). */
   submitRender: () => Promise<void>;
-  /** Poll the render; on approval loads the tagged items + auto-populated cart. */
-  refreshRender: () => Promise<ReviewStatus>;
+  /** Poll the render; on generation success loads the tagged items + auto-populated cart. */
+  refreshRender: () => Promise<RenderStatus>;
   reloadCart: () => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   /** True if a product (by sku) is in the backend cart. */
@@ -79,7 +80,7 @@ interface DemoStore extends DemoState {
 
 const DemoContext = createContext<DemoStore | null>(null);
 
-const INITIAL: DemoState = { reviewStatus: "idle", renderItems: [] };
+const INITIAL: DemoState = { renderStatus: "idle", renderItems: [] };
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DemoState>(INITIAL);
@@ -134,7 +135,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setState((s) => ({
       ...s,
       renderId: created.renderId,
-      reviewStatus: "pending_review",
+      renderStatus: created.status,
       renderItems: [],
       cart: undefined,
     }));
@@ -148,23 +149,25 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, cart }));
     } catch (error) {
       if (error instanceof api.ApiError && error.status === 404) {
-        setState((s) => ({ ...s, cart: undefined })); // no cart yet (pre-approval)
+        setState((s) => ({ ...s, cart: undefined })); // no cart yet (render not completed)
         return;
       }
       throw error;
     }
   }, []);
 
-  const refreshRender = useCallback(async (): Promise<ReviewStatus> => {
+  const refreshRender = useCallback(async (): Promise<RenderStatus> => {
     const renderId = stateRef.current.renderId;
     if (!renderId) return "idle";
-    const status = (await api.getRender(renderId)).reviewStatus;
-    if (status === "approved" && stateRef.current.reviewStatus !== "approved") {
+    const status = (await api.getRender(renderId)).status;
+    if (status === "completed" && stateRef.current.renderStatus !== "completed") {
+      // Published immediately on generation success (ADR-025): tags + the
+      // auto-populated cart (FR-031) are ready as soon as the job completes.
       const { items } = await api.getRenderItems(renderId);
-      setState((s) => ({ ...s, reviewStatus: status, renderItems: items }));
+      setState((s) => ({ ...s, renderStatus: status, renderItems: items }));
       await reloadCart();
     } else {
-      setState((s) => ({ ...s, reviewStatus: status }));
+      setState((s) => ({ ...s, renderStatus: status }));
     }
     return status;
   }, [reloadCart]);

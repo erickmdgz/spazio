@@ -32,9 +32,9 @@
 > **Update (ADR-025, 2026-07-14):** the operator render-review gate is retired —
 > renders are published to the requesting user immediately on generation
 > success. FR-027 and FEAT-006 are retired; the render approve/reject endpoints
-> and the `pending_review` queue read below are marked Retired and remain only
-> as as-built history until the next development iteration removes them from
-> code (catalog curation and order forwarding are unaffected).
+> and the `pending_review` queue read below are marked Retired and have been
+> removed from code by FEAT-016 (#38); they are kept here only as as-built
+> history (catalog curation and order forwarding are unaffected).
 
 ## How to read this document
 
@@ -341,12 +341,12 @@ gate is retired).
 
 ### `POST /api/v1/operator/renders/{renderId}/approve` · `.../reject`
 
-- **Retired — ADR-025 (2026-07-14).** The operator render-review gate is removed; renders are published immediately on generation success, and cart auto-population (FR-031) is triggered by generation success instead of approval. *(As built — PR #27/#31: these endpoints still exist in code, stamping `reviewed_by` and auto-populating the cart on approval; their removal is next-iteration work.)*
+- **Retired — ADR-025 (2026-07-14).** The operator render-review gate is removed; renders are published immediately on generation success, and cart auto-population (FR-031) is triggered by generation success instead of approval. *(As built — PR #27/#31: these endpoints stamped `reviewed_by` and auto-populated the cart on approval; FEAT-016 (#38) has since removed them from code.)*
 
 ### `POST /api/v1/operator/session` · `GET` · `DELETE` *(as built, pilot — PR #27)*
 
 - **Purpose:** Operator sign-in (email + password against the `Operator` table, hashed credentials), whoami, and sign-out. Sets/clears the HMAC-signed httpOnly session cookie that guards every other `/operator/*` route — the pilot's only authenticated surface (build plan §1.7; NFR-008 intent). Actor: **Operator**.
-- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue — **Retired, ADR-025**; still in code until the next iteration), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
+- **Companion queue reads (§0.1#5, as built):** `GET /operator/renders?status=pending_review` (render-review queue — **Retired, ADR-025**; removed from code by FEAT-016 (#38)), `GET /operator/catalog/products?filter=incomplete|unmapped|pending` (curation list), `GET /operator/orders?status=paid_unforwarded` (forwarding queue). These back the console shell served at `/operator/console`.
 - **Related requirements:** FR-056–FR-059, FR-061; NFR-008 *(FR-027 retired — ADR-025)*. **Pilot core.**
 
 ### `GET /api/v1/renders/quota`

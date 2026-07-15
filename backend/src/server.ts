@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   const payments = new FakePaymentGateway();
   const queue = new InMemoryQueue<RenderJob>();
 
-  // Wire the async render worker (queue -> pipeline -> persist; operator QA gates it).
+  // Wire the async render worker (queue -> pipeline -> persist -> publish, ADR-025).
   registerRenderWorker(queue, prisma, renderPipeline);
 
   const deps: AppDeps = { config, prisma, storage, renderPipeline, payments, queue };

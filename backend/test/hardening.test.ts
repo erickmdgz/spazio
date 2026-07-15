@@ -3,10 +3,11 @@ import type { FastifyInstance } from "fastify";
 import { buildTestApp, operatorSessionCookie } from "./helpers.js";
 
 /**
- * Loop hardening (#34): the §2.4 DoD carve-out security TCs (TC-107..109),
- * status-machine preconditions, and NFR-007 device scoping.
+ * Loop hardening (#34): the §2.4 DoD carve-out security TCs (TC-107/TC-109;
+ * TC-108 retired with the render-review gate — ADR-025), status-machine
+ * preconditions, and NFR-007 device scoping.
  */
-describe("operator role enforcement (NFR-008, TC-107..109)", () => {
+describe("operator role enforcement (NFR-008, TC-107/TC-109)", () => {
   let app: FastifyInstance | undefined;
 
   afterEach(async () => {
@@ -15,26 +16,13 @@ describe("operator role enforcement (NFR-008, TC-107..109)", () => {
 
   it("TC-107: a non-curator cannot create or approve a catalog entry", async () => {
     ({ app } = await buildTestApp());
-    const asReviewer = { cookie: operatorSessionCookie({ role: "render_reviewer" }) };
+    const asHandler = { cookie: operatorSessionCookie({ role: "order_handler" }) };
     const approve = await app.inject({
       method: "POST",
       url: "/api/v1/operator/catalog/products/p1/approve",
-      headers: asReviewer,
+      headers: asHandler,
     });
     expect(approve.statusCode).toBe(403);
-  });
-
-  it("TC-108: a wrong-role operator cannot approve or reject a render", async () => {
-    ({ app } = await buildTestApp());
-    const asCurator = { cookie: operatorSessionCookie({ role: "catalog_curator" }) };
-    for (const action of ["approve", "reject"]) {
-      const response = await app.inject({
-        method: "POST",
-        url: `/api/v1/operator/renders/r1/${action}`,
-        headers: asCurator,
-      });
-      expect(response.statusCode, action).toBe(403);
-    }
   });
 
   it("TC-109: a non-handler cannot forward an order", async () => {
@@ -42,32 +30,25 @@ describe("operator role enforcement (NFR-008, TC-107..109)", () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/operator/orders/o1/forward",
-      headers: { cookie: operatorSessionCookie({ role: "render_reviewer" }) },
+      headers: { cookie: operatorSessionCookie({ role: "catalog_curator" }) },
     });
     expect(response.statusCode).toBe(403);
   });
 
   it("a role-less operator stays all-purpose (pilot staffing)", async () => {
-    const txStub = {
-      cart: { upsert: vi.fn().mockResolvedValue({ id: "c1", status: "draft" }) },
-      cartItem: {
-        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        createMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-    };
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const update = vi.fn().mockResolvedValue({ id: "o1", status: "forwarded" });
     ({ app } = await buildTestApp({
-      render: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({ id: "r1", projectId: "p1", reviewStatus: "pending_review" }),
-        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      order: {
+        findUnique: vi.fn().mockResolvedValue({ id: "o1", status: "paid_unforwarded" }),
+        update,
       },
-      renderItem: { findMany: vi.fn().mockResolvedValue([]) },
-      $transaction: vi.fn(async (fn: (t: typeof txStub) => Promise<void>) => fn(txStub)),
+      purchaseOrder: { updateMany },
+      $transaction: vi.fn(async (operations: unknown[]) => Promise.all(operations)),
     }));
     const response = await app.inject({
       method: "POST",
-      url: "/api/v1/operator/renders/r1/approve",
+      url: "/api/v1/operator/orders/o1/forward",
       headers: { cookie: operatorSessionCookie({ role: null }) },
     });
     expect(response.statusCode).toBe(200);
@@ -79,26 +60,6 @@ describe("status-machine preconditions", () => {
 
   afterEach(async () => {
     await app?.close();
-  });
-
-  it("re-approving an already approved render answers 409 and emits nothing", async () => {
-    const eventCreate = vi.fn().mockResolvedValue({ id: "evt" });
-    ({ app } = await buildTestApp({
-      render: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({ id: "r1", projectId: "p1", reviewStatus: "approved" }),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-      event: { create: eventCreate },
-    }));
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/operator/renders/r1/approve",
-      headers: { cookie: operatorSessionCookie({ role: "render_reviewer" }) },
-    });
-    expect(response.statusCode).toBe(409);
-    expect(eventCreate).not.toHaveBeenCalled();
   });
 
   it("forwarding an already forwarded order answers 409 (audit trail preserved)", async () => {
@@ -206,9 +167,9 @@ describe("device scoping (NFR-007)", () => {
       render: {
         findUnique: vi.fn().mockResolvedValue({
           id: "r1",
-          reviewStatus: "approved",
           imageKey: "k",
           project: { deviceToken: "device-A" },
+          renderRequest: { status: "completed" },
         }),
       },
     }));
@@ -240,14 +201,14 @@ describe("device scoping (NFR-007)", () => {
     expect(del).not.toHaveBeenCalled();
   });
 
-  it("the owning device reads its own render", async () => {
+  it("the owning device reads its own render (completed = immediately visible, ADR-025)", async () => {
     ({ app } = await buildTestApp({
       render: {
         findUnique: vi.fn().mockResolvedValue({
           id: "r1",
-          reviewStatus: "approved",
           imageKey: "k",
           project: { deviceToken: "device-A" },
+          renderRequest: { status: "completed" },
         }),
       },
     }));
@@ -257,6 +218,6 @@ describe("device scoping (NFR-007)", () => {
       headers: { "x-device-token": "device-A" },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().reviewStatus).toBe("approved");
+    expect(response.json().status).toBe("completed");
   });
 });

@@ -1,10 +1,10 @@
 import type { PrismaClient } from "@prisma/client";
 
 /**
- * NFR-006 event trail. The pilot emits six events; each emit() writes an Event row.
- * Emit points are wired where the route exists (§0.1#8):
+ * NFR-006 event trail. The pilot emits five events; each emit() writes an Event row.
+ * Emit points are wired where the route exists (§0.1#8; render_approved retired
+ * with the operator render-review gate — ADR-025):
  *   - render_created     -> POST /renders
- *   - render_approved    -> POST /operator/renders/:id/approve
  *   - render_viewed      -> GET /renders/:id/items
  *   - cart_confirmed     -> POST /cart/confirm
  *   - checkout_started   -> POST /checkout (before capture)
@@ -12,7 +12,6 @@ import type { PrismaClient } from "@prisma/client";
  */
 export const EVENTS = {
   RENDER_CREATED: "render_created",
-  RENDER_APPROVED: "render_approved",
   RENDER_VIEWED: "render_viewed",
   CART_CONFIRMED: "cart_confirmed",
   CHECKOUT_STARTED: "checkout_started",

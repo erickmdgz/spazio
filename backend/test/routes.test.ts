@@ -35,9 +35,6 @@ const EXPECTED_ROUTES: Array<{ method: HTTPMethods; url: string }> = [
   { method: "PATCH", url: "/api/v1/operator/catalog/products/:id" },
   { method: "POST", url: "/api/v1/operator/catalog/products/:id/approve" },
   { method: "POST", url: "/api/v1/operator/catalog/products/:id/reject" },
-  { method: "GET", url: "/api/v1/operator/renders" },
-  { method: "POST", url: "/api/v1/operator/renders/:id/approve" },
-  { method: "POST", url: "/api/v1/operator/renders/:id/reject" },
   { method: "GET", url: "/api/v1/operator/orders" },
   { method: "POST", url: "/api/v1/operator/orders/:id/forward" },
 ];
@@ -59,5 +56,16 @@ describe("router registration", () => {
   it("does NOT register POST /cart/items (FR-030 deferred, §0.1#2)", async () => {
     ({ app } = await buildTestApp());
     expect(app.hasRoute({ method: "POST", url: "/api/v1/cart/items" })).toBe(false);
+  });
+
+  it("does NOT register the operator render-review routes (retired — ADR-025)", async () => {
+    ({ app } = await buildTestApp());
+    expect(app.hasRoute({ method: "GET", url: "/api/v1/operator/renders" })).toBe(false);
+    expect(app.hasRoute({ method: "POST", url: "/api/v1/operator/renders/:id/approve" })).toBe(
+      false,
+    );
+    expect(app.hasRoute({ method: "POST", url: "/api/v1/operator/renders/:id/reject" })).toBe(
+      false,
+    );
   });
 });

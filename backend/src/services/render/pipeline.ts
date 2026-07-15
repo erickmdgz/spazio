@@ -4,7 +4,8 @@
  * Hard rule (BR-6 / BR-14): every rendered item must map to a real, in-stock SKU;
  * the pipeline never fabricates products. The pilot ships a FAKE implementation
  * that returns a placeholder image key and echoes back the candidate SKUs it was
- * given — it does not call any external vendor. Operator QA gates every render.
+ * given — it does not call any external vendor. Renders are published immediately
+ * on generation success (ADR-025).
  */
 
 export interface RenderPipelineInput {

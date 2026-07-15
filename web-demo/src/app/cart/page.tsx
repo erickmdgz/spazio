@@ -7,9 +7,9 @@ import { getProduct } from "@/lib/catalog";
 import { formatCop, leadTimeLabel } from "@/lib/format";
 import { useDemo } from "@/lib/store";
 
-// The cart is the backend's — auto-populated from the operator-approved render
-// (FR-031). Review + remove only: manual add is out of the pilot (§0.1#2) and
-// swap (FR-034) is deferred.
+// The cart is the backend's — auto-populated from the render on generation
+// success (FR-031, ADR-025). Review + remove only: manual add is out of the
+// pilot (§0.1#2) and swap (FR-034) is deferred.
 export default function CartPage() {
   const router = useRouter();
   const { cart, budgetCop, reloadCart, removeItem } = useDemo();
@@ -45,7 +45,7 @@ export default function CartPage() {
       <div className="animate-fade-up flex min-h-[50vh] flex-col items-center justify-center text-center">
         <h1 className="font-serif text-2xl text-forest-900">Your cart is empty</h1>
         <p className="mt-2 text-muted/70">
-          The cart fills automatically once an operator approves your render.
+          The cart fills automatically as soon as your render is ready.
         </p>
         <button type="button" onClick={() => router.push("/render")} className="btn-primary mt-6">
           Back to render
@@ -58,7 +58,7 @@ export default function CartPage() {
     <div className="animate-fade-up">
       <h1 className="text-3xl font-semibold text-forest-900">Your cart</h1>
       <p className="mt-2 text-muted/70">
-        Auto-filled from your operator-approved render. Remove anything before checkout.
+        Auto-filled from your render. Remove anything before checkout.
       </p>
       {error && <p className="mt-2 text-sm text-wood-dark">{error}</p>}
 

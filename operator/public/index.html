@@ -27,8 +27,7 @@
     <header class="topbar">
       <span class="brand">Spazio · Operator console</span>
       <nav id="tabs">
-        <button data-tab="renders" class="tab active">Render review</button>
-        <button data-tab="catalog" class="tab">Catalog</button>
+        <button data-tab="catalog" class="tab active">Catalog</button>
         <button data-tab="orders" class="tab">Orders</button>
       </nav>
       <span class="spacer"></span>
@@ -37,25 +36,8 @@
     </header>
 
     <main>
-      <!-- Render review queue (§1.7 job 2, FR-027) -->
-      <section id="tab-renders" class="tab-panel">
-        <div class="panel-head">
-          <h2>Render review queue</h2>
-          <label class="muted">Status
-            <select id="renders-status">
-              <option value="pending_review" selected>pending_review</option>
-              <option value="approved">approved</option>
-              <option value="rejected">rejected</option>
-            </select>
-          </label>
-          <button class="refresh" data-refresh="renders">Refresh</button>
-        </div>
-        <p class="muted">Oldest first. A render stays invisible to the user until it is approved here (FR-027). Full review UX (room photo + composite + SKU list) arrives with FEAT-006.</p>
-        <div id="renders-list" class="list"></div>
-      </section>
-
       <!-- Catalog curation (§1.7 job 1, FR-056–059) -->
-      <section id="tab-catalog" class="tab-panel" hidden>
+      <section id="tab-catalog" class="tab-panel">
         <div class="panel-head">
           <h2>Catalog curation</h2>
           <label class="muted">Filter

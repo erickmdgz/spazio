@@ -9,18 +9,19 @@ import { hashPassword } from "../src/auth/passwords.js";
  *
  * Interactive (recommended — password prompted with hidden input, never typed
  * into the shell):
- *   npm run operator:create -- --email ana@spazio.example --name "Ana" [--role render_reviewer]
+ *   npm run operator:create -- --email ana@spazio.example --name "Ana" [--role catalog_curator]
  *
  * Non-interactive: set OPERATOR_PASSWORD in the environment. Note an inline
  * assignment typed at a prompt (`OPERATOR_PASSWORD=... npm run ...`) is recorded
  * in shell history; load it from a hidden read instead:
  *   read -s OPERATOR_PASSWORD && export OPERATOR_PASSWORD
  *
- * Requires DATABASE_URL. Roles: catalog_curator | render_reviewer | order_handler
- * (omit for all-purpose staff; per-action role gating arrives with FEAT-006/011/015).
+ * Requires DATABASE_URL. Roles: catalog_curator | order_handler
+ * (omit for all-purpose staff; per-action role gating per FEAT-011/015 —
+ * render_reviewer retired with the render-review gate, ADR-025).
  */
 
-const ROLES: readonly string[] = ["catalog_curator", "render_reviewer", "order_handler"];
+const ROLES: readonly string[] = ["catalog_curator", "order_handler"];
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

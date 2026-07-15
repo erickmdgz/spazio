@@ -157,18 +157,22 @@ export function listStyles(): Promise<{ styles: BackendStyle[] }> {
   return request("/styles");
 }
 
+// Generation lifecycle (docs_en/06_api.md §5): queued → processing → completed | failed.
+// A completed render is published to the user immediately (ADR-025).
+export type RenderGenerationStatus = "queued" | "processing" | "completed" | "failed";
+
 export function createRender(input: {
   projectId: string;
   styleId?: string;
   freeText?: string;
   budgetMaxCop?: number;
-}): Promise<{ renderId: string; reviewStatus: string }> {
+}): Promise<{ renderId: string; status: RenderGenerationStatus }> {
   return request("/renders", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function getRender(
   renderId: string,
-): Promise<{ renderId: string; reviewStatus: "pending_review" | "approved" | "rejected" }> {
+): Promise<{ renderId: string; status: RenderGenerationStatus }> {
   return request(`/renders/${renderId}`);
 }
 
