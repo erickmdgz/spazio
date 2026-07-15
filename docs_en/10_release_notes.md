@@ -103,7 +103,14 @@ below).
 
 ### Fixed
 
-- None. There is no prior release, so there is nothing to fix.
+- **BUG-001 — large room photos crashed the render engine (GPU OOM).** Real phone
+  photos (~24 MP; e.g. an iPhone 5712×4284 JPEG) were passed to the mflux engine at
+  full resolution and exhausted GPU memory (`[METAL] … Insufficient Memory`),
+  failing every render. The pipeline now **downscales each input image to a
+  configurable max longest edge (`MFLUX_MAX_IMAGE_EDGE`, default 1280 px) and bakes
+  EXIF orientation** before invoking mflux, using Pillow from the mflux venv (**no
+  new dependency**). Renders now complete for real photos and are correctly
+  oriented. Verified end-to-end on the reporting photo. Test: **TC-126**.
 
 ### Technical changes
 

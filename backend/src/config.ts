@@ -53,6 +53,13 @@ const envSchema = z.object({
   MFLUX_MODEL: z.string().default("flux2-klein-4b"),
   MFLUX_STEPS: numberFromString(8),
   MFLUX_QUANTIZE: numberFromString(8),
+  // Longest-edge cap (px) for input images before mflux — keeps GPU memory
+  // bounded so a large phone photo (~24 MP) can't OOM the Metal backend
+  // (BUG-001). 0 disables downscaling.
+  MFLUX_MAX_IMAGE_EDGE: numberFromString(1280),
+  // Python for the Pillow downscale (ships with the mflux venv — no new dep).
+  // Empty = derive from MFLUX_EDIT_BIN's directory (else "python3" on PATH).
+  MFLUX_PYTHON_BIN: z.string().default(""),
 
   // Payments (single COP capture, ADR-003/004). Placeholder vendor fields.
   PAYMENT_DRIVER: z.enum(["fake"]).default("fake"),

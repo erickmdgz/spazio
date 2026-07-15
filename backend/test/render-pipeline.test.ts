@@ -90,6 +90,10 @@ const OPTIONS = {
   model: "flux2-klein-4b",
   steps: 8,
   quantize: 8,
+  // Downscaling disabled here so these tests assert the raw room/product paths;
+  // the BUG-001 downscale has its own test below with maxImageEdge > 0.
+  maxImageEdge: 0,
+  pythonBin: "python3",
 };
 
 function baseInput(overrides: Partial<RenderPipelineInput> = {}): RenderPipelineInput {
@@ -210,6 +214,55 @@ describe("MfluxRenderPipeline", () => {
     expect(stored.get("renders/render-1/composite.png")?.toString()).toBe(OUTPUT_BYTES);
     // Item is still emitted for the candidate (worker's guard decides inclusion).
     expect(result.items).toHaveLength(1);
+  });
+
+  it("downscales every input image (baking orientation) before mflux (BUG-001)", async () => {
+    const calls: Recorded[] = [];
+    const stored = new Map<string, Buffer>([[ROOM_KEY, ROOM_BYTES]]);
+    const storage = makeStorage(stored);
+    const prisma = makePrisma({ "prod-1": [productImagePath] });
+
+    // Spawner that handles both the Pillow downscale (`python -c <script> src dst edge`)
+    // and the mflux edit call: it writes the downscale dest / the --output file, then
+    // closes 0.
+    const spawner: MfluxSpawner = (command, args) => {
+      calls.push({ command, args });
+      const child = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+      child.stderr = new EventEmitter();
+      setImmediate(async () => {
+        if (args.includes("--output")) {
+          await writeFile(args[args.indexOf("--output") + 1]!, Buffer.from(OUTPUT_BYTES));
+        } else if (args[0] === "-c") {
+          await writeFile(args[3]!, Buffer.from("SCALED")); // dst = argv after the script
+        }
+        child.emit("close", 0);
+      });
+      return child as unknown as ReturnType<MfluxSpawner>;
+    };
+
+    const pipeline = new MfluxRenderPipeline(
+      storage,
+      prisma,
+      { ...OPTIONS, maxImageEdge: 1280 },
+      spawner,
+    );
+    await pipeline.generate(baseInput({ candidateProductIds: ["prod-1"] }));
+
+    // Downscale ran on the venv python with the Pillow orientation+resize snippet,
+    // once per input image (room + product), at the configured max edge.
+    const downscales = calls.filter((c) => c.args?.[0] === "-c");
+    expect(downscales).toHaveLength(2);
+    expect(downscales[0]!.command).toBe("python3");
+    expect(downscales[0]!.args?.[1]).toContain("exif_transpose");
+    expect(downscales[0]!.args?.[4]).toBe("1280");
+
+    // mflux received the SCALED paths, not the raw room.png / product path.
+    const mflux = calls.find((c) => c.args?.includes("--output"));
+    const args = mflux?.args ?? [];
+    const ipIndex = args.indexOf("--image-paths");
+    expect(args[ipIndex + 1]).toMatch(/scaled-0\.jpg$/);
+    expect(args[ipIndex + 2]).toMatch(/scaled-1\.jpg$/);
+    expect(args).not.toContain(productImagePath);
   });
 
   it("throws when the mflux child exits non-zero", async () => {

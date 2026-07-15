@@ -62,3 +62,7 @@ env/
 .mypy_cache/
 
 # Nota: extiende este archivo cuando se defina el stack tecnológico (ver docs/02_arquitectura.md).
+
+# Ignore future local test photos (IMG_3967.jpeg is already tracked and kept intentionally)
+IMG_*.heic
+IMG_*.HEIC

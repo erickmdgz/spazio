@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import { loadDotEnv } from "./env.js";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
@@ -28,6 +29,14 @@ async function main(): Promise<void> {
           model: config.MFLUX_MODEL,
           steps: config.MFLUX_STEPS,
           quantize: config.MFLUX_QUANTIZE,
+          maxImageEdge: config.MFLUX_MAX_IMAGE_EDGE,
+          // Pillow downscaler runs on the mflux venv's python (no new dep). Derive
+          // it from the edit binary's directory when not set explicitly.
+          pythonBin:
+            config.MFLUX_PYTHON_BIN ||
+            (config.MFLUX_EDIT_BIN.includes("/")
+              ? join(dirname(config.MFLUX_EDIT_BIN), "python3")
+              : "python3"),
         })
       : new FakeRenderPipeline();
   const payments = new FakePaymentGateway();
