@@ -17,6 +17,11 @@ supplier.
 > migrate, seed, operator account, `PORT=3001 npm run dev`), or set
 > `BACKEND_ORIGIN` if it runs elsewhere. The offline, in-memory demo described
 > below is preserved in git history (tag: the PR #22 merge).
+> Per **ADR-025** (2026-07-14,
+> `../docs_en/decisions/ADR-025_autonomous-render-publication.md`) this operator
+> render-approval gate is slated for removal in the next development iteration —
+> renders will be published immediately on generation success. Until that change
+> lands, approve renders in the console as described here.
 
 ---
 

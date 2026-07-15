@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Update (ADR-025, 2026-07-14):** the operator render-review step (FR-027) referenced below is retired; renders are published immediately on generation success (ADR-025), so operator-review time no longer adds to the user-perceived render time. The ~2–5 minute soft target and the no-hard-SLA decision stand.
 
 ## Context
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Update (ADR-025, 2026-07-14):** the rationale "(every render is operator-reviewed anyway)" in the Decision below no longer holds — the operator render-review gate is retired and renders are published immediately on generation success (ADR-025). The no-daily-limit-in-the-pilot decision itself stands.
 
 ## Context
 

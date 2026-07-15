@@ -13,7 +13,7 @@ Core principle: **the AI never invents furniture.** Every rendered item maps to 
 
 ## Class demo (web)
 
-The [`web-demo/`](./web-demo/) folder holds a **time-boxed, 2-day academic class-project demo** of the render-to-purchase happy path: a Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4 web app with **no database** (in-memory state), a seeded in-code catalog (11 SKUs, 3 Bogotá suppliers), a fallback-first cached render, and a **mock** checkout — it is a scoped visual demo, **not** production, not real payments, and not the full pilot. It walks landing → room → style + budget (COP) → simulated render with tappable product hotspots → cart → mock checkout → confirmation. Scope, feature mapping, and what is deliberately left out are documented in [`docs_en/13_class_demo_scope.md`](./docs_en/13_class_demo_scope.md); the full run/deploy guide is in [`web-demo/README.md`](./web-demo/README.md). For the **demo scope only** this superseded the native-iOS decision by delivering on the web ([`ADR-023`](./docs_en/decisions/)). **Update ([`ADR-024`](./docs_en/decisions/ADR-024_web-app-platform-pivot.md), 2026-07-14 + #31):** the web app is now the **product platform**, wired to the real backend — the wizard persists to Postgres, renders wait for operator approval, and checkout creates real orders on a fake gateway. Full-stack quick run (Node 22+, Docker):
+The [`web-demo/`](./web-demo/) folder holds a **time-boxed, 2-day academic class-project demo** of the render-to-purchase happy path: a Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4 web app with **no database** (in-memory state), a seeded in-code catalog (11 SKUs, 3 Bogotá suppliers), a fallback-first cached render, and a **mock** checkout — it is a scoped visual demo, **not** production, not real payments, and not the full pilot. It walks landing → room → style + budget (COP) → simulated render with tappable product hotspots → cart → mock checkout → confirmation. Scope, feature mapping, and what is deliberately left out are documented in [`docs_en/13_class_demo_scope.md`](./docs_en/13_class_demo_scope.md); the full run/deploy guide is in [`web-demo/README.md`](./web-demo/README.md). For the **demo scope only** this superseded the native-iOS decision by delivering on the web ([`ADR-023`](./docs_en/decisions/)). **Update ([`ADR-024`](./docs_en/decisions/ADR-024_web-app-platform-pivot.md), 2026-07-14 + #31):** the web app is now the **product platform**, wired to the real backend — the wizard persists to Postgres, renders wait for operator approval, and checkout creates real orders on a fake gateway. **Note ([`ADR-025`](./docs_en/decisions/ADR-025_autonomous-render-publication.md), 2026-07-14):** the operator render-review gate is slated for removal in the next development iteration — renders will be published immediately on generation success. The commands below reflect the code as it stands (review flow still implemented). Full-stack quick run (Node 22+, Docker):
 
 ```bash
 cd backend && docker compose up -d db && cp .env.example .env   # set PORT=3001
@@ -25,18 +25,18 @@ cd ../web-demo && npm install && npm run dev                    # web on :3000
 
 ## Status
 
-Early stage. The immediate goal is to prove the render-to-purchase loop in one city on the **web app**, wired to the real backend, at class-demo scale (ADR-024) — with a small hand-curated catalog and a human in the loop.
+Early stage. The immediate goal is to prove the render-to-purchase loop in one city on the **web app**, wired to the real backend, at class-demo scale (ADR-024) — with a small hand-curated catalog and a human in the loop for catalog curation and order handling (the render-review gate is removed per ADR-025; renders are published immediately on generation success).
 
 ## Stack
 
-The stack is decided and recorded as Accepted ADRs ([ADR-001..ADR-024](./docs_en/decisions/)). Architecture detail lives in [`docs_en/02_architecture.md`](./docs_en/02_architecture.md).
+The stack is decided and recorded as Accepted ADRs ([ADR-001..ADR-025](./docs_en/decisions/)). Architecture detail lives in [`docs_en/02_architecture.md`](./docs_en/02_architecture.md).
 
 | Layer | Choice |
 |---|---|
 | Frontend | Web app (Next.js, [`web-demo/`](./web-demo/)) — ADR-024 (originally native iOS per ADR-001; class demo per ADR-023) |
 | Backend | Node.js 22 + TypeScript (Fastify) + Prisma — ADR-001 implementation note; scaffold in [`backend/`](./backend/) (PR #21) |
 | Database | Managed Postgres + object storage — ADR-001 |
-| Rendering / AI | Hosted generative image API behind an interface, mandatory operator QA; vendor an implementation task — ADR-002 |
+| Rendering / AI | Hosted generative image API behind an interface; vendor an implementation task — ADR-002 (its mandatory operator-QA clause superseded by ADR-025, 2026-07-14: renders publish immediately on generation success) |
 | Payments | Single hosted PCI-compliant COP capture, no split settlement in the pilot (manual payout); vendor TBD — ADR-003/ADR-004 |
 | Hosting | TBD, single managed environment — ADR-001 |
 
@@ -72,9 +72,9 @@ All living documentation is under [`docs_en/`](./docs_en/):
 | `09_ai_usage.md` | AI usage rules |
 | `10_release_notes.md` | Release notes per version |
 | `11_implementation_flow.md` | Mandatory implementation flow |
-| `12_pilot_build_plan.md` | Approved pilot build plan (iOS program superseded by ADR-024; loop design still authoritative) |
+| `12_pilot_build_plan.md` | Approved pilot build plan (iOS program superseded by ADR-024; loop design still authoritative except the render-review step, superseded by ADR-025) |
 | `13_class_demo_scope.md` | Class-demo scope and feature mapping |
-| `decisions/` | ADR-001..ADR-024 |
+| `decisions/` | ADR-001..ADR-025 |
 | `features/` | FEAT specifications |
 | `templates/` | Feature / bug / ADR / requirement / prompt templates |
 

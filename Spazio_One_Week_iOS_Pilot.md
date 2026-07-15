@@ -1,6 +1,7 @@
 # Spazio — One-Week iOS Pilot
 
 > **Update (ADR-024, 2026-07-14):** this document is the original first-milestone spec, kept unchanged as source material. The platform decision has since changed — the product continues on the **web app** (`web-demo/`) at class-demo scale, and **no native iOS app will be built**. The loop this document defines (render-to-purchase, one city, human in the loop) still governs. See `docs_en/decisions/ADR-024_web-app-platform-pivot.md`.
+> **Update (ADR-025, 2026-07-14):** the operator render-review gate this document describes ("Operator reviews each render before it reaches the user") is retired — renders are published immediately on generation success; the human-in-the-loop elements that remain are catalog curation and manual order forwarding. See `docs_en/decisions/ADR-025_autonomous-render-publication.md`.
 
 **Pilot Product Requirements — the smallest version we can put in a real person’s hands**
 

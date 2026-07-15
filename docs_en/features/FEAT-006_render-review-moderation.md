@@ -1,5 +1,7 @@
 # FEAT-006 - Render review & moderation
 
+> **Retired — ADR-025 (2026-07-14).** The human render-review gate this feature specifies is removed: no operator reviews, approves, or rejects renders, and the render-reviewer role is retired. AI-generated renders are published to the requesting user immediately upon successful generation; the render lifecycle keeps only generation states (`queued` / `processing` → `completed` / `failed`). FR-027 and its test cases (TC-051, TC-052, TC-053, and the `render_reviewer` authorization case TC-108) are superseded by ADR-025. This document is kept unchanged below as the historical specification; the FEAT-006 ID is not reused. See `docs_en/decisions/ADR-025_autonomous-render-publication.md`.
+
 > **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
 
 ## 1. Summary

@@ -1,7 +1,7 @@
 # Data model
 
 > **Draft - proposed data model; architecture decided for the pilot (see `ADR-001`).**
-> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. **Update (PR #21):** the pilot entity subset is now expressed as a Prisma schema in `backend/prisma/schema.prisma` (not deployed); this document remains the full-product draft. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`; the client has since changed to the **web app** — `ADR-024`, 2026-07-14). Treat every table below as a specification to review, not a settled design.
+> This document is a first structuring of Spazio's domain entities, derived from the PRD v0.7 and the One-Week iOS Pilot. Nothing here is implemented. **Update (PR #21):** the pilot entity subset is now expressed as a Prisma schema in `backend/prisma/schema.prisma` (not deployed); this document remains the full-product draft. The physical schema, database engine, and field types follow the technology stack — a human decision now decided for the pilot as a native iOS (SwiftUI) app with a small managed backend and a managed relational (Postgres) database plus object storage, single environment/region (see `ADR-001 Technology stack`; the client has since changed to the **web app** — `ADR-024`, 2026-07-14). **Update (ADR-025, 2026-07-14):** the operator render-review gate is removed — renders are published to the requesting user immediately on generation success; the `Render` review states and reviewer stamps below are marked Retired (still in the as-built code until the next development iteration). Treat every table below as a specification to review, not a settled design.
 
 ## How to read this document
 
@@ -41,8 +41,10 @@ Product >── Supplier ──< DeliveryZone
 Supplier / Product ──< SponsoredPlacement
 Product.style_attributes ── StyleTaxonomy ── Style
 User / Supplier / Order ── Market
-Operator ── (reviews Render, curates Product/Style, forwards PurchaseOrder)
+Operator ── (curates Product/Style, forwards PurchaseOrder)
 ```
+
+*(Operator render review removed — ADR-025, 2026-07-14.)*
 
 Cardinality summary (draft):
 
@@ -74,9 +76,9 @@ A homeowner/renter with profile, preferences, and order history; may also transa
 
 ## Entity: Operator
 
-Spazio staff who curate the catalog, maintain the style taxonomy, review renders, and (in the pilot) forward orders manually (PRD §5, pilot "human's role").
+Spazio staff who curate the catalog, maintain the style taxonomy, and (in the pilot) forward orders manually (PRD §5, pilot "human's role"). *(Render review retired — ADR-025, 2026-07-14.)*
 
-> **Update (PR #27):** built in the pilot schema (`backend/prisma/schema.prisma`) — scrypt-hashed `password_hash`, optional single `role` (enum below), `status` `active`/`inactive`. Console sign-in is implemented (build plan §1.7 — nothing is deployed). **Update (#34):** per-action role gating is enforced — curator/reviewer/handler each gate their actions; a role-less operator is all-purpose.
+> **Update (PR #27):** built in the pilot schema (`backend/prisma/schema.prisma`) — scrypt-hashed `password_hash`, optional single `role` (enum below), `status` `active`/`inactive`. Console sign-in is implemented (build plan §1.7 — nothing is deployed). **Update (#34):** per-action role gating is enforced — curator/reviewer/handler each gate their actions; a role-less operator is all-purpose. **Update (ADR-025, 2026-07-14):** the `render_reviewer` role is retired from the target spec (render review removed); `catalog_curator` and `order_handler` stand. The role remains in code until the next development iteration.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -84,7 +86,7 @@ Spazio staff who curate the catalog, maintain the style taxonomy, review renders
 | name | String | Yes | Operator name **(proposed)**. |
 | email | String | Yes | Login/contact email; unique **(proposed)**. |
 | password_hash | String | Yes | Hashed credential; auth mechanism decided (pilot): per the decided stack (see ADR-001) - operator access only; the pilot has no end-user accounts (ADR-022). |
-| role | Enum | No | Operator function **(proposed)**, e.g. `catalog_curator`, `render_reviewer`, `order_handler` (PRD §5 responsibilities). |
+| role | Enum | No | Operator function **(proposed)**, e.g. `catalog_curator`, `order_handler` (PRD §5 responsibilities). *(`render_reviewer` retired — ADR-025, 2026-07-14.)* |
 | status | Enum | No | `active` / `inactive` **(proposed)**. |
 | created_at | DateTime | Yes | Record creation timestamp **(proposed)**. |
 
@@ -216,7 +218,7 @@ A single render or edit request; counts as one attempt against the daily limit a
 
 ## Entity: Render
 
-A generated photorealistic image of the furnished room, private by default, pending or approved by an operator (PRD FR-06, BR-33; pilot render review, FR-027).
+A generated photorealistic image of the furnished room, private by default and published to the requesting user immediately on generation success (PRD FR-06, BR-33; ADR-025, 2026-07-14 — the FR-027 operator review is retired).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -224,9 +226,9 @@ A generated photorealistic image of the furnished room, private by default, pend
 | render_request_id | UUID (FK) | Yes | Originating request **(proposed)** → `RenderRequest`. |
 | project_id | UUID (FK) | Yes | Source session **(proposed)** → `Project`. |
 | image_ref | URL / String | Yes | Storage reference for the generated image (PRD FR-06). |
-| status | Enum | Yes | `pending_review` / `approved` / `rejected` **(proposed values)**; an operator approves each render before it is shown to the user (pilot; FR-027). |
-| reviewed_by | UUID (FK) | No | Reviewing operator → `Operator` (FR-027). *(Pilot: built, PR #27 — stamped from the operator session.)* |
-| reviewed_at | DateTime | No | Review timestamp (FR-027). *(Pilot: built, PR #27.)* |
+| status | Enum | Yes | `completed` / `failed` **(proposed values)**; the render is published to the user immediately on generation success. *(Superseded by ADR-025, 2026-07-14: review states `pending_review`/`approved`/`rejected` removed; still in code until the next iteration.)* |
+| reviewed_by | UUID (FK) | No | **Retired — ADR-025 (2026-07-14):** render review removed; field slated for removal from the schema. *(Pilot: built, PR #27 — stamped from the operator session; removal is next-iteration work.)* |
+| reviewed_at | DateTime | No | **Retired — ADR-025 (2026-07-14):** render review removed; field slated for removal from the schema. *(Pilot: built, PR #27 — removal is next-iteration work.)* |
 | total_product_cost | Decimal | No | Sum of rendered products **(proposed / derived)**; must stay within budget plus tolerance (PRD BR-9). |
 | within_budget | Boolean | No | Whether total is within budget + tolerance **(proposed)** (PRD BR-9, FR-14). Tolerance decided (pilot): 10% - see ADR-008. |
 | is_private | Boolean | Yes | Private by default (PRD BR-33, NFR-007). Default `true`. |
@@ -462,7 +464,7 @@ PRD-derived invariants that constrain the data model. Each cites its source. Dec
 - **Kept items.** Existing items marked to keep must remain in the render but be excluded from the cart and the budget calculation (PRD BR-8). *(Keep-or-replace is excluded from the pilot.)*
 - **Photo quality.** Unusable photos must be rejected with a request to retake (PRD BR-15).
 - **Privacy by default.** User photos and generated renders are private by default (PRD BR-33, NFR-007).
-- **Human review (pilot).** In the pilot, an operator reviews and approves each render before it is shown (pilot; FR-027).
+- **Human review (pilot).** Superseded by ADR-025 (2026-07-14): the operator render-review gate is retired — renders are published immediately on generation success (FR-027 retired).
 
 ### Render metering
 

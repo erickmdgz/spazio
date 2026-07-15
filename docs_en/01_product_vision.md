@@ -6,6 +6,8 @@
 >
 > **Update (ADR-024, 2026-07-14):** the client platform decision changed — the product continues on the **web app** at class-demo scale; no native iOS app will be built. References below to the "one-week iOS pilot" describe the first-milestone source material and the decisions as originally scoped; ADR-024 records what changed.
 >
+> **Update (ADR-025, 2026-07-14):** the human render-review gate is removed entirely — renders are published to the requesting user immediately upon successful generation. FR-027 and FEAT-006 are retired; the "mandatory operator QA" clause of ADR-002 is superseded (the rest of ADR-002 stands). References below to operator render review describe the decisions as originally scoped; ADR-025 records what changed.
+>
 > **Status labels used below:**
 > - **VERIFIED** — stated directly in the PRD or the pilot doc (cited).
 > - **DRAFT / PROPOSED** — reasonable structuring by the author, not a decision.
@@ -63,7 +65,7 @@ FR/FEAT references below map pilot capabilities to the canonical registry for tr
 | Optional free-text style description | FR-008 |
 | Budget range input | FR-009 |
 | AI render using only real, in-stock catalog products | FEAT-005; FR-014, FR-015, FR-016, FR-018, FR-021 |
-| Human (operator) review before the render is shown | FR-027 |
+| Human (operator) review before the render is shown *(Retired — ADR-025, 2026-07-14: renders are published immediately on generation success)* | FR-027 (Superseded by ADR-025) |
 | Tappable product tags on the render | FR-028, FR-029 |
 | Auto-populated cart with price and supplier | FR-031 |
 | Cart review and item removal | FR-032, FR-033 |
@@ -95,7 +97,7 @@ Two layers of exclusion apply.
 - Supplier self-service ingestion via API, FTP, or automated Excel processing.
 - Keep-or-replace of existing furniture via segmentation.
 - Targeted edit-by-question refinement.
-- Daily render limits *(Decided (pilot): no limit — every render is operator-reviewed anyway; the PRD default of five attempts/day applies only when metering is built post-pilot; ADR-009)*.
+- Daily render limits *(Decided (pilot): no limit; the PRD default of five attempts/day applies only when metering is built post-pilot; ADR-009. The original rationale — 'every render is operator-reviewed anyway' — is superseded by ADR-025, 2026-07-14)*.
 - Paid render packages *(Decided (pilot): not offered — deferred; no paid packages; ADR-010)*.
 - Guest checkout.
 - Saved designs, sharing, personalized recommendations, chat assistant.
@@ -125,7 +127,7 @@ render-to-purchase rate = purchases / renders
 
 *(VERIFIED — PRD §10 "Known risks", summarized.)*
 
-- **Render fidelity (highest risk).** Accurately compositing a real SKU into the user's room at the correct size and appearance is hard; a poor match can drive returns and disputes. (Mitigated in the pilot by mandatory operator review — FR-027.)
+- **Render fidelity (highest risk).** Accurately compositing a real SKU into the user's room at the correct size and appearance is hard; a poor match can drive returns and disputes. (The pilot's mitigation — mandatory operator review, FR-027 — is retired by ADR-025, 2026-07-14; renders are published immediately on generation success, so this risk is no longer mitigated by a human gate.)
 - **Keep-or-replace segmentation.** Incorrect object detection could conflict with user intent. (Cut from the pilot, so not a first-version risk.)
 - **Two-sided cold start.** Insufficient supplier coverage may produce poor results for specific styles, budgets, or locations.
 - **Inference cost.** Low conversion may lead to significant rendering expense without offsetting revenue.
@@ -142,14 +144,14 @@ render-to-purchase rate = purchases / renders
 | Decision | Decided for the one-week pilot | Tracking |
 |---|---|---|
 | Technology stack | Native iOS (SwiftUI) app + one small managed backend service + a managed Postgres DB + object storage for photos/renders; single environment/region; no multi-platform | ADR-001 |
-| Rendering / AI pipeline | Hosted generative image API (image-to-image / inpainting) compositing operator-curated products into the room photo, with mandatory operator QA of every render; no custom-trained model | ADR-002 |
+| Rendering / AI pipeline | Hosted generative image API (image-to-image / inpainting) compositing operator-curated products into the room photo; no custom-trained model *(the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14 — renders publish immediately on generation success; the rest of ADR-002 stands)* | ADR-002 |
 | Payment gateway & split-settlement model | Single PCI-compliant hosted checkout collecting one payment in COP; no split settlement (operator pays suppliers manually). Split settlement + COP gateway: revisit before scale | ADR-003 |
 | Merchant-of-record model | The Spazio operating entity collects the single payment and pays suppliers manually. Tax/legal (ties ADR-018): revisit before scale; confirm with an accountant | ADR-004 |
 | Style taxonomy | 1–2 predefined visual styles + free-text description; no taxonomy engine | ADR-005 |
 | Supplier catalog ingestion channels | Operator manually loads a CSV/Excel of 30–60 curated SKUs; no API/FTP/self-service ingestion in the pilot | ADR-006 |
 | Commission percentage / fee model | 10% of product price (PRD §9 default); reconciled manually in the pilot | ADR-007 |
 | Budget tolerance | 10% (PRD BR-9 default) | ADR-008 |
-| Daily free-render limit | No limit in the pilot (every render is operator-reviewed); the PRD default of five/day applies only when metering is built post-pilot | ADR-009 |
+| Daily free-render limit | No limit in the pilot; the PRD default of five/day applies only when metering is built post-pilot *(original rationale 'every render is operator-reviewed' superseded by ADR-025)* | ADR-009 |
 | Render-package pricing | Not offered in the pilot (deferred) | ADR-010 |
 | Cart-hold duration | No stock hold in the pilot; the PRD's 15-minute hold applies only when holds are built post-pilot | ADR-011 |
 | Catalog synchronization frequency | Manual / on-demand refresh by the operator; no automated sync in the pilot | ADR-012 |

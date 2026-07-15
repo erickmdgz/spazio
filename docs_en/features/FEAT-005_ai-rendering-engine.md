@@ -18,8 +18,8 @@ Users cannot visualize real furniture in their space before buying, and local su
 ## 3. Affected user
 
 - **Actor: System** — the AI pipeline performs matching and rendering (PRD §12, "AI role").
-- **Beneficiary: Homeowner/renter** — receives the render (after operator review, FEAT-006).
-- **Operator** — monitors render quality and, in the pilot, reviews every render before it reaches the user (PRD §5; pilot "The human's role"; see FEAT-006).
+- **Beneficiary: Homeowner/renter** — receives the render, published immediately on generation success (ADR-025; the former operator-review step, FEAT-006, is retired).
+- **Operator** — monitors render quality (PRD §5). *The per-render review before the user (FEAT-006/FR-027) is superseded by ADR-025 (2026-07-14) — retired.*
 
 ## 4. Related requirements
 
@@ -47,13 +47,13 @@ Non-functional:
 
 ## 5. Expected flow
 
-This feature covers the matching-and-render portion of the PRD §8 basic flow (its output then feeds operator review, tagging, and cart):
+This feature covers the matching-and-render portion of the PRD §8 basic flow (its output then feeds tagging and cart; renders are published immediately on generation success — ADR-025):
 
 1. Inputs are gathered by upstream features: photo + dimensions (FEAT-002), style + budget (FEAT-003), and locality (FEAT-004).
 2. (Internal) The engine **matches** real, available catalog SKUs to style, dimensions, budget, and locality (FR-014), restricting candidates to **real, purchasable SKUs** (FR-016) that are **currently available** (FR-018) and, in the full product, that have **complete data** (FR-019) and are **deliverable to the locality** (FR-020, handled with FEAT-004).
 3. (PRD §8 step 9) The AI **generates the room render**, compositing the matched SKUs into the user's photo and **scaling them to the approximate dimensions** (FR-015, FR-017).
 4. The engine keeps total cost **within budget plus the agreed tolerance** (FR-021, pilot; tolerance value **adopted for the pilot: 10%**, ADR-008). (Full product) If budget cannot be met it **discloses this and offers the closest alternative** (FR-022); where no strong match exists it **suggests similar products or marks the item unavailable** (FR-023).
-5. The render is passed to **operator review** (FEAT-006, PRD §8 continues to step 10 tagging only after the render is approved in the pilot).
+5. The render is **published to the requesting user immediately on generation success** (ADR-025 — the former operator-review step, FEAT-006/FR-027, is retired) and the flow continues to product tagging (PRD §8 step 10, FEAT-007).
 
 ## 6. Acceptance criteria
 
@@ -85,17 +85,17 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. The rendering/AI pipeline and stack were human decisions (PRD §12), now decided for the pilot: a hosted generative image API (image-to-image / inpainting) with mandatory operator QA and no custom-trained model (ADR-002), on a native iOS + managed-backend stack (ADR-001).*
+*High-level only. The rendering/AI pipeline and stack were human decisions (PRD §12), now decided for the pilot: a hosted generative image API (image-to-image / inpainting) and no custom-trained model (ADR-002; its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14 — renders are published immediately on generation success), on a native iOS + managed-backend stack (ADR-001).*
 
 ### Frontend
 
-- A **render request** trigger and a **progress/wait** state on the iOS client while generation runs (render time target ~2–5 min soft, no hard SLA in the pilot, NFR-001 / ADR-013). In the pilot the render is not shown until an operator approves it (FEAT-006).
+- A **render request** trigger and a **progress/wait** state on the iOS client while generation runs (render time target ~2–5 min soft, no hard SLA in the pilot, NFR-001 / ADR-013). Renders are published immediately on generation success (ADR-025); the former approval hold (FEAT-006) is retired.
 - Display of the returned render image (private by default). Tagging overlay is FEAT-007.
 
 ### Backend
 
 - **Matching service** (DRAFT / PROPOSED): selects candidate SKUs from the catalog constrained by style (via the shared taxonomy, ADR-005), dimensions, budget, availability, completeness, and locality. Candidate data comes from FEAT-015 (supplier catalog) and FEAT-004 (locality/delivery).
-- **Rendering pipeline** (DRAFT / PROPOSED orchestration): composites matched SKUs into the user's photo at correct scale. The pipeline is a **hosted generative image API (image-to-image / inpainting) with mandatory operator QA and no custom-trained model — decided (pilot), see ADR-002**; the specific model/hosting product and any object detection/segmentation are left to implementation on the decided **native iOS + managed-backend stack (ADR-001)**.
+- **Rendering pipeline** (DRAFT / PROPOSED orchestration): composites matched SKUs into the user's photo at correct scale. The pipeline is a **hosted generative image API (image-to-image / inpainting) with no custom-trained model — decided (pilot), see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*; the specific model/hosting product and any object detection/segmentation are left to implementation on the decided **native iOS + managed-backend stack (ADR-001)**.
 - **Cost & conversion instrumentation:** track **cost per render** (NFR-005) and **render-to-purchase** from day one (NFR-006); enforce a **global inference-cost threshold** (NFR-003) and **degrade gracefully** via queueing/slower rendering when exceeded (NFR-004).
 - **Real-SKU guarantee:** the pipeline must be architected so rendered items are always drawn from real catalog SKUs and can be tagged back to them (FR-016 → feeds FEAT-007). Approach is **DRAFT / PROPOSED**, aligned with the decided pipeline (ADR-002).
 
@@ -103,7 +103,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - Entities involved (canonical registry; fields **DRAFT / PROPOSED** until modeled in `07_data_model.md`):
   - `RenderRequest` — a single render request; counts as one attempt (metering is FEAT-013, out of pilot) and is tracked for cost.
-  - `Render` — the generated photorealistic image, **private by default**, pending or approved by an operator.
+  - `Render` — the generated photorealistic image, **private by default**; the render lifecycle keeps generation states only (`RenderRequest.status`: `queued` / `processing` / `completed` / `failed`; `Render.status`: `completed` / `failed` — see `07_data_model.md`). *The operator review states (pending/approved) are retired — superseded by ADR-025 (2026-07-14).*
   - `RenderItem` — the link between a `Render` and a shown `Product` (carries the data used by tagging in FEAT-007).
   - Reads from `Product`, `Style`/`StyleTaxonomy`, `Project`, `RoomPhoto`, `DeliveryZone`.
 - Field-level schema is **TBD**; minimum catalog completeness that gates eligibility requires **all PRD BR-1 fields present — decided (pilot), see ADR-014**.
@@ -111,7 +111,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Security
 
 - **Renders and user photos are private by default** (NFR-007 / PRD BR-33).
-- Access to render inputs/outputs restricted to the owning user and authorized operators.
+- Access to render inputs/outputs restricted to the owning user ~~and authorized operators~~ *(the operator read grant existed for the FEAT-006 render review and is retired — ADR-025, 2026-07-14; NFR-007 owner scoping stands)*.
 - Guardrail on the AI: it must **surface ambiguity and technical risk instead of silently deciding** (PRD §12, "AI role").
 
 ## 9. Required tests

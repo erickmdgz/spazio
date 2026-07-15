@@ -19,6 +19,14 @@ display, keep-or-replace, render metering, sponsored placement, manual add-to-ca
 are intentionally absent — see the comments in `prisma/schema.prisma` and the route
 files.
 
+> **Note (ADR-025, 2026-07-14):** the operator render-review flow this README
+> describes (mandatory render QA, the `render_reviewer` role, `GET /operator/renders`,
+> `POST /operator/renders/:id/approve|reject`, the `pending_review` state) is slated
+> for removal in the next development iteration — renders will be published
+> immediately on generation success. This README describes the code as it stands
+> today; the target spec lives in `docs_en/`
+> (`../docs_en/decisions/ADR-025_autonomous-render-publication.md`).
+
 ## Prerequisites
 
 - Node.js 22+

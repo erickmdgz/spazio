@@ -206,6 +206,21 @@ below).
   client read/write (`x-device-token`; foreign resources answer 404).
   Automated as **TC-107..109** (`08_test_plan.md`).
 
+- **Render human-approval gate retired (`ADR-025`).** The product owner's
+  2026-07-14 decision: the operator render-review gate is removed **entirely** —
+  AI-generated renders are published to the requesting user immediately upon
+  successful generation; no operator reviews, approves, or rejects renders.
+  `FR-027` and `FEAT-006` are retired; the *mandatory operator QA* clause of
+  `ADR-002` is superseded (the hosted-image-API / no-custom-model decision
+  stands); the render review states (`pending_review`/`approved`/`rejected`),
+  `reviewed_by` stamping on renders, and the render-reviewer role are removed
+  from the target spec; TC-051–TC-053 and the render-review state-machine
+  preconditions among TC-107..109 are retired. Catalog curation
+  (FEAT-015/curator) and order forwarding (FEAT-011/handler) keep their
+  operator flows. Recording a decision is not building it: the code on
+  `develop` still implements the review flow; the docs are now the target spec
+  for the next development iteration (work item in `05_backlog.md`, issue TBD).
+
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the
   class-project demo is delivered. **For the demo scope only** it supersedes

@@ -1,6 +1,6 @@
 # System architecture
 
-> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section), the backend foundation scaffold (`backend/`, PR #21), and the operator console foundation shell + operator session auth (`operator/` + backend, PR #27). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`. **Update (ADR-024, 2026-07-14):** the production client is now the **web app** (no native iOS will be built) and the scope is class-demo scale — read the client boxes in the diagrams below as the web app.
+> **Status of this document.** This is a specification, not a description of anything built. Nothing of the **production** system is implemented yet; the exceptions on `develop` are the class-demo web app (`web-demo/`, see the [Class-demo architecture](#class-demo-architecture-web) section), the backend foundation scaffold (`backend/`, PR #21), and the operator console foundation shell + operator session auth (`operator/` + backend, PR #27). It structures how Spazio is intended to work end to end and records the platform-level choices, now decided for the one-week iOS pilot in the ADRs under `/docs_en/decisions`. **Update (ADR-024, 2026-07-14):** the production client is now the **web app** (no native iOS will be built) and the scope is class-demo scale — read the client boxes in the diagrams below as the web app. **Update (ADR-025, 2026-07-14):** the human render-review gate is removed — renders are published to the requesting user immediately upon successful generation (FR-027/FEAT-006 retired; the mandatory-operator-QA clause of ADR-002 superseded, the rest of ADR-002 stands). The backend and web app still implement the review flow; this document describes the target spec for the next development iteration.
 >
 > **How to read the labels used throughout:**
 >
@@ -25,7 +25,7 @@ End-to-end logical flow:
 4. **Photo quality check.** The system validates photo usability and requests a retake for unusable photos (PRD §8.8, FR-024, BR-15).
 5. **Matching against real inventory.** The system matches real, currently available catalog SKUs to the style, dimensions, budget, and locality. It renders only in-stock ready-made or validly made-to-order products, excludes catalog entries with incomplete required data, keeps total cost within budget plus the agreed tolerance, and never fabricates products (FR-014/FR-016/FR-018/FR-019/FR-021, BR-2/BR-4/BR-6/BR-9/BR-11/BR-14).
 6. **Render.** The system generates a photorealistic image compositing the matched SKUs into the room photo, scaled realistically using the approximate dimensions (PRD §8.9, FR-015/FR-017, BR-7).
-7. **Human review (pilot invariant).** An operator reviews and approves each render before it is shown to the user (pilot "The human's role"; FR-027).
+7. **Render publication.** *(Superseded by ADR-025, 2026-07-14 — the human review gate is retired.)* The render is published to the requesting user immediately upon successful generation. *(Originally: an operator reviewed and approved each render before display — pilot "The human's role"; FR-027, retired.)*
 8. **Product tags.** Every rendered product is tagged with name, price, supplier, warranty, and listing link; the user can tap a tag to see details (PRD §8.10, FR-028/FR-029).
 9. **Auto cart.** The cart is auto-populated with every product shown in the render. The cart is a suggestion and must be explicitly confirmed before payment; the user can review, remove, or swap items (PRD §8.11–8.12, FR-031/FR-032/FR-033/FR-034/FR-035, BR-31).
 10. **Stock hold.** Adding an item to the cart holds stock for the configured duration; expired holds return stock to availability (PRD §8.14, FR-039/FR-040, BR-22/BR-23). *(Decided (pilot): no stock hold; the PRD default of 15 minutes applies only when holds are built post-pilot — see [ADR-011](#important-decisions-accepted-for-the-pilot).)*
@@ -35,7 +35,7 @@ End-to-end logical flow:
 14. **Estimates and warranty before checkout.** Supplier-sourced production/delivery estimates and warranty terms are shown before checkout (PRD §8.18, FR-036/FR-038, BR-17/BR-18).
 15. **Order tracking.** The user tracks status per purchase order (PRD §8.19, FR-047). *(In the pilot, the operator forwards each confirmed order to the supplier manually; FR-061.)*
 
-**Pilot vs. full product (VERIFIED).** The one-week pilot deliberately narrows this flow: native iOS only, one city and one delivery zone (Bogotá), one currency (COP), a small manually curated catalog, human review before every render, and manual order handoff. It excludes accounts/guest checkout, automated split payments, automated one-PO-per-supplier settlement, automated supplier ingestion, keep-or-replace segmentation, targeted edits, render limits, and full tracking (pilot "Pilot scope" and "Scope Cuts & Triggers"). The architecture below covers the full product; module and rule entries note where the pilot applies.
+**Pilot vs. full product (VERIFIED).** The one-week pilot deliberately narrows this flow: native iOS only, one city and one delivery zone (Bogotá), one currency (COP), a small manually curated catalog, human review before every render *(retired — ADR-025, 2026-07-14)*, and manual order handoff. It excludes accounts/guest checkout, automated split payments, automated one-PO-per-supplier settlement, automated supplier ingestion, keep-or-replace segmentation, targeted edits, render limits, and full tracking (pilot "Pilot scope" and "Scope Cuts & Triggers"). The architecture below covers the full product; module and rule entries note where the pilot applies.
 
 ---
 
@@ -52,7 +52,7 @@ End-to-end logical flow:
 | Hosting | Single managed environment/region (see ADR-001) | ADR-001 |
 | Repository | Managed Git hosting running the `main` + `develop` PR workflow (CLAUDE.md); specific product left to implementation (see ADR-001) | ADR-001 |
 
-The rendering/AI pipeline is decided for the pilot: a hosted generative image API (image-to-image / inpainting) that composites operator-curated product images into the user's room photo, with mandatory operator QA of every render and no custom-trained model (see ADR-002).
+The rendering/AI pipeline is decided for the pilot: a hosted generative image API (image-to-image / inpainting) that composites operator-curated product images into the user's room photo, with no custom-trained model (see ADR-002; the mandatory-operator-QA clause is superseded by ADR-025, 2026-07-14 — renders publish immediately on generation success).
 
 > **Note on the repository.** The version-control *workflow* is already defined in `CLAUDE.md` (a `main` + `develop` model with pull requests). The hosting/tooling that implements it remains part of ADR-001 and is not asserted here as a chosen product.
 
@@ -98,9 +98,9 @@ Technology-neutral. Boxes are logical responsibilities, not deployment units or 
                     ┌────────────▼──┐     ┌──────▼─────────────┐
                     │ Data stores    │     │ Operator console   │◀── Operator
                     │ (catalog,      │     │ catalog curation,  │    (Spazio staff)
-                    │  projects,     │     │ render review,     │
-                    │  orders, …)    │     │ manual order       │
-                    │  [see ADR-001] │     │ handoff (pilot)    │
+                    │  projects,     │     │ manual order       │
+                    │  orders, …)    │     │ handoff (pilot)    │
+                    │  [see ADR-001] │     │                    │
                     └────────────────┘     └────────────────────┘
                                                    ▲
                                                    │ catalog data
@@ -128,7 +128,7 @@ Logical modules and their responsibilities. Feature and requirement IDs point ba
 | **Checkout & payments** | Take a single in-app payment across suppliers; revalidate price and availability before capture; support guest checkout; drive split settlement, multi-supplier payouts, multi-currency, and automatic commission retention through the PCI-compliant gateway. | FEAT-010; FR-004, FR-041, FR-042, FR-043, FR-045 (BR-24, BR-28); ADR-003, ADR-004, ADR-007 |
 | **Orders & purchase orders** | Generate one purchase order per supplier from the confirmed order; provide per-PO status and tracking. *(Pilot: the operator forwards each confirmed order to the supplier manually.)* | FEAT-011; FR-044, FR-047, FR-061 (BR-25) |
 | **Localization & delivery zones** | Resolve the user's location to applicable suppliers and delivery zone; restrict rendering to products deliverable to the locality; display prices in local currency; offer delivery fallback (nearby regions, alternative shipping, or pickup) when local delivery is unavailable; hold per-market configuration (currency, taxes, payment methods, legal). | FEAT-004; FR-012, FR-013, FR-020, FR-046, FR-053 (BR-11, BR-12, BR-27); ADR-015, ADR-018 |
-| **Operator console** | Let Spazio staff curate and approve catalog entries, map products to the style taxonomy, review and approve each render before it is shown, and (in the pilot) forward confirmed orders to suppliers manually. | FEAT-006, FEAT-015 (curation); FR-027, FR-056, FR-059, FR-061 |
+| **Operator console** | Let Spazio staff curate and approve catalog entries, map products to the style taxonomy, and (in the pilot) forward confirmed orders to suppliers manually. *(Render review retired — ADR-025, 2026-07-14.)* | FEAT-015 (curation); FR-056, FR-059, FR-061 *(FEAT-006, FR-027 — Superseded by ADR-025)* |
 
 > **Not yet assigned a dedicated module:** keep-or-replace segmentation (FEAT-012; FR-025/FR-026), render metering and monetization (FEAT-013; FR-048–FR-050, FR-054), and targeted render refinement (FEAT-014; FR-051/FR-052) are post-pilot. They are noted above inside the Rendering pipeline and are called out here so nothing is dropped.
 
@@ -160,7 +160,7 @@ These are hard rules the system must not violate.
 10. **One payment, one PO per supplier.** Checkout produces a single user payment and one purchase order per supplier (FR-042/FR-044, BR-25).
 11. **Renders and photos are private by default** (NFR-007, BR-33).
 12. **Sponsored placement is a tie-breaker only.** It may break ties among similarly relevant products and must never override relevance, quality, budget, locality, or availability (FR-054, BR-29/BR-30).
-13. **Human-in-the-loop (pilot).** An operator reviews and approves each render before the user sees it, and forwards each confirmed order manually (FR-027/FR-061; pilot "The human's role").
+13. **Human-in-the-loop (pilot).** *(Amended by ADR-025, 2026-07-14: the render-review half is retired — renders are published immediately on generation success.)* An operator forwards each confirmed order manually (FR-061; pilot "The human's role"). *(Formerly also: operator reviews and approves each render before the user sees it — FR-027, superseded.)*
 
 ---
 
@@ -171,18 +171,18 @@ All of the following are **Accepted** for the one-week iOS pilot (Status: Accept
 | ADR | Decision | Area | Decision (accepted for the pilot) |
 |---|---|---|---|
 | ADR-001 | Technology stack | Architecture | Native iOS (SwiftUI) app + one small managed backend + managed Postgres + object storage; single environment/region; product/tool picks left to implementation. |
-| ADR-002 | Rendering / AI pipeline | AI & Rendering | Hosted generative image API (image-to-image / inpainting) compositing operator-curated product images; mandatory operator QA of every render; no custom-trained model. |
+| ADR-002 | Rendering / AI pipeline | AI & Rendering | Hosted generative image API (image-to-image / inpainting) compositing operator-curated product images; no custom-trained model. *(The 'mandatory operator QA of every render' clause is superseded by ADR-025, 2026-07-14; the rest stands.)* |
 | ADR-003 | Payment gateway & split-settlement model | Payments | One PCI-compliant hosted checkout, single payment in COP; no split settlement (operator pays suppliers manually). Split settlement + gateway/provider selection: revisit before scale. |
 | ADR-004 | Merchant-of-record model | Payments & Legal | The Spazio operating entity collects the single payment and pays suppliers manually. Tax/legal implications (ties ADR-018): revisit before scale; confirm with an accountant. |
 | ADR-005 | Style taxonomy | Catalog & AI | 1–2 predefined visual styles + free-text description; no taxonomy engine. |
 | ADR-006 | Supplier catalog ingestion channels | Catalog & Integration | Operator manually loads a CSV/Excel spreadsheet of 30–60 curated SKUs; no API/FTP/self-service ingestion in the pilot. |
 | ADR-007 | Commission percentage & marketplace fee model | Monetization | 10% of product price (PRD default); reconciled manually (no billing code) in the pilot. |
 | ADR-008 | Budget tolerance | Product rules | 10% (PRD default). |
-| ADR-009 | Daily free-render limit | Cost control & Product | No limit in the pilot (every render is operator-reviewed); the PRD default of five/day applies only when metering is built post-pilot. |
+| ADR-009 | Daily free-render limit | Cost control & Product | No limit in the pilot; the PRD default of five/day applies only when metering is built post-pilot. *(Original rationale 'every render is operator-reviewed' superseded by ADR-025.)* |
 | ADR-010 | Render-package pricing | Monetization | Not offered in the pilot (deferred); no paid packages. |
 | ADR-011 | Cart-hold duration | Product rules | No stock hold in the pilot; the PRD default of 15 minutes applies only when holds are built post-pilot. |
 | ADR-012 | Catalog synchronization frequency | Catalog & Integration | Manual / on-demand refresh by the operator; no automated sync in the pilot. |
-| ADR-013 | Render-time target | Performance | ~2–5 minutes soft target (PRD); no hard SLA in the pilot (operator-review time is additional). |
+| ADR-013 | Render-time target | Performance | ~2–5 minutes soft target (PRD); no hard SLA in the pilot. *(The 'operator-review time is additional' note is superseded by ADR-025 — there is no review step.)* |
 | ADR-014 | Minimum catalog completeness | Catalog | A SKU is renderable only if all PRD BR-1 fields are present; the operator enforces this on load. |
 | ADR-015 | Initial launch markets | Go-to-market | Bogotá, Colombia; COP only. Full-product markets: revisit before scale. |
 | ADR-016 | Supplier partners & onboarding terms | Partnerships | Hand-pick 2–4 Bogotá suppliers with a one-page written agreement (commission, lead times, warranty); done manually. |
@@ -203,7 +203,7 @@ See the `/docs_en/decisions` folder for the individual ADR records.
 
 The demo is a scoped **visual** walkthrough of the render-to-purchase happy path. It is **not** production, **not** real payments, and **not** the full pilot.
 
-> **Update (#31, PR #32/#33 — post-ADR-024):** this section describes the demo **as originally delivered**. The app has since been wired to the real backend: the wizard runs over `/api/v1` (Next.js rewrite → `backend/`, Fastify + Prisma + Postgres), renders wait for real operator approval, the cart/checkout/order rows are real, and the catalog is seeded in Postgres (`backend/prisma/seed.ts`). Still fake: the composite image (cached asset — ADR-002 vendor open) and the payment capture (ADR-003 vendor open).
+> **Update (#31, PR #32/#33 — post-ADR-024):** this section describes the demo **as originally delivered**. The app has since been wired to the real backend: the wizard runs over `/api/v1` (Next.js rewrite → `backend/`, Fastify + Prisma + Postgres), renders wait for real operator approval, the cart/checkout/order rows are real, and the catalog is seeded in Postgres (`backend/prisma/seed.ts`). Still fake: the composite image (cached asset — ADR-002 vendor open) and the payment capture (ADR-003 vendor open). **Update (ADR-025, 2026-07-14):** the operator-approval wait is retired in the target spec — renders are to be published immediately on generation success; the code change is scheduled for the next development iteration.
 
 **Deliverable.** `web-demo/` — a **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 3.4** web app. **No database**; in-memory state only (`src/lib/store.tsx`). *(As originally delivered — see the update note above.)*
 
@@ -216,7 +216,7 @@ The demo is a scoped **visual** walkthrough of the render-to-purchase happy path
 - **ADR-006 / ADR-012 / ADR-015** — a seeded in-code catalog instead of operator/self-service ingestion.
 - **Database** — no database at all (vs. managed Postgres).
 
-**Render pipeline (fallback-first).** `CachedRenderProvider` is the default: offline, backed by local SVG assets, and it always works. `OpenAIRenderProvider` is an isolated stub used only if `IMAGE_API_KEY` is set (invoked server-side via `src/app/actions.ts`), with silent fallback to the cached provider. In the demo the render is **faked/cached** and there is **no operator QA**, so ADR-002 is only partially realized.
+**Render pipeline (fallback-first).** `CachedRenderProvider` is the default: offline, backed by local SVG assets, and it always works. `OpenAIRenderProvider` is an isolated stub used only if `IMAGE_API_KEY` is set (invoked server-side via `src/app/actions.ts`), with silent fallback to the cached provider. In the demo the render is **faked/cached** and there is **no operator QA**, so ADR-002 is only partially realized. *(Per ADR-025, 2026-07-14, operator QA is no longer required by ADR-002.)*
 
 **Routes / flow.**
 
@@ -235,7 +235,7 @@ The demo is a scoped **visual** walkthrough of the render-to-purchase happy path
 
 - **Present:** FEAT-002 (room + dimensions via sample rooms), FEAT-003 (style + budget), FEAT-005 (render — **faked/cached**), FEAT-007 (product tagging), FEAT-008 (cart), FEAT-009 (estimates display), FEAT-010 (checkout — **MOCK** payment), FEAT-011 (confirmation / order message).
 - **Simplified / hardcoded:** FEAT-004 (localization fixed to Bogotá / COP).
-- **Not in the demo:** FEAT-006 (operator render review), FEAT-015 (catalog management — replaced by the seeded catalog), FEAT-001 / FEAT-012 / FEAT-013 / FEAT-014 (accounts, keep-or-replace, metering, targeted edits).
+- **Not in the demo:** FEAT-006 (operator render review — Retired, ADR-025), FEAT-015 (catalog management — replaced by the seeded catalog), FEAT-001 / FEAT-012 / FEAT-013 / FEAT-014 (accounts, keep-or-replace, metering, targeted edits).
 
 **Run.** Node 20+; `cd web-demo`, `npm install`, optionally set `IMAGE_API_KEY` in `.env.local`, then `npm run dev` → `http://localhost:3000`. **Deploy:** Vercel (import the repo, project root = `web-demo`). The full guide is in `web-demo/README.md`.
 

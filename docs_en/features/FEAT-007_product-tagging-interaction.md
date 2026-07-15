@@ -4,7 +4,7 @@
 
 ## 1. Summary
 
-Turn the approved render into a **shoppable image**: every product shown is **tagged** with its real details, and the user can **tap a tag to see that product's details**. This is the bridge between "seeing" and "buying" — it links each pixel of furniture back to a real, purchasable SKU.
+Turn the completed render into a **shoppable image** (renders publish immediately on generation success — ADR-025): every product shown is **tagged** with its real details, and the user can **tap a tag to see that product's details**. This is the bridge between "seeing" and "buying" — it links each pixel of furniture back to a real, purchasable SKU.
 
 - **Pilot scope (VERIFIED):** *"Tappable product tags on the render"* (pilot "Included" list). Implemented as FR-028 (tagging) and FR-029 (tap to view details).
 
@@ -33,7 +33,7 @@ Non-functional:
 
 This feature covers PRD §8 step 10 and the tap-to-view interaction (FR-07b):
 
-1. (PRD §8 step 10, after the render is approved in FEAT-006) The system **tags the products shown** in the render with name, price, supplier, warranty, and listing link (FR-028).
+1. (PRD §8 step 10; the render is published immediately on generation success — ADR-025; the former FEAT-006 approval step is retired) The system **tags the products shown** in the render with name, price, supplier, warranty, and listing link (FR-028).
 2. The tagged, shoppable render is presented to the user.
 3. The user **taps a tag** to view that product's details (FR-029 / PRD FR-07b).
 4. From the tagged render the flow continues to the auto-populated cart (PRD §8 step 11, FEAT-008); adding/removing individual tagged products (FR-030 add, FR-033 remove) is handled in FEAT-008.
@@ -66,7 +66,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Backend
 
-- Serve **tag data** for an approved render: for each shown product, its position/anchor plus name, price, supplier, warranty, and listing link. Tag data derives from the `RenderItem` link produced during rendering (FEAT-005) joined with `Product`/`Supplier` catalog data (FEAT-015).
+- Serve **tag data** for a completed render (ADR-025): for each shown product, its position/anchor plus name, price, supplier, warranty, and listing link. Tag data derives from the `RenderItem` link produced during rendering (FEAT-005) joined with `Product`/`Supplier` catalog data (FEAT-015).
 - Detail lookups return current catalog data for the tapped product.
 
 ### Database
@@ -85,8 +85,8 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist** in `08_test_plan.md` (status `Pending` — written, not yet executed; nothing here is implemented):
 
-- **TC-054** (FR-028, pilot) — generate tags for an approved render: each rendered product carries name, price, supplier, warranty terms, and a listing link.
-- **TC-055** (FR-029, pilot) — tap a product tag on an approved render: the product's details (name, price, supplier, warranty, listing link) are displayed. Covers the happy path plus a tag with missing/omitted optional data.
+- **TC-054** (FR-028, pilot) — generate tags for a completed render: each rendered product carries name, price, supplier, warranty terms, and a listing link.
+- **TC-055** (FR-029, pilot) — tap a product tag on a completed render: the product's details (name, price, supplier, warranty, listing link) are displayed. Covers the happy path plus a tag with missing/omitted optional data.
 
 > **Note — TC-054 warranty vs. pilot scope (FR-028 tension):** FR-028 is **pilot-included**, but its acceptance criterion (TC-054) lists **warranty** among the tag fields, while **warranty display is out of the pilot** (it is FR-038, surfaced in FEAT-009). To reconcile without rewriting the FR: the **pilot tag subset** carries **name, price, supplier, and listing link**; the **full-product tag** additionally carries **warranty**. Accordingly, the warranty portion of TC-054 is validated **only once FR-038 ships**; the remaining fields of TC-054 (name, price, supplier, listing link) are validated within the pilot. This is a clarifying note only — the FR and its acceptance criterion live in `03_requirements.md` and are not changed here.
 
