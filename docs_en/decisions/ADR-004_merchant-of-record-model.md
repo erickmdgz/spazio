@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Scoped by ADR-027 (2026-07-15):** the merchant-of-record model here governs the **supplier track** unchanged. It **does not cover** `source=public` public-catalog bootstrap products (Amazon Berkeley Objects, CC BY 4.0) — Spazio is **not the seller of record** for them because they are **not sold by Spazio at all** (display-only, clearly labeled "not sold by Spazio", with a "View at retailer" outbound link; never in cart/checkout/orders). See `decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
 
 ## Context
 

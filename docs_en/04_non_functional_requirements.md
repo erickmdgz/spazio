@@ -42,6 +42,7 @@ Each NFR is tagged so the reader can tell what is settled from what is not:
 | NFR-016 | Scalability & i18n | Supplier onboarding scales by region | Medium |
 | NFR-017 | Scalability & i18n | Architecture supports multiple countries and currencies | High |
 | NFR-018 | Scalability & i18n | Per-market taxes, payment methods, and legal config | High |
+| NFR-019 | Legal & compliance | Lawful basis + CC BY 4.0 attribution for public-catalog data/images | High |
 
 ---
 
@@ -104,7 +105,7 @@ The system shall record the inference cost of every render.
 The system shall track render-to-purchase conversion from day one of operation.
 
 - **Measure:** `render-to-purchase rate = purchases / renders`, computed from the first day of use. This is Spazio's **primary success metric** (PRD §2; pilot "signal that it is working"): the share of renders that lead to a completed in-app purchase of one or more shown products, in the same session, without the user leaving Spazio.
-- **Trace:** PRD §2 (Success signal), PRD §7 (Cost control), and the pilot go/no-go criterion.
+- **Trace:** PRD §2 (Success signal), PRD §7 (Cost control), and the pilot go/no-go criterion. *(Segmented by ADR-027, 2026-07-15: `source=public` bootstrap products are non-purchasable and display-only (FR-064), so renders that contain only public products are excluded from both the numerator and the denominator of this metric — render-to-purchase measures the **supplier-track purchasable loop** only. A render mixing supplier and public items counts through its purchasable (supplier) products. See NFR-019, FR-062–FR-065; → TC-119.)*
 
 ---
 
@@ -195,7 +196,7 @@ The system shall visibly distinguish purchased catalog items from existing items
 The system shall make price, delivery estimate, and warranty terms visible before checkout.
 
 - **Measure:** before the user confirms payment, each item shows its price, its supplier-sourced production/delivery estimate (FR-036, BR-17), and its supplier-declared warranty terms (FR-038, BR-18).
-- **Trace:** PRD §7 (Usability), PRD §5 (delivery time and warranty strongly influence purchase); FR-036/FR-037/FR-038, FEAT-009. In the **pilot**, price and per-item delivery/production estimates are included, but **warranty display is excluded**.
+- **Trace:** PRD §7 (Usability), PRD §5 (delivery time and warranty strongly influence purchase); FR-036/FR-037/FR-038, FEAT-009. In the **pilot**, price and per-item delivery/production estimates are included, but **warranty display is excluded**. *(ADR-027, 2026-07-15: this before-checkout guarantee is about the **purchasable supplier track**. For `source=public` bootstrap products (display-only, "not sold by Spazio" — FR-064), supplier-declared warranty and production/delivery lead-time data may be **absent**; when absent they are omitted or labeled unavailable rather than fabricated, since public products are never checked out.)*
 
 ---
 
@@ -230,6 +231,23 @@ The system shall make taxes, payment methods, and legal requirements configurabl
 
 ---
 
+## Legal & compliance
+
+## NFR-019 - Lawful basis and attribution for public-catalog data and images
+
+**Category:** Legal & compliance · **Priority:** High · **Status:** VERIFIED (obligation follows from the licence); **Governed by ADR-027 (2026-07-15)**
+
+The system shall use public-catalog (`source=public`) data and images only on a lawful basis, shall record and display the required CC BY 4.0 attribution for every public product and any render derived from a public product image, and shall not source products by scraping named retailers.
+
+- **Measure:**
+  - Every `source=public` product stores and displays its attribution — source/creator name, source URL, source image URL, and `image_license` (CC BY 4.0). A public product missing required attribution is not displayed or composited (FR-065).
+  - Every render that composites a public product image (a derivative work) carries the propagated attribution on the stored render and its display (FR-065; ADR-026).
+  - No product originates from scraping a retailer's website (e.g. Office Depot) or from an affiliate feed that forbids compositing; the only public source is the licensed **Amazon Berkeley Objects** dataset (CC BY 4.0, permitting commercial use and modification with attribution).
+  - External egress introduced by the fallback — the public-dataset fetch/import channel and the outbound "View at retailer" links — is controlled and recorded.
+- **Trace:** ADR-027 (public-catalog bootstrap fallback), ADR-026 (self-hosted render engine — a composited render is a derivative work), FEAT-017 (issue #43); FR-062, FR-063, FR-064, FR-065. Attribution fields are specified on `Product` in `07_data_model.md`; the metric segmentation that keeps non-purchasable public renders out of NFR-006 is part of this compliance posture. → TC-116, TC-117 (attribution recorded/displayed/propagated into the derivative render), TC-118 (missing attribution excluded), TC-119 (public renders segmented out of the render-to-purchase metric).
+
+---
+
 ## Traceability note
 
-Every NFR above is derived from PRD v0.7 §7 and the pilot milestone. Where the PRD gives a number or model that §12 reserves for humans (render-time target, payment gateway, split-settlement and merchant-of-record models, commission percentage, initial markets, taxes and legal/compliance), the concrete **pilot value is Decided and linked to the relevant `ADR-`** (Accepted for the one-week iOS pilot; split settlement, gateway/provider, taxes, privacy and warranty carry an explicit revisit-before-scale caveat). The inference-cost threshold remains an operator-configurable setting (NFR-003, still TBD). None of these requirements is implemented; they define acceptance targets for future work and must each map to test cases in `08_test_plan.md` as features are built.
+Every NFR above is derived from PRD v0.7 §7 and the pilot milestone. Where the PRD gives a number or model that §12 reserves for humans (render-time target, payment gateway, split-settlement and merchant-of-record models, commission percentage, initial markets, taxes and legal/compliance), the concrete **pilot value is Decided and linked to the relevant `ADR-`** (Accepted for the one-week iOS pilot; split settlement, gateway/provider, taxes, privacy and warranty carry an explicit revisit-before-scale caveat). The inference-cost threshold remains an operator-configurable setting (NFR-003, still TBD). **NFR-019** (added 2026-07-15) is derived not from the PRD but from the licence terms of the public-catalog bootstrap fallback (ADR-027 / FEAT-017): CC BY 4.0 requires attribution for use and for derivative renders, and the fallback introduces controlled external egress. None of these requirements is implemented; they define acceptance targets for future work and must each map to test cases in `08_test_plan.md` as features are built.

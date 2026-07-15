@@ -42,6 +42,20 @@
 > and the `pending_review` queue read below are marked Retired and have been
 > removed from code by FEAT-016 (#38); they are kept here only as as-built
 > history (catalog curation and order forwarding are unaffected).
+> **Update (ADR-027, 2026-07-15):** a temporary, additive **public-catalog
+> bootstrap fallback** is introduced (FEAT-017, issue #43). Catalog listing gains
+> `source` / `attribution` / `includeFallback` flags; the render, render-items and
+> cart bodies expose each product's `source` (`supplier`|`public`) and, for
+> public products, a CC BY 4.0 `attribution` object plus a "View at retailer"
+> `outboundUrl`; the add-to-cart branch **excludes `source=public` products**
+> (display-only, "not sold by Spazio" — FR-062–FR-065). A public-dataset
+> fetch/import is a **distinct ingestion path** from supplier ingestion (an
+> ADR-006 carve-out), described in §11 with **no committed contract** (no path,
+> verb, or body is promised). Public products never enter cart, checkout, orders,
+> commission, or the merchant-of-record path (FR-064) and are excluded from the
+> render-to-purchase metric (NFR-006, segmented). CC BY 4.0 attribution is
+> required and controlled external egress is recorded (NFR-019). All of this is
+> **DRAFT** — illustrative structuring, not a committed interface.
 
 ## How to read this document
 
@@ -339,7 +353,8 @@ gate is retired).
 ### `GET /api/v1/renders/{renderId}`
 
 - **Purpose (VERIFIED):** Poll a render's status and, once completed, retrieve the image and its tagged items. Renders are published to the requesting user immediately on generation success (ADR-025, 2026-07-14; FR-027 retired).
-- **Related requirements:** FR-015; NFR-001, NFR-007 *(FR-027 retired — ADR-025)*.
+- **Note (ADR-027, 2026-07-15):** when a render composites `source=public` bootstrap products, the completed render and its tagged items expose each item's `source` and, for public items, the propagated CC BY 4.0 `attribution` (FR-065, NFR-019). A render containing only public products is display-only and is excluded from the render-to-purchase metric (NFR-006, segmented). **DRAFT.**
+- **Related requirements:** FR-015; NFR-001, NFR-007 *(FR-027 retired — ADR-025)*; FR-063, FR-065 *(ADR-027)*.
 
 ### `POST /api/v1/renders/{renderId}/edits`
 
@@ -371,7 +386,8 @@ gate is retired).
 ### `GET /api/v1/renders/{renderId}/items`
 
 - **Purpose (VERIFIED):** List the products shown in a render, each tagged with name, price, supplier, warranty, and listing link (PRD FR-07).
-- **Related requirements:** FR-028; NFR-015.
+- **Note (ADR-027, 2026-07-15):** each item carries a `source` (`supplier`|`public`). A `source=public` item includes an `attribution` object (source name/URL/image URL, `imageLicense: "CC-BY-4.0"`), is labeled "not sold by Spazio", and surfaces a "View at retailer" `outboundUrl` **instead of** an add-to-cart affordance (FR-063, FR-064, FR-065). Supplier-only fields such as warranty may be absent for public items (NFR-015). **DRAFT.**
+- **Related requirements:** FR-028; NFR-015; FR-063, FR-064, FR-065 *(ADR-027)*.
 
 ### `GET /api/v1/renders/{renderId}/items/{itemId}`
 
@@ -388,13 +404,15 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 ### `GET /api/v1/cart`
 
 - **Purpose (VERIFIED):** Review cart contents. On render publication (immediately on generation success — ADR-025, 2026-07-14; previously on operator approval) the cart is auto-populated with every product shown in the render (PRD FR-08); a returned item includes its captured price and its stock-hold expiry.
-- **Related requirements:** FR-031, FR-032; NFR-014.
+- **Note (ADR-027, 2026-07-15):** the cart contains **only `source=supplier` products**. `source=public` bootstrap products are display-only and are **never** auto-populated into or addable to the cart (FR-064); a render made only of public products yields an empty cart. **DRAFT.**
+- **Related requirements:** FR-031, FR-032; NFR-014; FR-064 *(ADR-027)*.
 
 ### `POST /api/v1/cart/items`
 
 - **Purpose (VERIFIED):** Add a rendered/tagged product to the cart. Adding an item places a stock hold for the configured duration (BR-22).
 - **Note (Decided, pilot):** the pilot has **NO stock hold** (tiny operator-curated catalog; the operator checks availability) — the PRD **default of 15 minutes** applies only when holds are built post-pilot (**ADR-011**); when holds exist, on expiry the hold is released back to availability (BR-23).
-- **Related requirements:** FR-030, FR-039, FR-040. (FR-030/holds not in the pilot; pilot ships auto-population + review + removal.)
+- **Note (ADR-027, 2026-07-15):** a `source=public` product is **not addable** — the add-to-cart branch rejects it (proposed `409 not-purchasable`) because public products are display-only ("View at retailer" outbound link only — FR-064). Only `source=supplier` products can be added. **DRAFT.**
+- **Related requirements:** FR-030, FR-039, FR-040; FR-064 *(ADR-027)*. (FR-030/holds not in the pilot; pilot ships auto-population + review + removal.)
 
 ### `DELETE /api/v1/cart/items/{itemId}`
 
@@ -441,6 +459,12 @@ forwards the order and handles fulfilment manually — FR-061).
 > PCI-compliant (NFR-009); split settlement, multi-supplier payouts, multi-currency,
 > guest checkout and automatic commission retention (NFR-010–012) are **out of the
 > pilot** and remain requirements on any gateway chosen before scale.
+>
+> **ADR-027 (2026-07-15):** checkout operates on the confirmed cart, which holds
+> **only `source=supplier` products**; `source=public` bootstrap products are
+> display-only and can never reach checkout, an order, a purchase order,
+> commission, or the merchant-of-record path (FR-064). No commission (ADR-007) and
+> no MoR (ADR-004) attach to public products.
 
 ### `POST /api/v1/checkout`  *(representative — full contract, illustrative)*
 
@@ -550,11 +574,18 @@ the pilot**. Every rendered item depends on this data being complete (BR-1, BR-2
 - **Note (Decided, pilot):** ingestion is an operator-loaded spreadsheet (CSV/Excel) of 30–60 curated SKUs — no API/FTP/self-service in the pilot (**ADR-006**); suppliers are 2–4 hand-picked Bogotá partners under a one-page written agreement (**ADR-016**).
 - **Related requirements:** FR-055. **Excluded from the pilot.**
 
+### Public-catalog fetch/import *(distinct ingestion path — descriptive, no committed contract)*
+
+- **Purpose (ADR-027, 2026-07-15):** import the seeded **Amazon Berkeley Objects** (`source=public`, CC BY 4.0) subset that powers the bootstrap fallback. This is a **new ingestion channel, distinct from the four supplier channels ADR-006 governs** and from operator catalog curation — it is explicitly **not** supplier self-service. Actor: **System / operator**.
+- **No committed contract.** No path, verb, or request/response body is promised here; this entry is descriptive only. When built, each imported product stores its attribution fields (`sourceName`, `sourceUrl`, `sourceImageUrl`, `imageLicense`) per `07_data_model.md`, with `supplier_id` null. External egress on this path (fetching the dataset) and the outbound "View at retailer" links are controlled and recorded (NFR-019). Scraping named retailers is forbidden (NFR-019).
+- **Related requirements:** FR-062, FR-065; NFR-019. **Bootstrap/demo only; outside the supplier-track purchasable guarantee.**
+
 ### `GET /api/v1/catalog/products` *(internal — matching/render input)*
 
 - **Purpose (VERIFIED):** Query the curated catalog for matching. Entries with incomplete required data are excluded from rendering eligibility (BR-2); only currently available stock is eligible (BR-4). Sponsored placement may act **only as a tie-breaker** and must never override relevance, quality, budget, locality or availability (BR-29, BR-30).
 - **Note (Decided, pilot):** catalog synchronization is a manual / on-demand refresh by the operator, no automated sync (**ADR-012**, BR-32); sponsored placement is not offered in the pilot (**ADR-017**).
-- **Related requirements:** FR-014, FR-019, FR-060, FR-054.
+- **Note (ADR-027, 2026-07-15):** each product carries a `source` field (`supplier`|`public`) and the listing accepts an `includeFallback` flag; when `includeFallback=true` (or when the supplier result set is empty) the query may return `source=public` ABO products (FR-062). A `source=public` entry carries an `attribution` object (`sourceName`, `sourceUrl`, `sourceImageUrl`, `imageLicense: "CC-BY-4.0"`) and is display-only (FR-063–FR-065). The availability (BR-4) and completeness (BR-2) gates apply to supplier products as written; public products follow the ADR-027 completeness stance (prefer complete ABO records; ADR-014 carve-out otherwise) and the FR-018 carve-out. **DRAFT.**
+- **Related requirements:** FR-014, FR-019, FR-060, FR-054; FR-062, FR-063, FR-065 *(ADR-027)*.
 
 ---
 

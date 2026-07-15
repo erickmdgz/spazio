@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. **Scoped by ADR-027 (2026-07-15):** the BR-1 per-SKU completeness gate here is **unchanged for the supplier track**. For the `source=public` bootstrap track (Amazon Berkeley Objects, CC BY 4.0), the **preferred path keeps this gate** by seeding only **complete** ABO records (all BR-1 fields present) so it holds **with no waiver**; only if complete records cannot be assembled is a **documented relaxed completeness profile for `source=public` products** acceptable, and even then those products stay display-only and clearly labeled. See `decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
 
 ## Context
 
