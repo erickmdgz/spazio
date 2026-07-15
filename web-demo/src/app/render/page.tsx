@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestRender } from "@/app/actions";
 import { ProductSheet } from "@/components/ProductSheet";
-import { isPublicProduct, type ProductSummary } from "@/lib/api";
+import { fetchRenderImage, isPublicProduct, type ProductSummary } from "@/lib/api";
 import { formatCop } from "@/lib/format";
 import { getScenario, getRoom, getStyle } from "@/lib/scenarios";
 import { useDemo } from "@/lib/store";
@@ -28,6 +28,7 @@ export default function RenderPage() {
     renderVisual,
     setRenderVisual,
     renderItems,
+    renderId,
     submitRender,
     refreshRender,
     cart,
@@ -36,6 +37,7 @@ export default function RenderPage() {
   const [error, setError] = useState<string | null>(null);
   const [msgIndex, setMsgIndex] = useState(0);
   const [openProduct, setOpenProduct] = useState<ProductSummary | null>(null);
+  const [backendImageUrl, setBackendImageUrl] = useState<string | null>(null);
   const startedKey = useRef<string | null>(null);
 
   // Soft guard.
@@ -119,6 +121,31 @@ export default function RenderPage() {
       clearInterval(t);
     };
   }, [phase, refreshRender]);
+
+  // Display the REAL backend render once it's ready: an <img> can't send the
+  // x-device-token header (NFR-007), so fetch the stored bytes and turn the Blob
+  // into an object URL. The cached visual stays as the while-generating
+  // placeholder and as the fallback if this fetch fails. Revoke on cleanup.
+  useEffect(() => {
+    if (phase !== "ready" || !renderId) return;
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const blob = await fetchRenderImage(renderId);
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBackendImageUrl(objectUrl);
+      } catch {
+        // Stored render not fetchable yet — keep the cached visual fallback.
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setBackendImageUrl(null);
+    };
+  }, [phase, renderId]);
 
   const budget = style?.budgetCop ?? 0;
   const cartTotal = useMemo(
@@ -209,7 +236,8 @@ export default function RenderPage() {
     );
   }
 
-  const image = renderVisual?.renderImage ?? scenario?.renderImage ?? "";
+  // Prefer the real backend render; fall back to the cached visual / scenario.
+  const image = backendImageUrl ?? renderVisual?.renderImage ?? scenario?.renderImage ?? "";
 
   return (
     <div className="animate-fade-up">

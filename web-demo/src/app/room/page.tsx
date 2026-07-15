@@ -10,6 +10,7 @@ export default function RoomPage() {
   const { room, beginRoom } = useDemo();
   const [selected, setSelected] = useState<string>(room?.id ?? "");
   const [uploaded, setUploaded] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState<string>(
@@ -22,6 +23,7 @@ export default function RoomPage() {
   function choose(id: string) {
     setSelected(id);
     setUploaded(false);
+    setFile(null);
     const r = getRoom(id);
     if (r) {
       setWidth(String(r.defaultWidthM));
@@ -30,10 +32,14 @@ export default function RoomPage() {
   }
 
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    // Demo mode: any upload routes to a prepared sample result (living room).
-    if (e.target.files && e.target.files.length > 0) {
+    // Keep the chosen file — its real bytes are uploaded to the backend
+    // (FR-005). "upload" is a sentinel id; the render page falls back to a
+    // sample visual only while the backend render is still generating.
+    const chosen = e.target.files?.[0];
+    if (chosen) {
+      setFile(chosen);
       setUploaded(true);
-      setSelected("living");
+      setSelected("upload");
     }
   }
 
@@ -47,6 +53,7 @@ export default function RoomPage() {
         id: selected,
         widthM: parseFloat(width) || 4,
         lengthM: parseFloat(length) || 4,
+        file,
       });
       router.push("/style");
     } catch (e) {
@@ -109,14 +116,14 @@ export default function RoomPage() {
           <div>
             <h3 className="font-semibold text-forest-900">Upload a photo</h3>
             <p className="mt-1 text-xs text-muted/70">
-              {uploaded
-                ? "Photo received — we'll use a prepared sample for this demo."
-                : "JPG or PNG of your room"}
+              {uploaded && file
+                ? `${file.name} — we'll render your photo.`
+                : "JPG, PNG or WebP of your room"}
             </p>
           </div>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             onChange={onUpload}
           />

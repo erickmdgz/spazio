@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import type { RenderResult } from "./render/types";
-import { BUDGET_DEFAULT } from "./scenarios";
+import { BUDGET_DEFAULT, getRoom } from "./scenarios";
 import * as api from "./api";
 import type { BackendCart, BackendRenderItem, BackendStyle, CheckoutResult, Contact } from "./api";
 
@@ -26,6 +26,52 @@ export interface RoomSelection {
   id: string;
   widthM: number;
   lengthM: number;
+  /**
+   * The user's real uploaded photo, when they chose "Upload a photo" rather than
+   * a sample room. Its bytes are sent to the backend as-is (FR-005). Absent for
+   * a sample room, whose bundled illustration is rasterised on upload instead.
+   */
+  file?: File | null;
+}
+
+/**
+ * Rasterises a sample room's bundled illustration (SVG) to PNG bytes so that a
+ * sample selection still uploads a real image the render engine can composite
+ * (the byte-upload endpoint only accepts jpeg/png/webp). Returns null — and the
+ * caller simply skips the upload — if rasterising isn't possible.
+ */
+async function sampleRoomBlob(roomId: string): Promise<Blob | null> {
+  try {
+    if (typeof document === "undefined") return null;
+    const src = getRoom(roomId)?.thumbnail ?? `/rooms/${roomId}-before.svg`;
+    const res = await fetch(src);
+    if (!res.ok) return null;
+    const svgText = await res.text();
+    const svgUrl = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("sample image load failed"));
+        img.src = svgUrl;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 1200;
+      canvas.height = img.naturalHeight || 800;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((blob) => resolve(blob), "image/png"),
+      );
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  } catch {
+    return null;
+  }
 }
 
 export interface StyleSelection {
@@ -97,10 +143,16 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       roomWidthCm: Math.round(room.widthM * 100),
       roomLengthCm: Math.round(room.lengthM * 100),
     });
-    // The preset room asset stands in for the uploaded photo until real photo
-    // upload lands (the backend persists the storage key — FR-005 as built).
-    await api.addRoomPhoto(projectId, `web-demo/rooms/${room.id}`);
-    setState((s) => ({ ...s, room, projectId }));
+    // Upload the room photo bytes (FR-005). A real upload sends the chosen file
+    // untouched; a sample room rasterises its bundled illustration so the render
+    // engine still receives real image bytes to composite.
+    const photo = room.file ?? (await sampleRoomBlob(room.id));
+    if (photo) {
+      await api.uploadRoomPhoto(projectId, photo);
+    }
+    // Keep the File out of persisted state (it's consumed by the upload above).
+    const stored: RoomSelection = { id: room.id, widthM: room.widthM, lengthM: room.lengthM };
+    setState((s) => ({ ...s, room: stored, projectId }));
   }, []);
 
   const applyStyle = useCallback(async (style: StyleSelection) => {

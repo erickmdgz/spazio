@@ -56,6 +56,22 @@
 > render-to-purchase metric (NFR-006, segmented). CC BY 4.0 attribution is
 > required and controlled external egress is recorded (NFR-019). All of this is
 > **DRAFT** — illustrative structuring, not a committed interface.
+> **Update (FEAT-002, 2026-07-15 — as built on `feature/FEAT-002-photo-upload-render-display`):**
+> the real image pipeline is now wired end-to-end, so two contracts below are
+> **as built** (no longer illustrative-only). (1) `POST /api/v1/projects/:id/photos`
+> now **ingests the raw room-image bytes** (`Content-Type: image/jpeg|image/png|image/webp`,
+> body = the file bytes, **not** JSON), stores them in object storage under
+> `rooms/<projectId>/<uuid>.<ext>`, creates the `RoomPhoto` row (`qualityStatus`
+> `pending`) and returns `201 { id, storageKey }` (FR-005). Bytes are parsed with a
+> Fastify `addContentTypeParser` (buffer) — **no new dependency** (no
+> `@fastify/multipart`) — and the route raises its own `bodyLimit` to ~20 MB.
+> (2) a **new** `GET /api/v1/renders/:id/image` streams the stored render image
+> (`ObjectStorage.get(imageKey)`) so the web app can display the **real backend
+> render**, not a cached preset (FR-015 / FEAT-005 / FEAT-007). Both are
+> **device-scoped** (`requireDeviceToken` + project/render owned by the device); a
+> foreign or unknown device gets **404** (NFR-007). Room *dimensions* stay on
+> `PATCH /projects/:id` and are **not** part of the photo body. This is the current
+> as-built shape for these two routes; the rest of this document remains DRAFT.
 
 ## How to read this document
 
@@ -224,6 +240,56 @@ source="upload"          // "upload" (FR-005) | "capture" (FR-006)
 - FR-024 (validate photo quality, reject with retake — BR-15)
 - NFR-007 (photos private by default)
 
+### `POST /api/v1/projects/:id/photos` *(as built, FEAT-002 — 2026-07-15)*
+
+The representative `POST /photos` above stays as DRAFT history. The **as-built**
+photo-upload route (on `feature/FEAT-002-photo-upload-render-display`) ingests the
+**raw image bytes** so the real render pipeline (ADR-026) receives the user's
+actual photo rather than a preset key.
+
+#### Request
+
+```
+POST /api/v1/projects/:id/photos
+Content-Type: image/jpeg | image/png | image/webp
+x-device-token: <device token that owns the project>
+
+<raw image file bytes>            // NOT JSON, NOT multipart
+```
+
+- Bytes are parsed by a Fastify `addContentTypeParser` for the three image types
+  with `parseAs: "buffer"` — **no `@fastify/multipart` and no new npm dependency**.
+- The route raises its **own** `bodyLimit` to ~20 MB (route-level config; the
+  global `bodyLimit` is left unchanged).
+- Room *dimensions* are **not** in this body; they stay on `PATCH /projects/:id`.
+
+#### Successful response
+
+```json
+// 201 Created
+{
+  "id": "<roomPhotoId>",
+  "storageKey": "rooms/<projectId>/<uuid>.jpg"   // ext derives from the content-type
+}
+```
+
+The bytes are stored via `ObjectStorage.put(storageKey, …)` and a `RoomPhoto` row
+is created with that `storageKey` and `qualityStatus: "pending"`.
+
+#### Errors
+
+| Code | Cause |
+|---|---|
+| 400 | Empty/unreadable body, or a JSON body instead of raw image bytes |
+| 404 | Foreign/unknown device token, or a project not owned by the device (device scoping — NFR-007) |
+| 413 | Body larger than the ~20 MB route limit |
+| 415 | Unsupported media type (`Content-Type` not `image/jpeg`, `image/png`, or `image/webp`) |
+
+#### Related requirements
+
+- FR-005 (upload a room photo — **as built as a byte upload**)
+- NFR-007 (photos private + device-scoped; foreign device → 404)
+
 ### `POST /api/v1/photos/capture`
 
 - **Purpose (VERIFIED):** Accept a photo taken with the in-app camera.
@@ -355,6 +421,30 @@ gate is retired).
 - **Purpose (VERIFIED):** Poll a render's status and, once completed, retrieve the image and its tagged items. Renders are published to the requesting user immediately on generation success (ADR-025, 2026-07-14; FR-027 retired).
 - **Note (ADR-027, 2026-07-15):** when a render composites `source=public` bootstrap products, the completed render and its tagged items expose each item's `source` and, for public items, the propagated CC BY 4.0 `attribution` (FR-065, NFR-019). A render containing only public products is display-only and is excluded from the render-to-purchase metric (NFR-006, segmented). **DRAFT.**
 - **Related requirements:** FR-015; NFR-001, NFR-007 *(FR-027 retired — ADR-025)*; FR-063, FR-065 *(ADR-027)*.
+
+### `GET /api/v1/renders/:id/image` *(as built, FEAT-002 — 2026-07-15)*
+
+- **Purpose (as built):** stream the **stored render image** so the web app can
+  display the **real backend render** (`Render.imageKey` in object storage) instead
+  of a cached preset visual (FR-015). This closes the render-display half of
+  FEAT-002: once `GET /renders/:id` reports the render `completed`, the client
+  fetches this route (sending `x-device-token`, which an `<img>` tag cannot) and
+  turns the response into an object URL for display.
+- **Auth / scope:** device-scoped exactly like the other `/renders` routes
+  (`requireDeviceToken` + render owned by the device). A foreign/unknown device
+  gets **404** and never sees another device's render (NFR-007).
+- **Response:** `200` with the image bytes from `ObjectStorage.get(imageKey)`,
+  `Content-Type: image/png` (`Cache-Control: private`).
+- **No image yet:** if the render exists and is owned but has **no `imageKey`**
+  (still generating, or failed), the route returns **404** (a 409 is an acceptable
+  alternative) so the client keeps polling; it never fabricates or leaks bytes.
+
+| Code | Cause |
+|---|---|
+| 200 | Owned render with an `imageKey`; image bytes returned |
+| 404 | Foreign/unknown device or render not owned (NFR-007); **or** owned render with no `imageKey` yet (still generating / failed) |
+
+- **Related requirements:** FR-015 (real render displayed); NFR-007 (device-scoped, private).
 
 ### `POST /api/v1/renders/{renderId}/edits`
 
