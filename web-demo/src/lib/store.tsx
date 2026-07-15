@@ -35,40 +35,18 @@ export interface RoomSelection {
 }
 
 /**
- * Rasterises a sample room's bundled illustration (SVG) to PNG bytes so that a
- * sample selection still uploads a real image the render engine can composite
- * (the byte-upload endpoint only accepts jpeg/png/webp). Returns null — and the
- * caller simply skips the upload — if rasterising isn't possible.
+ * Fetches the sample room's bundled PHOTO bytes so that a sample selection
+ * uploads a real image the render engine can composite (the byte-upload
+ * endpoint accepts jpeg/png/webp; the sample is a real .png photo, not an
+ * illustration). Returns null — and the caller simply skips the upload — if the
+ * asset cannot be fetched.
  */
 async function sampleRoomBlob(roomId: string): Promise<Blob | null> {
   try {
-    if (typeof document === "undefined") return null;
-    const src = getRoom(roomId)?.thumbnail ?? `/rooms/${roomId}-before.svg`;
+    const src = getRoom(roomId)?.thumbnail ?? "/rooms/sample-living.png";
     const res = await fetch(src);
     if (!res.ok) return null;
-    const svgText = await res.text();
-    const svgUrl = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
-    try {
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("sample image load failed"));
-        img.src = svgUrl;
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth || 1200;
-      canvas.height = img.naturalHeight || 800;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return null;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      return await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((blob) => resolve(blob), "image/png"),
-      );
-    } finally {
-      URL.revokeObjectURL(svgUrl);
-    }
+    return await res.blob();
   } catch {
     return null;
   }

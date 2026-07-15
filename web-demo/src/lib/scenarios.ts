@@ -22,22 +22,18 @@ export interface StyleOption {
   swatches: [string, string, string];
 }
 
+// A single, real sample-room PHOTO for the "no photo handy?" fallback. It is a
+// genuine photograph (not an illustration), so the real render engine (mflux,
+// ADR-026) produces a credible result. Upload is the primary path; this is the
+// bulletproof demo fallback.
 export const ROOMS: RoomOption[] = [
   {
     id: "living",
-    name: "Living room",
-    blurb: "An open living space ready for a sofa, rug and warm lighting.",
-    thumbnail: "/rooms/living-before.svg",
+    name: "Sample living room",
+    blurb: "A real, empty living room photo — see it furnished in your chosen style.",
+    thumbnail: "/rooms/sample-living.png",
     defaultWidthM: 4.2,
     defaultLengthM: 5.0,
-  },
-  {
-    id: "bedroom",
-    name: "Bedroom",
-    blurb: "A calm bedroom with room for a bed, nightstand and greenery.",
-    thumbnail: "/rooms/bedroom-before.svg",
-    defaultWidthM: 3.4,
-    defaultLengthM: 4.0,
   },
 ];
 
@@ -158,8 +154,13 @@ export function getScenario(roomId: string, styleId: string): Scenario {
   const items: TaggedItem[] = ids
     .filter((id) => pos[id])
     .map((id) => ({ productId: id, xPct: pos[id].xPct, yPct: pos[id].yPct }));
+  // Offline/while-generating fallback for the sample room: a real pre-rendered
+  // mflux composite of the sample photo (not the old per-style illustration), so
+  // the fallback matches the real photo the user sees. The live backend render
+  // (ADR-026) is preferred when available; this shows if it is still generating
+  // or fails.
   return {
-    renderImage: `/rooms/${room}-${style}.svg`,
+    renderImage: room === "living" ? "/rooms/sample-living-rendered.png" : `/rooms/${room}-${style}.svg`,
     items,
   };
 }
