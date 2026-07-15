@@ -81,6 +81,19 @@ export interface MfluxOptions {
   steps: number;
   /** Quantization bits passed as -q. */
   quantize: number;
+  /**
+   * Longest-edge cap (px) applied to every input image before it reaches mflux.
+   * Real phone photos are ~24 MP and crash the Metal backend with OOM at full
+   * resolution (BUG-001); ~1280 px renders fine (the output is ~1024 px anyway).
+   * 0 disables downscaling (used by the hermetic tests).
+   */
+  maxImageEdge: number;
+  /**
+   * Python interpreter used for the Pillow downscale (exif_transpose + resize).
+   * Pillow ships with the mflux venv, so this is that venv's python — NO new
+   * dependency. Derived from editBin's directory when not set explicitly.
+   */
+  pythonBin: string;
 }
 
 /** Minimal child-process surface MfluxRenderPipeline needs (lets tests inject a fake). */
@@ -91,6 +104,22 @@ export interface MfluxChildProcess {
 }
 
 export type MfluxSpawner = (command: string, args: string[]) => MfluxChildProcess;
+
+/**
+ * Pillow snippet (run via the mflux venv's python) that bakes EXIF orientation
+ * and downscales an image to a max longest edge, re-encoding as JPEG. Pillow is
+ * already a mflux dependency, so this adds nothing new. argv: <src> <dst> <maxEdge>.
+ * exif_transpose is essential — iPhone photos carry a rotation flag, and without
+ * baking it the render comes out sideways.
+ */
+const DOWNSCALE_PY = [
+  "import sys",
+  "from PIL import Image, ImageOps",
+  "src, dst, m = sys.argv[1], sys.argv[2], int(sys.argv[3])",
+  "im = ImageOps.exif_transpose(Image.open(src))",
+  "im.thumbnail((m, m))",
+  "im.convert('RGB').save(dst, 'JPEG', quality=90)",
+].join("\n");
 
 /**
  * Self-hosted render engine: FLUX.2 Klein 4B via the mflux CLI (ADR-026).
@@ -140,14 +169,18 @@ export class MfluxRenderPipeline implements RenderPipeline {
       const productPaths = await this.resolveProductImagePaths(input.candidateProductIds, workDir);
       const outPath = join(workDir, "composite.png");
 
+      // Downscale every input image (baking EXIF orientation) before mflux, so a
+      // large phone photo (~24 MP) cannot exhaust GPU memory and crash Metal with
+      // OOM (BUG-001). Best-effort: a failed downscale falls back to the original.
+      const imagePaths = await this.downscaleInputs([roomPath, ...productPaths], workDir);
+
       const args = [
         "--model",
         this.options.model,
         "-q",
         String(this.options.quantize),
         "--image-paths",
-        roomPath,
-        ...productPaths,
+        ...imagePaths,
         "--prompt",
         await this.buildPrompt(input),
         "--steps",
@@ -246,6 +279,38 @@ export class MfluxRenderPipeline implements RenderPipeline {
     }
     if (input.freeText) parts.push(input.freeText);
     return parts.join(" ");
+  }
+
+  /**
+   * Downscale each input image to options.maxImageEdge (longest edge), baking EXIF
+   * orientation, before it reaches mflux (BUG-001 — large photos OOM the Metal
+   * backend). Uses Pillow from the mflux venv (no new dependency). Best-effort:
+   * if a downscale fails, the original path is used unchanged (no regression).
+   */
+  private async downscaleInputs(paths: string[], workDir: string): Promise<string[]> {
+    if (this.options.maxImageEdge <= 0) return paths;
+    const out: string[] = [];
+    for (let i = 0; i < paths.length; i++) {
+      const dest = join(workDir, `scaled-${i}.jpg`);
+      const ok = await this.downscaleImage(paths[i]!, dest);
+      out.push(ok ? dest : paths[i]!);
+    }
+    return out;
+  }
+
+  private downscaleImage(src: string, dest: string): Promise<boolean> {
+    return new Promise<boolean>((resolvePromise) => {
+      const child = this.spawner(this.options.pythonBin, [
+        "-c",
+        DOWNSCALE_PY,
+        src,
+        dest,
+        String(this.options.maxImageEdge),
+      ]);
+      child.stderr?.on("data", () => undefined);
+      child.on("error", () => resolvePromise(false));
+      child.on("close", (code) => resolvePromise(code === 0));
+    });
   }
 
   private runMflux(command: string, args: string[]): Promise<void> {
