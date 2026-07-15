@@ -9,8 +9,8 @@ supplier.
 > **Update (ADR-024 + #31):** this started as the 2-day class demo and is now the
 > **product platform**, wired to the real backend. The wizard runs over `/api/v1`
 > (Next.js rewrite → `../backend`, Fastify + Prisma + Postgres): the project,
-> render, cart and order are real rows; renders wait for **operator approval**
-> (approve them in the backend's console at `/operator/console`); checkout
+> render, cart and order are real rows; renders are published **immediately on
+> generation success** (no operator approval step); checkout
 > captures on a **fake gateway** (no real money — ADR-003 vendor open) and the
 > composite image is still a cached local asset (ADR-002 vendor open).
 > **Run the backend first** — see `../backend/README.md` (Postgres via Docker,
@@ -18,10 +18,11 @@ supplier.
 > `BACKEND_ORIGIN` if it runs elsewhere. The offline, in-memory demo described
 > below is preserved in git history (tag: the PR #22 merge).
 > Per **ADR-025** (2026-07-14,
-> `../docs_en/decisions/ADR-025_autonomous-render-publication.md`) this operator
-> render-approval gate is slated for removal in the next development iteration —
-> renders will be published immediately on generation success. Until that change
-> lands, approve renders in the console as described here.
+> `../docs_en/decisions/ADR-025_autonomous-render-publication.md`) the operator
+> render-approval gate that #31 originally shipped was removed; the removal is
+> implemented by **FEAT-016 (#38)** — no console action is needed between render
+> and cart (the console at `/operator/console` remains for catalog curation and
+> order forwarding).
 
 ---
 

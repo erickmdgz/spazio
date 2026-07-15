@@ -72,12 +72,6 @@ enum RenderRequestStatus {
   failed
 }
 
-enum RenderReviewStatus {
-  pending_review
-  approved
-  rejected
-}
-
 enum CartStatus {
   draft
   confirmed
@@ -110,7 +104,6 @@ enum PaymentStatus {
 
 enum OperatorRole {
   catalog_curator
-  render_reviewer
   order_handler
 }
 
@@ -123,9 +116,9 @@ enum OperatorStatus {
 // Operator domain (console auth — plan §1.7; the pilot's only authenticated surface)
 // ---------------------------------------------------------------------------
 
-// Spazio staff who curate the catalog, review renders, and forward orders via the
-// operator console. Hashed credentials only (NFR-008 intent); role is stored for
-// the per-action gating that FEAT-006/011/015 enforce later.
+// Spazio staff who curate the catalog and forward orders via the operator
+// console. Hashed credentials only (NFR-008 intent); role is stored for the
+// per-action gating that FEAT-011/015 enforce (render review retired — ADR-025).
 model Operator {
   id           String         @id @default(uuid())
   name         String
@@ -135,7 +128,6 @@ model Operator {
   status       OperatorStatus @default(active)
   createdAt    DateTime       @default(now())
 
-  reviewedRenders   Render[]        @relation("RenderReviewedBy")
   forwardedPurchase PurchaseOrder[] @relation("PurchaseOrderForwardedBy")
 }
 
@@ -293,24 +285,21 @@ model RenderRequest {
   @@index([projectId])
 }
 
-// A generated image, private by default, gated by operator review (FR-027).
+// A generated image, private by default, published to the requesting user
+// immediately on generation success (ADR-025; generation state lives on
+// RenderRequest.status).
 model Render {
-  id              String             @id @default(uuid())
+  id              String   @id @default(uuid())
   renderRequestId String
   projectId       String
   imageKey        String? // object-storage key, set when the pipeline completes
-  reviewStatus    RenderReviewStatus @default(pending_review)
-  createdAt       DateTime           @default(now())
-  reviewedAt      DateTime?
-  reviewedById    String? // acting operator (FR-027; plan §1.3 reviewed_by)
+  createdAt       DateTime @default(now())
 
   renderRequest RenderRequest @relation(fields: [renderRequestId], references: [id], onDelete: Cascade)
   project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reviewedBy    Operator?     @relation("RenderReviewedBy", fields: [reviewedById], references: [id])
   items         RenderItem[]
 
   @@index([projectId])
-  @@index([reviewStatus])
 }
 
 // Link from a Render to a real Product, with tag position and a price snapshot.
@@ -332,8 +321,8 @@ model RenderItem {
 // Cart / checkout domain
 // ---------------------------------------------------------------------------
 
-// Auto-populated suggestion derived from an approved render (FR-031, BR-31).
-// One cart per project in the pilot.
+// Auto-populated suggestion derived from a render on generation success
+// (FR-031, BR-31; ADR-025). One cart per project in the pilot.
 model Cart {
   id        String     @id @default(uuid())
   projectId String     @unique
@@ -426,7 +415,7 @@ model Payment {
 // Instrumentation
 // ---------------------------------------------------------------------------
 
-// The NFR-006 event trail. Six pilot events are emitted (see src/events.ts).
+// The NFR-006 event trail. Five pilot events are emitted (see src/events.ts).
 model Event {
   id        String   @id @default(uuid())
   type      String

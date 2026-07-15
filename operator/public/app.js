@@ -1,8 +1,8 @@
 /**
  * Spazio operator console — foundation shell (build plan §1.7, §0.1#5).
  * Vanilla JS over the session-guarded /api/v1/operator API; no framework, no
- * build step. The three queues here are skeletons — the full curation, review,
- * and fulfilment UX belongs to FEAT-015 / FEAT-006 / FEAT-011.
+ * build step. The two queues here are skeletons — the full curation and
+ * fulfilment UX belongs to FEAT-015 / FEAT-011.
  */
 (() => {
   "use strict";
@@ -35,7 +35,7 @@
 
   // Monotonic token per queue: a response only renders if it is still the
   // latest request for that queue (drops stale/raced responses).
-  const viewTokens = { renders: 0, catalog: 0, orders: 0 };
+  const viewTokens = { catalog: 0, orders: 0 };
 
   function invalidateViews() {
     for (const name of Object.keys(viewTokens)) viewTokens[name] += 1;
@@ -47,14 +47,14 @@
     $("login-view").hidden = false;
   }
 
-  /** Fresh shell state: renders tab active, all queue lists emptied. */
+  /** Fresh shell state: catalog tab active, all queue lists emptied. */
   function resetShell() {
     invalidateViews();
     document.querySelectorAll(".tab").forEach((tab) => {
-      tab.classList.toggle("active", tab.dataset.tab === "renders");
+      tab.classList.toggle("active", tab.dataset.tab === "catalog");
     });
     document.querySelectorAll(".tab-panel").forEach((panel) => {
-      panel.hidden = panel.id !== "tab-renders";
+      panel.hidden = panel.id !== "tab-catalog";
     });
     for (const name of Object.keys(viewTokens)) $(`${name}-list`).replaceChildren();
   }
@@ -66,7 +66,7 @@
       ? `${operator.name} · ${operator.role}`
       : operator.name;
     resetShell();
-    refresh("renders");
+    refresh("catalog");
   }
 
   function el(tag, className, text) {
@@ -106,48 +106,6 @@
       root.append(actionBox);
     }
     return root;
-  }
-
-  // --- Render review queue (FR-027) ---
-  async function loadRenders(token) {
-    const status = $("renders-status").value;
-    const { renders } = await api(`/renders?status=${status}`);
-    if (token !== viewTokens.renders) return;
-    const list = $("renders-list");
-    if (renders.length === 0) return renderEmpty(list, `No ${status} renders.`);
-    list.replaceChildren(
-      ...renders.map((render) =>
-        row({
-          title: `Render ${render.id.slice(0, 8)}`,
-          meta: [
-            `project ${render.projectId.slice(0, 8)} · created ${new Date(render.createdAt).toLocaleString()}`,
-            render.imageKey ? `image: ${render.imageKey}` : "image: not yet produced",
-          ],
-          badges: [render.reviewStatus],
-          actions:
-            render.reviewStatus === "pending_review"
-              ? [
-                  {
-                    label: "Approve",
-                    className: "primary",
-                    onClick: async () => {
-                      await api(`/renders/${render.id}/approve`, { method: "POST" });
-                      refresh("renders");
-                    },
-                  },
-                  {
-                    label: "Reject",
-                    className: "danger",
-                    onClick: async () => {
-                      await api(`/renders/${render.id}/reject`, { method: "POST" });
-                      refresh("renders");
-                    },
-                  },
-                ]
-              : [],
-        }),
-      ),
-    );
   }
 
   // --- Catalog curation (FR-056–059) ---
@@ -227,7 +185,7 @@
     );
   }
 
-  const loaders = { renders: loadRenders, catalog: loadCatalog, orders: loadOrders };
+  const loaders = { catalog: loadCatalog, orders: loadOrders };
 
   function refresh(name) {
     const token = ++viewTokens[name];
@@ -279,7 +237,6 @@
     button.addEventListener("click", () => refresh(button.dataset.refresh));
   });
 
-  $("renders-status").addEventListener("change", () => refresh("renders"));
   $("catalog-filter").addEventListener("change", () => refresh("catalog"));
   $("orders-status").addEventListener("change", () => refresh("orders"));
 

@@ -15,7 +15,8 @@ interface CreateRenderBody {
  * Render routes.
  *  - POST /renders             create + enqueue; finalizes the project; emits render_created
  *                              (FR-014..018/021)
- *  - GET  /renders/:id         poll render status (visible after operator approval, FR-027)
+ *  - GET  /renders/:id         poll generation status (queued/processing/completed/failed);
+ *                              a completed render is immediately visible (ADR-025)
  *  - GET  /renders/:id/items   tagged products; emits render_viewed (FR-028/029, §0.1#8)
  */
 export const renderRoutes: FastifyPluginAsync = async (app) => {
@@ -66,7 +67,6 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
           data: {
             renderRequestId: renderRequest.id,
             projectId,
-            reviewStatus: "pending_review",
           },
         });
       });
@@ -81,7 +81,6 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(202).send({
         renderId: render.id,
         status: "queued",
-        reviewStatus: render.reviewStatus,
       });
     },
   );
@@ -98,15 +97,19 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
       if (!token) return;
       const render = await prisma.render.findUnique({
         where: { id: request.params.id },
-        include: { project: { select: { deviceToken: true } } },
+        include: {
+          project: { select: { deviceToken: true } },
+          renderRequest: { select: { status: true } },
+        },
       });
       // Another device's render answers 404 — no existence leak (NFR-007).
       if (!render || render.project.deviceToken !== token) {
         return reply.code(404).send({ error: "not_found", message: "Render not found." });
       }
+      // Generation status only — a completed render is immediately visible (ADR-025).
       return reply.code(200).send({
         renderId: render.id,
-        reviewStatus: render.reviewStatus,
+        status: render.renderRequest.status,
         imageKey: render.imageKey,
       });
     },

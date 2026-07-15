@@ -78,7 +78,7 @@ describe("operator session endpoints", () => {
       name: "Ana",
       email: "ana@spazio.example",
       passwordHash,
-      role: "render_reviewer",
+      role: "order_handler",
       status: "active",
       createdAt: new Date(),
       ...overrides,
@@ -168,7 +168,7 @@ describe("operator session guard", () => {
 
   it("rejects operator API calls without a session", async () => {
     ({ app } = await buildTestApp());
-    const response = await app.inject({ method: "GET", url: "/api/v1/operator/renders" });
+    const response = await app.inject({ method: "GET", url: "/api/v1/operator/orders" });
     expect(response.statusCode).toBe(401);
   });
 
@@ -176,7 +176,7 @@ describe("operator session guard", () => {
     ({ app } = await buildTestApp());
     const response = await app.inject({
       method: "GET",
-      url: "/api/v1/operator/renders",
+      url: "/api/v1/operator/orders",
       headers: { cookie: `${OPERATOR_SESSION_COOKIE}=forged.token` },
     });
     expect(response.statusCode).toBe(401);
@@ -184,47 +184,14 @@ describe("operator session guard", () => {
 
   it("accepts a valid session and lets the queue read through", async () => {
     const findMany = vi.fn().mockResolvedValue([]);
-    ({ app } = await buildTestApp({ render: { findMany } }));
+    ({ app } = await buildTestApp({ order: { findMany } }));
     const response = await app.inject({
       method: "GET",
-      url: "/api/v1/operator/renders",
+      url: "/api/v1/operator/orders",
       headers: { cookie: operatorSessionCookie() },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ renders: [] });
-  });
-
-  it("stamps reviewedById from the session on render approval (FR-027)", async () => {
-    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
-    // Approval also auto-populates the cart (FR-031) — stub what that path needs.
-    const txStub = {
-      cart: { upsert: vi.fn().mockResolvedValue({ id: "cart_1", status: "draft" }) },
-      cartItem: {
-        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        createMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-    };
-    ({ app } = await buildTestApp({
-      render: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({ id: "r1", projectId: "p1", reviewStatus: "pending_review" }),
-        updateMany,
-      },
-      renderItem: { findMany: vi.fn().mockResolvedValue([]) },
-      $transaction: vi.fn(async (fn: (t: typeof txStub) => Promise<void>) => fn(txStub)),
-    }));
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/operator/renders/r1/approve",
-      headers: { cookie: operatorSessionCookie({ operatorId: "op_reviewer" }) },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ reviewedById: "op_reviewer" }),
-      }),
-    );
+    expect(response.json()).toEqual({ orders: [] });
   });
 
   it("stamps forwardedById from the session on order forward (FR-061)", async () => {

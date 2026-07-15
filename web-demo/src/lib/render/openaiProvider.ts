@@ -7,8 +7,9 @@
 // confirm the exact image-edit / image-generation endpoint, request shape, and
 // parameters against the current provider docs — the image-editing API surface
 // changes over time and is intentionally not hardcoded here. The pilot render
-// pipeline (ADR-002) is "match real SKUs -> composite their product images into
-// the room photo -> operator QA". A real implementation would:
+// pipeline (ADR-002; its operator-QA clause superseded by ADR-025) is "match
+// real SKUs -> composite their product images into the room photo". A real
+// implementation would:
 //   1. Take the user's room photo + the matched catalog product images.
 //   2. Call the hosted image-edit endpoint to composite them at believable scale.
 //   3. Return the generated image (URL/bytes) plus tag coordinates.

@@ -217,9 +217,26 @@ below).
   from the target spec; TC-051–TC-053 and the render-review state-machine
   preconditions among TC-107..109 are retired. Catalog curation
   (FEAT-015/curator) and order forwarding (FEAT-011/handler) keep their
-  operator flows. Recording a decision is not building it: the code on
-  `develop` still implements the review flow; the docs are now the target spec
-  for the next development iteration (work item in `05_backlog.md`, issue #38).
+  operator flows. Recording a decision is not building it: at decision time the
+  code on `develop` still implemented the review flow; the removal is the
+  FEAT-016 work item (`05_backlog.md`, issue #38 — see the next entry).
+
+- **Render review flow removed from code (FEAT-016, #38).** The ADR-025
+  implementation: the operator render approve/reject endpoints and the
+  `pending_review` queue read, the `RenderReviewStatus` review states with
+  `reviewed_by`/`reviewed_at` stamping on renders (dropped via one schema
+  migration), the `render_reviewer` operator role, the `render_approved` event,
+  the console's render-review tab, and the web app's waiting-for-approval /
+  rejected screens are **deleted**. Renders are published to the requesting
+  user immediately on generation success (generation states only:
+  `queued`/`processing`/`completed`/`failed`), and the FR-031 cart
+  auto-populate fires on the same generation-success path — no operator action
+  between render generation and cart. Catalog curation (curator) and order
+  forwarding (handler) are untouched; NFR-007 device scoping stands.
+  TC-051–TC-053 and TC-108 retire with the gate and the automated suites are
+  re-pointed at the surviving flows (`08_test_plan.md`); feature doc:
+  `docs_en/features/FEAT-016_autonomous-render-publication.md`. Still nothing
+  is deployed and no requirement is listed as covered.
 
 - **Class-demo scope recorded, and what it supersedes *for the demo only*.** New
   **`ADR-023`** (with `docs_en/13_class_demo_scope.md`) records how the

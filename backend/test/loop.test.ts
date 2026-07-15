@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, } from "fastify";
 import type { PrismaClient } from "@prisma/client";
-import { buildTestApp, operatorSessionCookie } from "./helpers.js";
+import { buildTestApp } from "./helpers.js";
 import { matchProducts, DEFAULT_MATCH_LIMIT } from "../src/services/matching.js";
 import { populateCartFromRender } from "../src/services/cart.js";
 import { registerRenderWorker } from "../src/jobs/renderWorker.js";
 import { InMemoryQueue, type RenderJob } from "../src/jobs/queue.js";
-import { FakeRenderPipeline } from "../src/services/render/pipeline.js";
+import { FakeRenderPipeline, type RenderPipeline } from "../src/services/render/pipeline.js";
 
 /** A complete, approved, in-stock product row for matching tests. */
 function product(overrides: Partial<Record<string, unknown>> = {}) {
@@ -81,13 +81,18 @@ describe("matchProducts (FEAT-005 subset)", () => {
   });
 });
 
-describe("render worker (match → render → persist, plan §1.5)", () => {
-  it("persists one RenderItem per matched SKU with the real price snapshot", async () => {
-    const matched = [
-      product({ id: "prod_a", priceCop: 250_000 }),
-      product({ id: "prod_b", priceCop: 150_000 }),
-    ];
-    const createMany = vi.fn().mockResolvedValue({ count: 2 });
+describe("render worker (match → render → persist → publish, plan §1.5 / ADR-025)", () => {
+  /** Prisma mock covering the whole worker path, including cart auto-populate. */
+  function workerPrisma(matched: Array<Record<string, unknown>>) {
+    const renderItemCreateMany = vi.fn().mockResolvedValue({ count: matched.length });
+    const requestUpdate = vi.fn().mockResolvedValue({});
+    const cartUpsert = vi.fn().mockResolvedValue({ id: "cart_1", status: "draft" });
+    const cartItemDeleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const cartItemCreateMany = vi.fn().mockResolvedValue({ count: matched.length });
+    const tx = {
+      cart: { upsert: cartUpsert },
+      cartItem: { deleteMany: cartItemDeleteMany, createMany: cartItemCreateMany },
+    };
     const prisma = prismaWith({
       render: {
         findUnique: vi.fn().mockResolvedValue({
@@ -106,25 +111,77 @@ describe("render worker (match → render → persist, plan §1.5)", () => {
       },
       roomPhoto: { findFirst: vi.fn().mockResolvedValue({ storageKey: "photos/p1.jpg" }) },
       product: { findMany: vi.fn().mockResolvedValue(matched) },
-      renderItem: { createMany },
-      renderRequest: { update: vi.fn().mockResolvedValue({}) },
+      renderItem: {
+        createMany: renderItemCreateMany,
+        findMany: vi
+          .fn()
+          .mockResolvedValue(
+            matched.map((p) => ({ productId: p.id, priceCopSnapshot: p.priceCop })),
+          ),
+      },
+      renderRequest: { update: requestUpdate },
+      $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<void>) => fn(tx)),
     });
+    return {
+      prisma,
+      mocks: { renderItemCreateMany, requestUpdate, cartUpsert, cartItemCreateMany },
+    };
+  }
 
+  async function runJob(prisma: PrismaClient, pipeline: RenderPipeline) {
     const queue = new InMemoryQueue<RenderJob>();
-    registerRenderWorker(queue, prisma, new FakeRenderPipeline());
+    registerRenderWorker(queue, prisma, pipeline);
     await queue.enqueue({ renderId: "r1" });
     await new Promise((resolve) => setTimeout(resolve, 0)); // let the microtask drain
+  }
 
-    expect(createMany).toHaveBeenCalledTimes(1);
-    const data = createMany.mock.calls[0]?.[0]?.data as Array<Record<string, unknown>>;
+  it("persists one RenderItem per matched SKU with the real price snapshot", async () => {
+    const { prisma, mocks } = workerPrisma([
+      product({ id: "prod_a", priceCop: 250_000 }),
+      product({ id: "prod_b", priceCop: 150_000 }),
+    ]);
+    await runJob(prisma, new FakeRenderPipeline());
+
+    expect(mocks.renderItemCreateMany).toHaveBeenCalledTimes(1);
+    const data = mocks.renderItemCreateMany.mock.calls[0]?.[0]?.data as Array<
+      Record<string, unknown>
+    >;
     expect(data.map((d) => [d.productId, d.priceCopSnapshot])).toEqual([
       ["prod_a", 250_000],
       ["prod_b", 150_000],
     ]);
   });
+
+  it("publishes on generation success: cart auto-populated, request completed, no operator action (FR-031, ADR-025)", async () => {
+    const { prisma, mocks } = workerPrisma([product({ id: "prod_a", priceCop: 250_000 })]);
+    await runJob(prisma, new FakeRenderPipeline());
+
+    expect(mocks.cartUpsert).toHaveBeenCalled();
+    expect(mocks.cartItemCreateMany).toHaveBeenCalledWith({
+      data: [{ cartId: "cart_1", productId: "prod_a", priceCopSnapshot: 250_000 }],
+    });
+    expect(mocks.requestUpdate).toHaveBeenLastCalledWith({
+      where: { id: "rr1" },
+      data: { status: "completed" },
+    });
+  });
+
+  it("marks the request failed when the pipeline throws (no cart populated)", async () => {
+    const { prisma, mocks } = workerPrisma([product({ id: "prod_a", priceCop: 250_000 })]);
+    const failing: RenderPipeline = {
+      generate: vi.fn().mockRejectedValue(new Error("pipeline down")),
+    };
+    await runJob(prisma, failing);
+
+    expect(mocks.requestUpdate).toHaveBeenLastCalledWith({
+      where: { id: "rr1" },
+      data: { status: "failed" },
+    });
+    expect(mocks.cartUpsert).not.toHaveBeenCalled();
+  });
 });
 
-describe("cart auto-populate on approval (FR-031)", () => {
+describe("cart auto-populate on generation success (FR-031, ADR-025)", () => {
   function cartPrisma(cartStatus: "draft" | "confirmed") {
     const upsert = vi.fn().mockResolvedValue({ id: "cart_1", status: cartStatus });
     const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
@@ -158,49 +215,6 @@ describe("cart auto-populate on approval (FR-031)", () => {
     await populateCartFromRender(prismaWith(overrides), { id: "r1", projectId: "proj_1" });
     expect(mocks.deleteMany).not.toHaveBeenCalled();
     expect(mocks.createMany).not.toHaveBeenCalled();
-  });
-});
-
-describe("operator approval triggers auto-populate end-to-end", () => {
-  let app: FastifyInstance | undefined;
-
-  afterEach(async () => {
-    await app?.close();
-  });
-
-  it("POST /operator/renders/:id/approve populates the cart and emits render_approved", async () => {
-    const upsert = vi.fn().mockResolvedValue({ id: "cart_1", status: "draft" });
-    const createMany = vi.fn().mockResolvedValue({ count: 1 });
-    const eventCreate = vi.fn().mockResolvedValue({ id: "evt_1" });
-    const txStub = {
-      cart: { upsert },
-      cartItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), createMany },
-    };
-    ({ app } = await buildTestApp({
-      render: {
-        findUnique: vi
-          .fn()
-          .mockResolvedValue({ id: "r1", projectId: "proj_1", reviewStatus: "pending_review" }),
-        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-      },
-      renderItem: {
-        findMany: vi.fn().mockResolvedValue([{ productId: "prod_a", priceCopSnapshot: 1 }]),
-      },
-      $transaction: vi.fn(async (fn: (t: typeof txStub) => Promise<void>) => fn(txStub)),
-      event: { create: eventCreate },
-    }));
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/operator/renders/r1/approve",
-      headers: { cookie: operatorSessionCookie() },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(upsert).toHaveBeenCalled();
-    expect(createMany).toHaveBeenCalled();
-    expect(eventCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ type: "render_approved" }) }),
-    );
   });
 });
 

@@ -17,7 +17,7 @@ const LOADING_MESSAGES = [
 
 const POLL_MS = 2500;
 
-type Phase = "loading" | "reviewing" | "rejected" | "ready" | "error";
+type Phase = "loading" | "generating" | "ready" | "error";
 
 export default function RenderPage() {
   const router = useRouter();
@@ -45,14 +45,15 @@ export default function RenderPage() {
 
   // Rotate loading messages.
   useEffect(() => {
-    if (phase !== "loading") return;
+    if (phase !== "loading" && phase !== "generating") return;
     const t = setInterval(() => setMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length), 900);
     return () => clearInterval(t);
   }, [phase]);
 
   // Kick off the render: the cached visual (ADR-002 vendor still open) plus the
-  // REAL backend job — submit → poll, released only after operator approval
-  // (FR-027). Both run together; the operator gate is what the user waits on.
+  // REAL backend job — submit → poll; the render is published to the user
+  // immediately on generation success (ADR-025). Both run together; generation
+  // is what the user waits on.
   useEffect(() => {
     if (!room || !style) return;
     const key = `${room.id}:${style.id}`;
@@ -77,7 +78,7 @@ export default function RenderPage() {
         ]);
         if (cancelled) return;
         setRenderVisual(visual);
-        setPhase("reviewing");
+        setPhase("generating");
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : "Could not start the render.");
@@ -91,19 +92,23 @@ export default function RenderPage() {
     };
   }, [room, style, submitRender, setRenderVisual]);
 
-  // Poll while the operator reviews (plan §1.1: the poll may legitimately stay
-  // pending_review for a while — there is no render SLA, ADR-013).
+  // Poll while the backend generates (the poll may legitimately stay
+  // queued/processing for a while — ~2–5 min soft target, no hard render SLA,
+  // ADR-013).
   useEffect(() => {
-    if (phase !== "reviewing") return;
+    if (phase !== "generating") return;
     let stopped = false;
     const tick = async () => {
       try {
         const status = await refreshRender();
         if (stopped) return;
-        if (status === "approved") setPhase("ready");
-        else if (status === "rejected") setPhase("rejected");
+        if (status === "completed") setPhase("ready");
+        else if (status === "failed") {
+          setError("The render could not be generated. Try again or adjust the style.");
+          setPhase("error");
+        }
       } catch {
-        // Transient poll failure — keep polling; the operator gate is async.
+        // Transient poll failure — keep polling; generation is async.
       }
     };
     void tick();
@@ -147,7 +152,7 @@ export default function RenderPage() {
     return (
       <div className="animate-fade-up flex min-h-[60vh] flex-col items-center justify-center text-center">
         <div className="relative grid h-20 w-20 place-items-center">
-          {(phase === "loading" || phase === "reviewing") && (
+          {(phase === "loading" || phase === "generating") && (
             <>
               <span className="absolute inset-0 animate-ping2 rounded-full bg-forest-800/30" />
               <span className="absolute inset-0 animate-pulse2 rounded-full bg-forest-800/15" />
@@ -165,53 +170,16 @@ export default function RenderPage() {
           </span>
         </div>
 
-        {phase === "loading" && (
+        {(phase === "loading" || phase === "generating") && (
           <>
             <h1 className="mt-8 font-serif text-2xl text-forest-900">Generating your render</h1>
             <p className="mt-2 h-5 text-muted/70 transition-all">{LOADING_MESSAGES[msgIndex]}</p>
-          </>
-        )}
-
-        {phase === "reviewing" && (
-          <>
-            <h1 className="mt-8 font-serif text-2xl text-forest-900">
-              A Spazio operator is reviewing your render
-            </h1>
-            <p className="mt-2 max-w-sm text-muted/70">
-              Every render is checked by a person before you see it, so what you buy is exactly
-              what you saw. This usually takes a few minutes.
-            </p>
-            <p className="mt-4 max-w-xs text-xs text-muted/50">
-              Running locally? Approve it in the operator console at{" "}
-              <span className="font-mono">/operator/console</span> on the backend.
-            </p>
-          </>
-        )}
-
-        {phase === "rejected" && (
-          <>
-            <h1 className="mt-8 font-serif text-2xl text-forest-900">
-              That render didn&apos;t pass review
-            </h1>
-            <p className="mt-2 max-w-sm text-muted/70">
-              Our operator rejected this composition — it happens when the result wouldn&apos;t do
-              your room justice. Try again or adjust the style.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  startedKey.current = null;
-                  setPhase("loading");
-                }}
-                className="btn-primary"
-              >
-                Try again
-              </button>
-              <button type="button" onClick={() => router.push("/style")} className="btn-secondary">
-                Change style
-              </button>
-            </div>
+            {phase === "generating" && (
+              <p className="mt-4 max-w-sm text-xs text-muted/50">
+                Your render appears here the moment it&apos;s ready — this usually takes a few
+                minutes.
+              </p>
+            )}
           </>
         )}
 
@@ -249,7 +217,7 @@ export default function RenderPage() {
             Your furnished {roomName?.toLowerCase()}
           </h1>
           <p className="mt-1 text-muted/70">
-            {styleName} · operator-approved · tap a dot to view a real, purchasable product.
+            {styleName} · tap a dot to view a real, purchasable product.
           </p>
         </div>
         <span className="chip bg-forest-800/10 text-forest-900">

@@ -12,20 +12,21 @@ for async render jobs.
 ## Scope (pilot boundaries)
 
 Built strictly to the pilot scope: single market (Bogota / COP), no end-user
-accounts (device token), operator-curated catalog, mandatory operator render QA,
+accounts (device token), operator-curated catalog, renders published immediately
+on generation success (ADR-025 — no operator render QA),
 single COP capture with manual payout, purchase orders created at checkout and
 forwarded manually. Deferred features (stock holds, split settlement, warranty
 display, keep-or-replace, render metering, sponsored placement, manual add-to-cart)
 are intentionally absent — see the comments in `prisma/schema.prisma` and the route
 files.
 
-> **Note (ADR-025, 2026-07-14):** the operator render-review flow this README
-> describes (mandatory render QA, the `render_reviewer` role, `GET /operator/renders`,
-> `POST /operator/renders/:id/approve|reject`, the `pending_review` state) is slated
-> for removal in the next development iteration — renders will be published
-> immediately on generation success. This README describes the code as it stands
-> today; the target spec lives in `docs_en/`
-> (`../docs_en/decisions/ADR-025_autonomous-render-publication.md`).
+> **Note (ADR-025, 2026-07-14):** the operator render-review flow this scaffold
+> originally shipped (mandatory render QA, the `render_reviewer` role, `GET /operator/renders`,
+> `POST /operator/renders/:id/approve|reject`, the `pending_review` state) has been
+> removed from the code — implemented by **FEAT-016 (#38)**: renders are published
+> immediately on generation success, with no operator action between render
+> generation and cart. The decision record lives in
+> `../docs_en/decisions/ADR-025_autonomous-render-publication.md`.
 
 ## Prerequisites
 
@@ -52,7 +53,7 @@ npm run db:migrate
 npm run db:seed
 
 # 6. create an operator console account (password prompted, hidden input)
-npm run operator:create -- --email you@example.com --name "You" --role render_reviewer
+npm run operator:create -- --email you@example.com --name "You"   # omit --role for all-purpose
 
 # 7. run the dev server (loads ./.env natively)
 npm run dev
@@ -85,12 +86,13 @@ lands in shell history; for non-interactive use, export `OPERATOR_PASSWORD` from
 hidden read — see `scripts/create-operator.ts`):
 
 ```bash
-npm run operator:create -- --email ana@spazio.example --name "Ana" --role render_reviewer
+npm run operator:create -- --email ana@spazio.example --name "Ana" --role catalog_curator
 ```
 
 Roles are enforced per action (#34): `catalog_curator` gates catalog create/edit/
-approve/reject, `render_reviewer` gates render approve/reject, `order_handler`
-gates forwarding; an operator created **without** a role is all-purpose. Client
+approve/reject and `order_handler` gates forwarding (the `render_reviewer` role
+was retired with the render-review gate — ADR-025 / FEAT-016); an operator
+created **without** a role is all-purpose. Client
 endpoints are scoped by the anonymous `x-device-token` header (NFR-007) — one
 device cannot read another device's renders, cart, or orders.
 
@@ -109,8 +111,8 @@ whoami / logout) are the unauthenticated exceptions.
 - Operator: `POST/GET/DELETE /operator/session`,
   `GET/POST/PATCH /operator/catalog/products`,
   `POST /operator/catalog/products/:id/approve|reject`,
-  `GET /operator/renders`, `POST /operator/renders/:id/approve|reject`,
   `GET /operator/orders`, `POST /operator/orders/:id/forward`.
+  *(The render approve/reject/queue endpoints were removed — ADR-025 / FEAT-016.)*
 - Console shell (static, unversioned): `GET /operator/console` (+ `app.js`, `styles.css`).
 
 `POST /cart/items` (manual add-to-cart, FR-030) is intentionally **not** registered.
