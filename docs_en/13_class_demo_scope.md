@@ -52,7 +52,7 @@ Two further notes on fidelity:
 The demo is an 8-step flow across 7 routes (the product detail sheet, step 5, is a modal overlay rather than a route):
 
 1. `/` — landing (value prop + Start).
-2. `/room` — pick a sample living room or bedroom, or "upload" (in demo mode an upload routes to a prepared result); approximate dimensions.
+2. `/room` — **upload a photo of your room** (primary; real image bytes are sent to the backend and composited by the engine — ADR-026), or, with no photo handy, pick the **single real sample photo** ("No photo handy? Try a sample"); approximate dimensions. *(As built 2026-07-15: the two prior illustration samples were replaced by one real sample photo; upload is no longer routed to a preset — see FEAT-002.)*
 3. `/style` — pick a style (**Modern Mediterranean**, **Warm Minimalist**, **Scandinavian**), optional free-text note, and a **COP budget slider** (2,000,000 – 12,000,000).
 4. `/render` — a simulated "generating…" state, then the furnished render with **tappable product hotspots** and a budget indicator (**10% tolerance**).
 5. **Product detail sheet** (`ProductSheet.tsx`) — image, name, price (COP), supplier, category, lead time, add/remove.

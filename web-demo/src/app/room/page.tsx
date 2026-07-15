@@ -68,66 +68,73 @@ export default function RoomPage() {
         Which room are we furnishing?
       </h1>
       <p className="mt-2 max-w-xl text-muted/75">
-        Choose a sample room or upload a photo of your own space.
+        Upload a photo of your room — the AI furnishes your actual space. No photo
+        handy? Try the sample below.
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        {ROOMS.map((r) => {
-          const active = selected === r.id && !uploaded;
-          return (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => choose(r.id)}
-              aria-pressed={active}
-              className={`card overflow-hidden text-left transition-all hover:-translate-y-0.5 hover:shadow-sheet ${
-                active ? "ring-2 ring-forest-800" : ""
-              }`}
-            >
-              <img
-                src={r.thumbnail}
-                alt={`${r.name} — empty`}
-                className="block aspect-[3/2] w-full object-cover"
-              />
-              <div className="flex items-start justify-between gap-2 p-4">
-                <div>
-                  <h3 className="font-semibold text-forest-900">{r.name}</h3>
-                  <p className="mt-1 text-xs text-muted/70">{r.blurb}</p>
-                </div>
-                {active && (
-                  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-forest-800 text-xs text-cream-50">
-                    ✓
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
+      {/* Primary action: upload your own room photo. */}
+      <label
+        className={`card mt-8 flex cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed p-10 text-center transition-all hover:-translate-y-0.5 hover:shadow-sheet ${
+          uploaded ? "ring-2 ring-forest-800" : ""
+        }`}
+      >
+        <span className="grid h-14 w-14 place-items-center rounded-full bg-forest-800/10 text-3xl text-forest-800">
+          ↑
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-forest-900">
+            Upload a photo of your room
+          </h2>
+          <p className="mt-1 text-sm text-muted/70">
+            {uploaded && file
+              ? `${file.name} — we'll render your photo.`
+              : "JPG, PNG or WebP — this is your actual space."}
+          </p>
+        </div>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={onUpload}
+        />
+      </label>
 
-        {/* Upload card */}
-        <label
-          className={`card flex cursor-pointer flex-col items-center justify-center gap-3 border-dashed p-6 text-center transition-all hover:-translate-y-0.5 hover:shadow-sheet ${
-            uploaded ? "ring-2 ring-wood" : ""
-          }`}
-        >
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-wood/15 text-2xl text-wood-dark">
-            ↑
-          </span>
-          <div>
-            <h3 className="font-semibold text-forest-900">Upload a photo</h3>
-            <p className="mt-1 text-xs text-muted/70">
-              {uploaded && file
-                ? `${file.name} — we'll render your photo.`
-                : "JPG, PNG or WebP of your room"}
-            </p>
-          </div>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            onChange={onUpload}
-          />
-        </label>
+      {/* Secondary: one real sample photo, for when the user has no photo handy. */}
+      <div className="mt-6">
+        <p className="text-sm font-medium text-muted/75">No photo handy? Try a sample:</p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          {ROOMS.map((r) => {
+            const active = selected === r.id && !uploaded;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => choose(r.id)}
+                aria-pressed={active}
+                className={`card overflow-hidden text-left transition-all hover:-translate-y-0.5 hover:shadow-sheet ${
+                  active ? "ring-2 ring-forest-800" : ""
+                }`}
+              >
+                <img
+                  src={r.thumbnail}
+                  alt={`${r.name} — empty`}
+                  className="block aspect-[3/2] w-full object-cover"
+                />
+                <div className="flex items-start justify-between gap-2 p-4">
+                  <div>
+                    <h3 className="font-semibold text-forest-900">{r.name}</h3>
+                    <p className="mt-1 text-xs text-muted/70">{r.blurb}</p>
+                  </div>
+                  {active && (
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-forest-800 text-xs text-cream-50">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Dimensions */}
