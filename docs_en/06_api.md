@@ -515,15 +515,20 @@ gate is retired).
 
 - **Related requirements:** FR-015; NFR-004 (graceful degradation), NFR-007 (device-scoped). **(BUG-002.)**
 
-> **Render hard timeout (BUG-002, 2026-07-15).** Independent of any client, the
-> render pipeline enforces a **hard cap** on a single mflux run
-> (`RENDER_TIMEOUT_MS`, default `360000` = 6 min). If the child hangs — e.g. the
-> render host is out of RAM and the model never loads — it is **SIGKILLed** at the
-> cap and the render is marked **`failed`**. This self-heals even when the browser
-> is closed: a request never stays `processing` forever and no orphan child
-> survives past the cap. The cancel route above is the client-driven fast path;
-> the timeout is the backend-enforced backstop (a browser cannot kill a server
-> process). Realizes NFR-004; no new decision (no ADR).
+> **Render hard timeout (BUG-002, 2026-07-15; budget raised by BUG-004,
+> 2026-07-16).** Independent of any client, the render pipeline enforces a
+> **hard cap** on a single mflux run (`RENDER_TIMEOUT_MS`, default `900000` =
+> 15 min). If the child hangs — e.g. the render host is out of RAM and the model
+> never loads — it is **SIGKILLed** at the cap and the render is marked
+> **`failed`**. This self-heals even when the browser is closed: a request never
+> stays `processing` forever and no orphan child survives past the cap. The
+> cancel route above is the client-driven fast path; the timeout is the
+> backend-enforced backstop (a browser cannot kill a server process). Realizes
+> NFR-004; no new decision (no ADR). *(BUG-004: the original 6-min default was
+> killing healthy renders — a worst-case 3-reference-product render measures
+> ~10 min on the M2 render host (~75 s per diffusion step × 8), so the cap now
+> sits above real work; the ~2–5 min figure remains a soft target with no hard
+> SLA, ADR-013/NFR-001.)*
 
 ### `POST /api/v1/renders/{renderId}/edits`
 

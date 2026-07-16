@@ -63,8 +63,11 @@ const envSchema = z.object({
   // Hard cap (ms) on a single render (BUG-002 / NFR-004 graceful degradation). If
   // the mflux child hangs (OOM, model never loads) it is SIGKILLed at this cap and
   // the render fails — so a request never stays 'processing' forever and no orphan
-  // child survives past it. Default 360000 = 6 min.
-  RENDER_TIMEOUT_MS: numberFromString(360000),
+  // child survives past it. Default 900000 = 15 min: a healthy worst-case render
+  // (3 reference products) measures ~10 min on the M2 render host (~75 s/step × 8,
+  // BUG-004), so the cap must sit above real work, not just hangs. The web client's
+  // CLIENT_TIMEOUT_MS backstop must stay above this value.
+  RENDER_TIMEOUT_MS: numberFromString(900000),
 
   // Payments (single COP capture, ADR-003/004). Placeholder vendor fields.
   PAYMENT_DRIVER: z.enum(["fake"]).default("fake"),
