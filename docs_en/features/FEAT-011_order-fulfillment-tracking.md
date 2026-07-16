@@ -90,7 +90,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` rows for this feature's FRs **already exist** in `08_test_plan.md` (all with `Status: Pending`, since nothing is implemented): **TC-081** and **TC-082** (FR-047), and **TC-106** (FR-061).
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` rows for this feature's FRs **already exist** in `08_test_plan.md` (all with `Status: Pending`): **TC-081** and **TC-082** (FR-047), and **TC-106** (FR-061). **Build-status correction (2026-07-15):** the pilot slice FR-061 (operator manually forwards a paid order) is **built and verified on a local stack** — `GET /api/v1/operator/orders?status=paid_unforwarded` and `POST /api/v1/operator/orders/:id/forward` (gated by the `order_handler` role, `paid_unforwarded → forwarded`, with a `forwarded_by`/`forwarded_at` audit trail) run against the backend — so the earlier "since nothing is implemented" boilerplate is superseded for FR-061; `Pending` there means **TCs pending automation**. FR-047 (customer-facing per-purchase-order status/tracking) remains out of pilot/specification.
 
 The tests for this feature are the following `TC-` rows in `08_test_plan.md`, grouped by related FR:
 

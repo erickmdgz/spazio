@@ -90,7 +90,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist in `08_test_plan.md`** (the rows tagged `FEAT-003 Style & budget selection`), all with status `Pending` — that status reflects the validity of the case, not an execution result; nothing here is implemented.
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist in `08_test_plan.md`** (the rows tagged `FEAT-003 Style & budget selection`), all with status `Pending` — that status reflects the validity of the case, not an execution result. **Build-status correction (2026-07-15):** the pilot slice (FR-007 style, FR-008 free-text, FR-009 budget) is **built and verified on a local stack** — the `/style` step of the web app persists style/free-text/budget to the backend `Project` (with the ADR-028 SOURCE toggle added alongside) — so the earlier "nothing here is implemented" boilerplate is superseded; `Pending` here means **TCs pending automation**, not code-not-built. FR-010 (free-text room-change description) remains out of pilot/specification.
 
 The tests for this feature are the following `TC-` rows in `08_test_plan.md`, mapped to its related FRs:
 

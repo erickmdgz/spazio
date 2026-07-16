@@ -1,6 +1,8 @@
 # FEAT-016 - Autonomous render publication (remove the operator render-review gate)
 
 > **Type: Refactor** (see `05_backlog.md`) · **Issue: #38** · **Decision: ADR-025** (`docs_en/decisions/ADR-025_autonomous-render-publication.md`, 2026-07-14). This feature implements in code a decision already recorded and already reflected in the target-state docs (PRs #37/#39): where code and spec disagree, code moves to the spec.
+>
+> **As built (2026-07-15) — done and verified on a local stack (not deployed).** The removal is complete in the code: the schema carries **no** `RenderReviewStatus` enum and **no** `Render.reviewStatus` / `reviewedAt` / `reviewedById` fields; `OperatorRole` has only `catalog_curator` and `order_handler` (no `render_reviewer`); there is **no** `backend/src/routes/operator/renders.ts` and no render approve/reject/queue registration in `app.ts`; the client render routes expose generation status only (`queued`/`processing`/`completed`/`failed`) and a completed render is immediately visible to its owner; and the FR-031 cart auto-populate fires on the render worker's generation-success path. The section 12 "before closing" checklist below is left as the original template state and does not reflect this verified status.
 
 ## 1. Summary
 

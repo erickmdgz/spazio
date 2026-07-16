@@ -337,9 +337,9 @@ is created with that `storageKey` and `qualityStatus: "pending"`.
 Pilot is fixed to **one delivery zone (Bogotá) and one currency (COP)**, so these
 endpoints are effectively constant in the pilot.
 
-### `GET /api/v1/localization/resolve`
+### `GET /api/v1/localization/resolve` *(as built, single-market Bogotá/COP — 2026-07-15)*
 
-- **Purpose (VERIFIED):** From the user's location, determine the applicable suppliers (BR-11), the delivery zone, and the local display currency.
+- **Purpose (VERIFIED):** From the user's location, determine the applicable suppliers (BR-11), the delivery zone, and the local display currency. **As built (single-market):** returns a constant Bogotá/COP payload (`backend/src/routes/client/localization.ts`, registered in `app.ts`, asserted registered in `backend/test/routes.test.ts`); verified on a local stack, not deployed. Multi-market resolution stays DRAFT (see FEAT-004).
 - **Related requirements:** FR-012, FR-013, FR-046 (BR-27); NFR-017.
 
 ### `GET /api/v1/delivery/coverage`
@@ -361,14 +361,14 @@ The core render is **pilot core**; renders are published immediately on generati
 ### `GET /api/v1/catalog` *(client browse — ADR-028, 2026-07-15)*
 
 - **Purpose (ADR-028):** back the browse-and-select step (FEAT-018). Return the **approved, renderable** products of a given source and style so the user can pick up to 3 to render (**FR-066**). Reuses `services/productSummary` and the `styleId → style` matching helper used by matching (FR-014); adds an `imageUrl` per product.
-- **Query params:** `source` (`supplier` | `public`, required), `styleId` (required), `budgetMaxCop` (integer, optional — filter to products at or under this price). **`budgetMaxCop` applies to the `supplier` track only** — for `source=public` it is accepted but ignored, because public prices are informational for display-only items (ADR-027) and the web budget meter is a local-supplier concern (2026-07-15).
+- **Query params:** `source` (`supplier` | `public`, required), `styleId` (**optional — corrected 2026-07-15**: only `source` is required in the route schema; when `styleId` is present the listing is filtered to that style, when omitted **all** renderable products of that source are returned — a missing `styleId` is not a 400), `budgetMaxCop` (integer, optional — filter to products at or under this price). **`budgetMaxCop` applies to the `supplier` track only** — for `source=public` it is accepted but ignored, because public prices are informational for display-only items (ADR-027) and the web budget meter is a local-supplier concern (2026-07-15).
 - **Auth / scope:** **public**, **not** device-scoped (catalog is public data, like `GET /styles`, FR-066).
 - **Response:** `200 { "products": ProductSummary[] }` — each `ProductSummary` gains an `imageUrl`: for `source=public` → `/api/v1/catalog/products/<id>/image`; for `source=supplier` → the product's web-asset `photos[0]` (e.g. `/products/<sku>.svg`). `source=public` entries also carry the display-only fields (`source=public`, `outboundUrl`/`sourceUrl`, CC BY 4.0 `attribution`, "not sold by Spazio" label — FR-063/FR-064/FR-065). When no product matches, `products` is an empty array.
 
 | Code | Cause |
 |---|---|
-| 200 | Zero or more matching approved, renderable products of that source+style (optionally budget-filtered) |
-| 400 | Missing/invalid `source` or `styleId` |
+| 200 | Zero or more matching approved, renderable products of that source (optionally style- and budget-filtered) |
+| 400 | Missing or invalid `source` (`styleId` is optional — corrected 2026-07-15; only `source` is required) |
 
 - **Related requirements:** FR-066 *(ADR-028)*; FR-014 (shared style matching), FR-018/FR-019 (availability/completeness gates); FR-063–FR-065 *(ADR-027, public labeling)*.
 

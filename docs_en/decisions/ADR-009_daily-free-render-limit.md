@@ -6,7 +6,7 @@ Accepted. **Update (ADR-025, 2026-07-14):** the rationale "(every render is oper
 
 ## Context
 
-The PRD reserves the daily free-render limit as a human decision (PRD §12, "Human definitions": "Daily free-render limit"). Nothing is built yet.
+The PRD reserves the daily free-render limit as a human decision (PRD §12, "Human definitions": "Daily free-render limit"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
 
 What the PRD states:
 

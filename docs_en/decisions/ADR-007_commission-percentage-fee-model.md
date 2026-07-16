@@ -6,7 +6,7 @@ Accepted. **Scoped by ADR-027 (2026-07-15):** the commission model here governs 
 
 ## Context
 
-The PRD reserves the commission percentage as a human decision (PRD §12, "Human definitions": "Commission percentage"). Nothing is built yet.
+The PRD reserves the commission percentage as a human decision (PRD §12, "Human definitions": "Commission percentage"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
 
 What the PRD states:
 

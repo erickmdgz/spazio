@@ -6,7 +6,7 @@ Accepted. **Operator-QA clause superseded by ADR-025 (2026-07-14):** the MANDATO
 
 ## Context
 
-The PRD reserves the rendering / AI pipeline choice as a human decision (this ADR follows from PRD §12, "AI role," which lists building and maintaining the rendering pipeline, and from the pilot's Day-1 task to "set up the rendering pipeline and prompt"). Nothing is built yet.
+The PRD reserves the rendering / AI pipeline choice as a human decision (this ADR follows from PRD §12, "AI role," which lists building and maintaining the rendering pipeline, and from the pilot's Day-1 task to "set up the rendering pipeline and prompt"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
 
 This is the product's core and highest-risk area:
 

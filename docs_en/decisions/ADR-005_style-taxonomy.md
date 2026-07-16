@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-The PRD reserves the style taxonomy as a human decision (PRD §12, "Human definitions": "Style taxonomy"). Nothing is built yet.
+The PRD reserves the style taxonomy as a human decision (PRD §12, "Human definitions": "Style taxonomy"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
 
 The taxonomy is central to matching and rendering:
 
