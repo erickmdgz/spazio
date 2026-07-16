@@ -489,6 +489,42 @@ gate is retired).
 
 - **Related requirements:** FR-015 (real render displayed); NFR-007 (device-scoped, private).
 
+### `POST /api/v1/renders/:id/cancel` *(as built, BUG-002 — 2026-07-15)*
+
+- **Purpose (as built):** stop an **in-flight** render immediately so a stuck or
+  abandoned render stops consuming the render host's memory now, rather than at the
+  backend hard-timeout cap. The web client calls this on its own backstop timeout
+  and when the user navigates away from `/render` (BUG-002; NFR-004 graceful
+  degradation).
+- **Behaviour:** SIGKILLs any live mflux child registered for this render (via the
+  in-process render registry, `services/render/registry.ts`), then marks the
+  `RenderRequest` **`failed`** if it is still `queued`/`processing`. **Idempotent:**
+  cancelling an already-terminal render (`completed`/`failed`) is a no-op that still
+  answers `200`. **No new status value** — cancellation reuses `failed` (no schema
+  change).
+- **Auth / scope:** device-scoped exactly like the other `/renders` routes
+  (`requireDeviceToken` + render owned by the device). A foreign/unknown device or
+  unknown render gets **404**, no existence leak (NFR-007).
+- **Response:** `200 { "status": "failed" }`.
+
+| Code | Cause |
+|---|---|
+| 200 | Owned render; any live child killed and the request marked `failed` (or already terminal — idempotent) |
+| 401 | Missing `x-device-token` header |
+| 404 | Foreign/unknown device or render not owned (NFR-007) |
+
+- **Related requirements:** FR-015; NFR-004 (graceful degradation), NFR-007 (device-scoped). **(BUG-002.)**
+
+> **Render hard timeout (BUG-002, 2026-07-15).** Independent of any client, the
+> render pipeline enforces a **hard cap** on a single mflux run
+> (`RENDER_TIMEOUT_MS`, default `360000` = 6 min). If the child hangs — e.g. the
+> render host is out of RAM and the model never loads — it is **SIGKILLed** at the
+> cap and the render is marked **`failed`**. This self-heals even when the browser
+> is closed: a request never stays `processing` forever and no orphan child
+> survives past the cap. The cancel route above is the client-driven fast path;
+> the timeout is the backend-enforced backstop (a browser cannot kill a server
+> process). Realizes NFR-004; no new decision (no ADR).
+
 ### `POST /api/v1/renders/{renderId}/edits`
 
 - **Purpose (VERIFIED):** Apply a targeted edit that affects only the requested element (PRD FR-18); on repeated renders of the same scene the system may ask targeted refinement questions first (PRD FR-18). Each edit counts as one attempt (BR-20).

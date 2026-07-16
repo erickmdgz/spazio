@@ -94,6 +94,9 @@ const OPTIONS = {
   // the BUG-001 downscale has its own test below with maxImageEdge > 0.
   maxImageEdge: 0,
   pythonBin: "python3",
+  // Large so it never fires in the happy-path tests (their children close at once,
+  // clearing the timer); TC-136 overrides it with a tiny value to force a timeout.
+  timeoutMs: 600_000,
 };
 
 function baseInput(overrides: Partial<RenderPipelineInput> = {}): RenderPipelineInput {
@@ -299,5 +302,35 @@ describe("MfluxRenderPipeline", () => {
     ).rejects.toThrow(/requires a room photo/);
     expect(spawner).not.toHaveBeenCalled();
     expect(storage.get).not.toHaveBeenCalled();
+  });
+
+  // TC-136 (BUG-002 / FR-015 / NFR-004 graceful degradation): a hung mflux child
+  // never emits 'close'. Without a cap the render would stay 'processing' forever
+  // and orphan a memory-thrashing process. With a hard timeout the pipeline
+  // SIGKILLs the child and rejects, so the worker can mark the request 'failed'.
+  it("times out and SIGKILLs the child when the mflux run never finishes (TC-136)", async () => {
+    const kill = vi.fn();
+    // Spawner whose child emits neither 'close' nor 'error' — it just hangs.
+    const hangingSpawner: MfluxSpawner = () => {
+      const child = new EventEmitter() as EventEmitter & { stderr: EventEmitter; kill: typeof kill };
+      child.stderr = new EventEmitter();
+      child.kill = kill;
+      return child as unknown as ReturnType<MfluxSpawner>;
+    };
+    const storage = makeStorage(new Map([[ROOM_KEY, ROOM_BYTES]]));
+    const prisma = makePrisma({});
+
+    const pipeline = new MfluxRenderPipeline(
+      storage,
+      prisma,
+      { ...OPTIONS, timeoutMs: 50 },
+      hangingSpawner,
+    );
+
+    await expect(pipeline.generate(baseInput({ candidateProductIds: [] }))).rejects.toThrow(
+      /render timed out after/,
+    );
+    // The hung child was force-killed (no orphan survives past the cap).
+    expect(kill).toHaveBeenCalledWith("SIGKILL");
   });
 });

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { emit, EVENTS } from "../../events.js";
 import { productSummary } from "../../services/productSummary.js";
+import { cancel as cancelInFlightRender } from "../../services/render/registry.js";
 import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
 
 /** Hard cap on a user-curated selection (ADR-028): the Klein engine composites
@@ -29,6 +30,8 @@ interface CreateRenderBody {
  *                              a completed render is immediately visible (ADR-025)
  *  - GET  /renders/:id/image   stream the stored render image bytes (FR-015)
  *  - GET  /renders/:id/items   tagged products; emits render_viewed (FR-028/029, §0.1#8)
+ *  - POST /renders/:id/cancel  stop an in-flight render now — SIGKILL any running
+ *                              child and mark the request failed (BUG-002/NFR-004)
  */
 export const renderRoutes: FastifyPluginAsync = async (app) => {
   const { prisma, queue, storage } = app.deps;
@@ -148,6 +151,55 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
         status: render.renderRequest.status,
         imageKey: render.imageKey,
       });
+    },
+  );
+
+  // Cancel an in-flight render (BUG-002 / NFR-004 graceful degradation). The client
+  // calls this on its own timeout and when navigating away from /render, so leaving
+  // the page frees the render host's memory now rather than at the backend cap.
+  // Device-scoped exactly like the other /renders routes (NFR-007): a foreign or
+  // unknown device/render answers 404, no existence leak. It SIGKILLs any live
+  // mflux child via the registry, then marks the request `failed` if it is still
+  // queued/processing. Idempotent: cancelling an already-terminal render is a no-op
+  // that still returns 200. No new status value — cancellation reuses `failed`.
+  app.post<{ Params: { id: string } }>(
+    "/renders/:id/cancel",
+    {
+      schema: {
+        params: { type: "object", required: ["id"], properties: { id: { type: "string" } } },
+      },
+    },
+    async (request, reply) => {
+      const token = await requireDeviceToken(request, reply);
+      if (!token) return;
+      const render = await prisma.render.findUnique({
+        where: { id: request.params.id },
+        select: {
+          renderRequestId: true,
+          project: { select: { deviceToken: true } },
+          renderRequest: { select: { status: true } },
+        },
+      });
+      // Another device's (or an unknown) render answers 404 — no existence leak.
+      if (!render || render.project.deviceToken !== token) {
+        return reply.code(404).send({ error: "not_found", message: "Render not found." });
+      }
+
+      // Kill any live child immediately (frees memory now, not at the cap). No-op
+      // when nothing is in flight — the render may already have settled.
+      cancelInFlightRender(request.params.id);
+
+      // Mark failed only while still in flight; already-terminal is left untouched
+      // so cancel is idempotent (the killed child's pipeline reject also fails it).
+      const status = render.renderRequest.status;
+      if (status === "queued" || status === "processing") {
+        await prisma.renderRequest.update({
+          where: { id: render.renderRequestId },
+          data: { status: "failed" },
+        });
+      }
+
+      return reply.code(200).send({ status: "failed" });
     },
   );
 

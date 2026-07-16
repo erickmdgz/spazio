@@ -292,6 +292,29 @@ export function getRender(
   return request(`/renders/${renderId}`);
 }
 
+/**
+ * Cancels an in-flight render (BUG-002). POST /renders/:id/cancel is
+ * device-scoped (NFR-007) and idempotent: it kills any running mflux child on
+ * the backend and marks the request 'failed' if still queued/processing,
+ * returning 200 { status: 'failed' }. Best-effort and fire-and-forget — errors
+ * are swallowed and `keepalive` lets the request survive a page unload so
+ * navigating away from /render still stops the backend work. The backend hard
+ * timeout is the ultimate backstop if this never lands.
+ */
+export function cancelRender(renderId: string): void {
+  try {
+    void fetch(`/api/v1/renders/${renderId}/cancel`, {
+      method: "POST",
+      headers: { "x-device-token": deviceToken() },
+      keepalive: true,
+    }).catch(() => {
+      // best-effort — ignore network/HTTP errors
+    });
+  } catch {
+    // best-effort — ignore (e.g. fetch unavailable during teardown)
+  }
+}
+
 export function getRenderItems(
   renderId: string,
 ): Promise<{ renderId: string; items: BackendRenderItem[] }> {

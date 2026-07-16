@@ -37,6 +37,9 @@ async function main(): Promise<void> {
             (config.MFLUX_EDIT_BIN.includes("/")
               ? join(dirname(config.MFLUX_EDIT_BIN), "python3")
               : "python3"),
+          // Hard render timeout (BUG-002 / NFR-004): SIGKILL a hung mflux child at
+          // the cap so a request never stays 'processing' forever / orphans a child.
+          timeoutMs: config.RENDER_TIMEOUT_MS,
         })
       : new FakeRenderPipeline();
   const payments = new FakePaymentGateway();

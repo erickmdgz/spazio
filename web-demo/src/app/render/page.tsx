@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestRender } from "@/app/actions";
 import { ProductSheet } from "@/components/ProductSheet";
-import { fetchRenderImage, isPublicProduct, type ProductSummary } from "@/lib/api";
+import { cancelRender, fetchRenderImage, isPublicProduct, type ProductSummary } from "@/lib/api";
 import { formatCop } from "@/lib/format";
 import { getScenario, getRoom, getStyle } from "@/lib/scenarios";
 import { useDemo } from "@/lib/store";
@@ -17,6 +17,26 @@ const LOADING_MESSAGES = [
 ];
 
 const POLL_MS = 2500;
+
+// Client backstop timeout (BUG-002): a bit above the backend RENDER_TIMEOUT_MS
+// hard cap (default 6 min) so the backend normally fails first and polling sees
+// 'failed'. If that signal never arrives (e.g. the backend is unreachable), this
+// still moves the UI to the failed screen rather than spinning forever.
+const CLIENT_TIMEOUT_MS = 390_000; // 6.5 min
+
+// Seconds after which the failed screen auto-returns the user to /select so they
+// can adjust their picks and retry (their photo + source + style are kept).
+const REDIRECT_MS = 5_000;
+
+const FAILED_MESSAGE =
+  "It took too long or the engine ran out of memory — returning you to your selection so you can try again.";
+
+/** mm:ss for the elapsed-time readout while generating. */
+function formatElapsed(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 type Phase = "loading" | "generating" | "ready" | "error";
 
@@ -41,7 +61,15 @@ export default function RenderPage() {
   const [msgIndex, setMsgIndex] = useState(0);
   const [openProduct, setOpenProduct] = useState<ProductSummary | null>(null);
   const [backendImageUrl, setBackendImageUrl] = useState<string | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
   const startedKey = useRef<string | null>(null);
+
+  // Live mirrors of phase + renderId so the unmount cleanup (empty-deps effect)
+  // can cancel a still-running backend render without capturing stale values.
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const renderIdRef = useRef(renderId);
+  renderIdRef.current = renderId;
 
   // Soft guard: this step needs a room, a style, and a furniture selection
   // (ADR-028 — the user curates what gets rendered on /select).
@@ -114,7 +142,7 @@ export default function RenderPage() {
         if (stopped) return;
         if (status === "completed") setPhase("ready");
         else if (status === "failed") {
-          setError("The render could not be generated. Try again or adjust the style.");
+          setError(FAILED_MESSAGE);
           setPhase("error");
         }
       } catch {
@@ -128,6 +156,51 @@ export default function RenderPage() {
       clearInterval(t);
     };
   }, [phase, refreshRender]);
+
+  // Elapsed timer (mm:ss) while generating — reassures the user the render is
+  // still working and sets expectations against the multi-minute render time.
+  useEffect(() => {
+    if (phase !== "generating") {
+      setElapsedSec(0);
+      return;
+    }
+    const start = Date.now();
+    const t = setInterval(() => setElapsedSec(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [phase]);
+
+  // Client backstop timeout (BUG-002): if we're still generating past the cap,
+  // fail gracefully even without a backend 'failed' signal. The primary path
+  // stays the poll seeing status 'failed' (backend hard timeout / kill).
+  useEffect(() => {
+    if (phase !== "generating") return;
+    const t = setTimeout(() => {
+      setError(FAILED_MESSAGE);
+      setPhase("error");
+    }, CLIENT_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // On the failed screen (BUG-002): stop any lingering backend render now
+  // (best-effort cancel), then auto-return to /select after a few seconds so the
+  // user can adjust their picks and retry — their photo + source + style are kept.
+  useEffect(() => {
+    if (phase !== "error") return;
+    if (renderId) cancelRender(renderId);
+    const t = setTimeout(() => router.push("/select"), REDIRECT_MS);
+    return () => clearTimeout(t);
+  }, [phase, renderId, router]);
+
+  // Cancel on leave (BUG-002): if the user navigates away while a render is
+  // still generating, tell the backend to stop it now (keepalive fetch) rather
+  // than waiting for the hard-timeout cap to free the memory.
+  useEffect(() => {
+    return () => {
+      if (phaseRef.current === "generating" && renderIdRef.current) {
+        cancelRender(renderIdRef.current);
+      }
+    };
+  }, []);
 
   // Display the REAL backend render once it's ready: an <img> can't send the
   // x-device-token header (NFR-007), so fetch the stored bytes and turn the Blob
@@ -214,28 +287,36 @@ export default function RenderPage() {
             <h1 className="mt-8 font-serif text-2xl text-forest-900">Generating your render</h1>
             <p className="mt-2 h-5 text-muted/70 transition-all">{LOADING_MESSAGES[msgIndex]}</p>
             {phase === "generating" && (
-              <p className="mt-4 max-w-sm text-xs text-muted/50">
-                Your render appears here the moment it&apos;s ready — this usually takes a few
-                minutes.
-              </p>
+              <>
+                <p
+                  className="mt-3 font-mono text-sm tabular-nums text-muted/60"
+                  aria-label="Time elapsed"
+                >
+                  {formatElapsed(elapsedSec)}
+                </p>
+                <p className="mt-4 max-w-sm text-xs text-muted/50">
+                  Your render appears here the moment it&apos;s ready — this usually takes a few
+                  minutes.
+                </p>
+              </>
             )}
           </>
         )}
 
         {phase === "error" && (
           <>
-            <h1 className="mt-8 font-serif text-2xl text-forest-900">We hit a snag</h1>
-            <p className="mt-2 max-w-sm text-muted/70">{error}</p>
+            <h1 className="mt-8 font-serif text-2xl text-forest-900">
+              This render didn&apos;t finish
+            </h1>
+            <p className="mt-2 max-w-sm text-muted/70">{error ?? FAILED_MESSAGE}</p>
             <button
               type="button"
-              onClick={() => {
-                startedKey.current = null;
-                setPhase("loading");
-              }}
+              onClick={() => router.push("/select")}
               className="btn-primary mt-6"
             >
-              Retry
+              Try again
             </button>
+            <p className="mt-4 text-xs text-muted/50">Returning in a few seconds…</p>
           </>
         )}
 
