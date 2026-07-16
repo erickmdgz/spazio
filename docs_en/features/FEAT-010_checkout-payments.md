@@ -1,6 +1,6 @@
 # FEAT-010 - Checkout & payments
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** a single-COP **mock** checkout producing a per-supplier `PurchaseOrder` (forwarded manually) is implemented and **verified on a local stack (not deployed)**; the payment gateway is a mock/fake (ADR-003 vendor unchosen — no real money). Split settlement, guest checkout, and commission automation stay specification (full product).
 
 ## 1. Summary
 

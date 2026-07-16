@@ -6,29 +6,82 @@ one tagged `vX.Y.Z` per merge to `main`, entries in reverse-chronological order.
 Each release block keeps the same four sections: **Added**, **Fixed**,
 **Technical changes**, and **Requirements covered**.
 
-> **Read this first — documented is not built.** Everything in `/docs_en` is a
-> *specification*, not running software. No application code has been released.
-> No feature is available to users and no requirement is satisfied in a shipped
-> build. The sections below describe only the documentation pass, and they say
-> so explicitly wherever a section would otherwise imply delivery.
+> **Read this first (updated 2026-07-15) — built & verified locally, not yet
+> released.** A working **web app** (`web-demo/`, Next.js 15 + React 19 + TS +
+> Tailwind) wired to a **Node 22 / Fastify / Prisma / Postgres** backend with
+> local object storage is now **built and verified end-to-end on a local dev
+> stack** — see *Current system (as built)* under `[Unreleased]` for the delivered
+> pieces. What remains true: **nothing is deployed or released to production** (no
+> `vX.Y.Z` tag yet), checkout is a **mock** gateway (`ADR-003` vendor still
+> unchosen), the real render engine runs only with `RENDER_ENGINE=mflux` on an
+> Apple-Silicon host, and Local-supplier product images are **placeholders**.
+> Historical entries below that describe an earlier docs-only or scaffold state
+> are kept as dated history (this repo's additive convention); the current reality
+> is the *Current system (as built)* summary.
 
 ---
 
 ## [Unreleased]
 
-**Current state.** The repository has been bootstrapped and the product
-documentation has been seeded from **PRD v0.7** (`Spazio_PRD_v0.7.md`). Since that
-documentation pass, some code has begun landing on `develop`: a **class-project
-demo web app** (`web-demo/`), a **backend foundation scaffold** (`backend/`), and
-the **operator console shell + operator session auth** (`operator/` + backend,
-PR #27), all described under *Added* and *Technical changes* below. Even so,
-**nothing has been released, deployed, or run in production, and no requirement is
-satisfied in a shipped build**: the demo was only built and smoke-verified in an
-authoring sandbox, the backend is a foundation scaffold (typed route stubs and
-pilot schema; minimal business logic), and the operator console is a foundation
-shell (sign-in + three queue views; no feature UX; role enforcement arrived later — #34). This entry stays under
-`[Unreleased]` until the first `vX.Y.Z` tag is cut (see *First tagged release*
-below).
+**Current state (as built, updated 2026-07-15).** A working **web app**
+(`web-demo/`, Next.js 15 + React 19 + TypeScript + Tailwind) wired to a **Node 22
+/ Fastify / Prisma / Postgres** backend with **local object storage** is **built
+and verified end-to-end on a local dev stack**. This is the CURRENT platform — per
+**ADR-024** (2026-07-14) there is **no native iOS app**; the web app is the
+product. **Nothing is deployed or released to production** (no `vX.Y.Z` tag), so
+this entry stays under `[Unreleased]` until the first tag is cut (see *First
+tagged release* below). The repository was originally bootstrapped and seeded from
+**PRD v0.7** (`Spazio_PRD_v0.7.md`); the earlier docs-only, scaffold, and
+standalone-demo states are preserved as dated history in *Added* and *Technical
+changes* below.
+
+**Current system (as built) — delivered and verified on the local stack since the
+documentation pass:**
+
+- **Browse-and-select furnishing (FEAT-018 / ADR-028).** The flow is **inverted**
+  from the PRD §8 auto-furnish flow: the user uploads their room photo +
+  approximate dimensions, chooses a **source** and a **style** (+ COP budget),
+  **browses the real catalog and selects up to 3 products** (cap enforced
+  server-side, matching the render engine's ~2–3 reference-image limit), and
+  renders **exactly** that selection; "try other furniture" iterates (same
+  photo/source/style), "love it" proceeds to cart. Auto-match (FR-014/FR-015) is
+  now an **optional fallback**, run only when a render request carries no
+  selection.
+- **Self-hosted render engine (FEAT-005 / ADR-026).** Renders are produced by
+  **FLUX.2 Klein 4B via the mflux CLI** as a child process on an Apple-Silicon
+  render worker. `RENDER_ENGINE` defaults to **`fake`** (a placeholder/cached
+  visual that keeps CI hermetic); **`mflux`** runs the real engine.
+- **Autonomous render publication (FEAT-016 / ADR-025).** The operator
+  render-review gate is **removed entirely**; renders publish to the requesting
+  user **immediately on generation success**. No render-review role or review
+  states remain.
+- **Real photo upload + render display (FEAT-002).** `POST /projects/:id/photos`
+  ingests raw image **bytes** into object storage; a new device-scoped
+  `GET /renders/:id/image` streams the real backend render to the web app
+  (NFR-007 device scoping preserved).
+- **Large-photo downscale + EXIF orientation (BUG-001).** Inputs are downscaled to
+  `MFLUX_MAX_IMAGE_EDGE` (1280 px) with EXIF orientation baked in before mflux
+  runs, so ~24 MP phone photos no longer OOM the GPU.
+- **Public-catalog bootstrap fallback (FEAT-017 / ADR-027) — two product
+  sources.** **Local suppliers** (`source=supplier`, seeded Bogotá SKUs) are
+  **purchasable** (cart/checkout) — **known gap: their images are placeholder
+  vector SVGs, so their render is generic**. **Brand suppliers** (`source=public`,
+  Amazon Berkeley Objects, CC BY 4.0) carry **real product photos** and are
+  **display-only**: "not sold by Spazio" + a "View at retailer" outbound link + CC
+  BY 4.0 attribution, never carted/checked-out/commissioned, and excluded from the
+  render-to-purchase metric.
+- **Earlier local-stack loop (#31, PR #32/#33) + hardening (#34).** Device-scoped
+  client routes, cart, **mock** checkout with a single COP capture, per-supplier
+  `PurchaseOrder` and a recorded 10% commission, an operator console for **catalog
+  curation** and **order forwarding** (no render-review role), and the NFR-006
+  render-to-purchase event trail.
+
+**Not done / open (stated honestly):** not deployed anywhere (**local dev only**;
+the render host must be **Apple Silicon**); **real payments not chosen** — checkout
+is a **mock** gateway (`ADR-003` open); **Local-supplier real product images** are
+still placeholders (generic renders). The earlier standalone `web-demo/` (PR #22),
+the backend foundation scaffold (PR #21), and the operator console shell (PR #27)
+are recorded as dated history in *Technical changes* below.
 
 ### Added
 
@@ -370,10 +423,16 @@ below).
 
 ### Requirements covered
 
-- **None.** No functional or non-functional requirement is implemented in this
-  release. The `FR-*` / `NFR-*` catalog has been **documented only**; a
-  requirement will appear here as *covered* in the first release that actually
-  implements and tests it, per the traceability chain
+- **None in a tagged release.** No `vX.Y.Z` release has been cut, so nothing is
+  listed here as *covered by a shipped build*. This is a release-gating statement,
+  **not** a claim that nothing is implemented (updated 2026-07-15): as recorded
+  under *Current state* above, a large slice of the `FR-*`/`NFR-*` catalog is
+  **built and verified on a local dev stack** — the browse-and-select flow
+  (FR-066..069), photo byte upload + render display (FR-005/FR-015), the render
+  loop and cart/checkout FRs, the public-catalog fallback (FR-062..065), device
+  scoping (NFR-007), and the NFR-006 render-to-purchase event trail. A requirement
+  moves into this section as *covered* in the first release that actually **ships**
+  it, per the traceability chain
   (`FEAT → FR/NFR → feature doc → Issue → branch → commits → PR → TC → release notes`).
 - **The class demo maps to features at the UI level only, over fakes — this is
   not requirement coverage.** As *demo fidelity*, `web-demo/` exercises the
@@ -393,9 +452,11 @@ below).
 
 ## First tagged release
 
-The first tagged release (`vX.Y.Z`, **SemVer**) will follow the **one-week iOS
-pilot** (`Spazio_One_Week_iOS_Pilot.md`). When `develop` is ready, a
-`develop → main` PR is opened and, on merge, the version is tagged and this file
-gains a dated `## vX.Y.Z — YYYY-MM-DD` block. Only from that release onward will
-the **Added** and **Requirements covered** sections describe capabilities that
-are genuinely built and tested, rather than documented.
+The first tagged release (`vX.Y.Z`, **SemVer**) will cut from the **web app +
+backend** now built on `develop` (per **ADR-024**, 2026-07-14, the product is the
+web app — the one-week iOS pilot *program* is superseded; `Spazio_One_Week_iOS_Pilot.md`
+is retained as historical). When `develop` is ready, a `develop → main` PR is
+opened and, on merge, the version is tagged and this file gains a dated
+`## vX.Y.Z — YYYY-MM-DD` block. From that release onward, the **Added** and
+**Requirements covered** sections describe capabilities that are **shipped**,
+rather than built-and-verified-locally (the current state) or only documented.

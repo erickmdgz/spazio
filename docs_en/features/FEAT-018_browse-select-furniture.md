@@ -1,6 +1,6 @@
 # FEAT-018 - Browse & select furniture (user-curated render)
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. This feature is governed by **ADR-028** (2026-07-15), which inverts the PRD §8 auto-furnish flow into a user-curated selection.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. This feature is governed by **ADR-028** (2026-07-15), which inverts the PRD §8 auto-furnish flow into a user-curated selection. **As built (2026-07-15):** this flow is implemented and **verified on a local stack (not deployed)** — the SOURCE toggle, the `/select` browse-and-pick surface (≤3, enforced server-side with `400 too_many_products`), render-exactly-the-selection (FR-068), and the "try other furniture" iterate loop (FR-069) all run against the backend (`GET /catalog`, `GET /catalog/products/:id/image`, `POST /renders` with `productIds`); the auto-match path is preserved as the selection-less fallback. §8 below is retained as the original **proposed** design and reads in future tense; the built reality is as summarized here (and in the per-FR "As built" notes on FR-066–FR-069 in `03_requirements.md`).
 
 ## 1. Summary
 

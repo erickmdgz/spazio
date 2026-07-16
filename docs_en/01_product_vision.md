@@ -2,9 +2,11 @@
 
 > **Sources of truth:** `Spazio_PRD_v0.7.md` (full PRD, source of truth) and `Spazio_One_Week_iOS_Pilot.md` (the first milestone). This document summarizes and structures that material; where the two differ in scope, the pilot defines what the first version builds and the PRD defines the full-product intent.
 >
-> **Nothing here is built yet.** These are specifications, not delivered features.
+> **Current state (as built, 2026-07-15).** A substantial slice of the product is now **built and verified on a local dev stack** (it is **not deployed anywhere and not released** — there is no `vX.Y.Z` tag). This is no longer a spec-only document: read it against the "Current system (as built)" summary immediately below. Earlier text asserting that "nothing here is built" described a superseded state and has been corrected.
 >
-> **Update (ADR-024, 2026-07-14):** the client platform decision changed — the product continues on the **web app** at class-demo scale; no native iOS app will be built. References below to the "one-week iOS pilot" describe the first-milestone source material and the decisions as originally scoped; ADR-024 records what changed.
+> **Current system (as built) — 2026-07-15.** Spazio is a **web app** (`web-demo/`, Next.js 15 + React 19 + TypeScript + Tailwind) wired to a **Node 22 / Fastify / Prisma / Postgres** backend with local object storage — **no native iOS app** (ADR-024). The live user flow is **user-curated browse-and-select**, not AI auto-furnish (FEAT-018 / ADR-028): upload your room photo + approximate dimensions → choose a **source** (Local suppliers = purchasable | Brand suppliers = display-only) → choose a **style** (+ COP budget) → **browse the real catalog and select up to 3 products** → **render** the selection into the room → "Love it → cart" (Local) or per-item "View at retailer" (Brand) or "Try other furniture" to iterate → cart → **mock** checkout → confirmation. The render engine is **self-hosted FLUX.2 Klein 4B via the mflux CLI** on an Apple-Silicon worker (ADR-026), defaulting to a `fake`/cached provider and running the real engine only with `RENDER_ENGINE=mflux`; renders are **published immediately on success — there is no operator render-review** (ADR-025 / FEAT-016). Auto-match (FR-014/FR-015) survives only as an optional fallback for selection-less requests (ADR-028). **Still open/mock:** not deployed; real payments unchosen (checkout is mock, ADR-003); Local-supplier product images are placeholder SVGs, so their renders are generic.
+>
+> **Update (ADR-024, 2026-07-14):** the client platform decision changed — the product continues on the **web app** (`web-demo/`); no native iOS app will be built. References below to the "one-week iOS pilot" describe the first-milestone source material and the decisions as originally scoped; ADR-024 records what changed.
 >
 > **Update (ADR-025, 2026-07-14):** the human render-review gate is removed entirely — renders are published to the requesting user immediately upon successful generation. FR-027 and FEAT-006 are retired; the "mandatory operator QA" clause of ADR-002 is superseded (the rest of ADR-002 stands). References below to operator render review describe the decisions as originally scoped; ADR-025 records what changed.
 >
@@ -55,7 +57,9 @@ Success toward this goal is measured by **render-to-purchase**: the share of AI-
 
 ## Initial scope
 
-The **first version = the one-week iOS pilot**. The scope below is the pilot's "Included" list (VERIFIED — pilot doc), which proves a single loop: *a real person, in one city, sees their own room furnished with real furniture and buys at least one piece.* The broader full-product scope lives in the PRD "Must have" list (§3) and is **not** part of the first version.
+> **Superseded framing (ADR-024/ADR-026/ADR-028, corrected 2026-07-15).** The "first version = one-week iOS pilot" statement below is **historical source material**, not the current build. What is actually built and verified locally is the **web app** with the **browse-and-select** flow (see the "Current system (as built)" summary at the top): no native iOS, no auto-furnish-as-primary, no operator render-review. The pilot "Included" list is preserved below as the origin of the scope and for FR/FEAT traceability; the current-vs-historical differences are flagged in the table notes.
+
+The **first version was originally scoped as the one-week iOS pilot**. The scope below is the pilot's "Included" list (VERIFIED — pilot doc), which proves a single loop: *a real person, in one city, sees their own room furnished with real furniture and buys at least one piece.* The broader full-product scope lives in the PRD "Must have" list (§3) and is **not** part of the first version.
 
 > **Scope note — public-catalog fallback (ADR-027, 2026-07-15).** The local-supplier marketplace stays fully in scope and fully built (demoed with seeded fake-supplier data, ADR-023). Additively, because there are **no onboarded suppliers yet**, a **public-catalog bootstrap fallback** (FEAT-017) provides real ABO products (CC BY 4.0, attributed) so the app can demonstrate matching → render → display. This fallback track is **temporary demo scaffolding** — non-purchasable, clearly labeled "not sold by Spazio", and expected to be removed once real suppliers are onboarded. It does not remove or weaken any supplier-track capability.
 
@@ -63,7 +67,7 @@ FR/FEAT references below map pilot capabilities to the canonical registry for tr
 
 | Pilot capability (VERIFIED — pilot doc) | Reference |
 |---|---|
-| Native iOS app only | Platform constraint (no Android/web) |
+| Native iOS app only *(Superseded — ADR-024, 2026-07-14: the built product is the web app; no native iOS)* | Platform constraint (no Android/web) |
 | One city and one delivery zone: Bogotá | Localization constrained to a single zone — FEAT-004 |
 | One currency: COP | FR-046 (local-currency display), fixed to COP |
 | Small, manually curated catalog from a few local suppliers | FEAT-015; FR-056, FR-057, FR-058, FR-059 |
@@ -72,7 +76,7 @@ FR/FEAT references below map pilot capabilities to the canonical registry for tr
 | One or two predefined visual styles | FR-007 |
 | Optional free-text style description | FR-008 |
 | Budget range input | FR-009 |
-| AI render using only real, in-stock catalog products | FEAT-005; FR-014, FR-015, FR-016, FR-018, FR-021 |
+| AI render using only real, in-stock catalog products *(Current flow inverts this to user browse-and-select up to 3 products — FEAT-018/ADR-028, 2026-07-15; auto-match is now an optional fallback)* | FEAT-005, FEAT-018; FR-014, FR-015, FR-016, FR-018, FR-021, FR-066..069 |
 | Human (operator) review before the render is shown *(Retired — ADR-025, 2026-07-14: renders are published immediately on generation success)* | FR-027 (Superseded by ADR-025) |
 | Tappable product tags on the render | FR-028, FR-029 |
 | Auto-populated cart with price and supplier | FR-031 |
@@ -100,7 +104,7 @@ Two layers of exclusion apply.
 
 **2. Excluded from the pilot / first version (VERIFIED — pilot doc "Excluded from the pilot"):** present in the full PRD but cut from the first milestone —
 
-- Android and web.
+- Android and web. *(Corrected — ADR-024, 2026-07-14: **web is now the built platform**; only Android/native-iOS remain out of scope. This exclusion described the original iOS-pilot framing.)*
 - Multiple cities, countries, and currencies.
 - Supplier self-service ingestion via API, FTP, or automated Excel processing.
 - Keep-or-replace of existing furniture via segmentation.

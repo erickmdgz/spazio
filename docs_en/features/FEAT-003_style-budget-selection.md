@@ -1,6 +1,6 @@
 # FEAT-003 - Style & budget selection
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** the style + COP-budget selection step is implemented in the web app wired to the backend and **verified on a local stack (not deployed)**; a product **SOURCE** toggle (Local | Brand) was added alongside it by ADR-028/FEAT-018. Remaining items stay specification.
 
 ## 1. Summary
 
@@ -73,7 +73,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend
 
 - Persist the user's style choice, style description, and budget range on the `Project`. Resolve the selected style/description against the shared **style taxonomy** for downstream matching — taxonomy definition is **Decided (pilot): one or two predefined visual styles + free-text description; no taxonomy engine — see ADR-005**.
-- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **Decided (pilot): a hosted generative image API (image-to-image / inpainting); no custom-trained model — see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*.
+- Interpretation of the free-text style description into matching signals is performed by the rendering/AI pipeline (FEAT-005) and is **Decided (pilot): a hosted generative image API (image-to-image / inpainting); no custom-trained model — see ADR-002** *(its hosted-image-API engine clause superseded by ADR-026, 2026-07-14 — self-hosted FLUX.2 Klein 4B via mflux; the "no custom-trained model" rule stands; its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*.
 
 ### Database
 

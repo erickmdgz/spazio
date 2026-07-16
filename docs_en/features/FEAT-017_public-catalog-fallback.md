@@ -1,6 +1,6 @@
 # FEAT-017 - Public-catalog bootstrap fallback
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. Nothing here is implemented; this is a specification. This feature is governed by **ADR-027** (2026-07-15).
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. **As built (2026-07-15):** the `source=public` track (Amazon Berkeley Objects, CC BY 4.0) is implemented and **verified on a local stack (not deployed)** — public products are seeded, display-only, labeled "not sold by Spazio" with a "View at retailer" link, and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), not only the auto-match fallback this document originally described. Attribution/compliance handling and the "activate only when no supplier catalog exists" gating remain partly specification. This feature is governed by **ADR-027** (2026-07-15).
 
 ## 1. Summary
 

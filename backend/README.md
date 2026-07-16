@@ -1,13 +1,22 @@
-# Spazio pilot backend
+# Spazio backend
 
-Reviewable scaffold for the Spazio one-week pilot backend. Stack (ADR-001):
+Backend for Spazio, the **web app** product platform (ADR-024 — the "one-week iOS
+pilot" framing is historical). Stack (ADR-001):
 **Node.js 22 + TypeScript, Fastify, Prisma over Postgres**, with a queue abstraction
-for async render jobs.
+for async render jobs and local object storage.
 
-> **Nothing here is deployed.** This is structure only: every route, model, and
-> event point exists, is typed, compiles, and is covered by a minimal test. Business
-> logic is intentionally minimal/stubbed — features implement it later. Handlers that
-> are not yet implemented return `501 Not Implemented` with a typed body.
+> **Built and verified on a local stack — nothing is deployed or released** (no
+> `vX.Y.Z` tag). The render-to-purchase loop is implemented and exercised end-to-end
+> against a local Postgres: device-scoped photo byte upload, catalog browse, renders
+> (real via mflux when `RENDER_ENGINE=mflux`, else the default `fake` placeholder),
+> cart, mock checkout, per-supplier purchase orders, and the operator console for
+> catalog curation and order forwarding. What is **not** real: the render engine
+> defaults to `fake` (real renders need mflux on an Apple-Silicon host — ADR-026);
+> checkout uses a **mock/fake payment gateway** (ADR-003 vendor unchosen); and
+> Local-supplier catalog images are still placeholder SVGs (generic renders).
+> Deferred features (stock holds, split settlement, warranty display, render
+> metering, sponsored placement, manual add-to-cart) remain absent — see the
+> comments in `prisma/schema.prisma` and the route files.
 
 ## Scope (pilot boundaries)
 
@@ -49,7 +58,9 @@ npm run db:generate
 # 4. apply the schema to the local database
 npm run db:migrate
 
-# 5. seed the pilot catalog (3 styles, 3 suppliers, 11 BR-1-complete SKUs)
+# 5. seed the dual-track catalog: Local suppliers (source=supplier, seeded Bogota
+#    SKUs) + Brand suppliers (source=public, Amazon Berkeley Objects, CC BY 4.0 —
+#    display-only, ADR-027), plus styles
 npm run db:seed
 
 # 6. create an operator console account (password prompted, hidden input)
@@ -59,7 +70,16 @@ npm run operator:create -- --email you@example.com --name "You"   # omit --role 
 npm run dev
 ```
 
-Health check: `curl http://localhost:3000/health` → `{"status":"ok","service":"spazio-backend"}`.
+Health check: `curl http://localhost:3000/health` → `{"status":"ok","service":"spazio-backend"}`
+(use the port from `.env`; set `PORT=3001` when running the web app on `:3000` alongside).
+
+**Render engine (ADR-026):** `RENDER_ENGINE` defaults to `fake` (a placeholder/cached
+visual — no GPU, keeps CI hermetic). Set `RENDER_ENGINE=mflux` for the real
+self-hosted FLUX.2 Klein 4B engine, which invokes the **mflux** CLI as a child
+process and therefore requires mflux installed on an **Apple-Silicon** host. Inputs
+are downscaled to `MFLUX_MAX_IMAGE_EDGE` (default 1280 px) with EXIF orientation
+baked in so large phone photos don't OOM the GPU (BUG-001). Local-supplier renders
+are generic because those SKUs carry placeholder SVG images.
 
 ## Scripts
 
@@ -103,11 +123,17 @@ ADR-022). Operator endpoints live under `/api/v1/operator` behind the session
 guard (`src/auth/operator.ts`); `POST/GET/DELETE /operator/session` (login /
 whoami / logout) are the unauthenticated exceptions.
 
-- Client: `POST /projects`, `POST /projects/:id/photos`, `PATCH /projects/:id`,
-  `GET /localization/resolve`, `POST /renders`, `GET /renders/:id`,
-  `GET /renders/:id/items`, `GET /cart`, `PUT /cart/items/:id`,
-  `DELETE /cart/items/:id`, `POST /cart/confirm`, `GET /cart/estimates`,
-  `POST /checkout`, `GET /orders/:id`.
+- Public (not device-scoped): `GET /styles`; `GET /catalog` (browse the approved,
+  renderable catalog by `source` + `styleId`, optional budget filter — FEAT-018/
+  ADR-028) and `GET /catalog/products/:id/image` (stream a product's stored image).
+- Client (device-scoped, `x-device-token` — NFR-007): `POST /projects`,
+  `POST /projects/:id/photos` (raw image bytes), `PATCH /projects/:id`,
+  `GET /localization/resolve`, `POST /renders` (accepts an optional `productIds`
+  list, **≤3**; when present the worker composites exactly those, else it
+  auto-matches — ADR-028), `GET /renders/:id`, `GET /renders/:id/items`,
+  `GET /renders/:id/image` (streams the stored render), `GET /cart`,
+  `PUT /cart/items/:id`, `DELETE /cart/items/:id`, `POST /cart/confirm`,
+  `GET /cart/estimates`, `POST /checkout`, `GET /orders/:id`.
 - Operator: `POST/GET/DELETE /operator/session`,
   `GET/POST/PATCH /operator/catalog/products`,
   `POST /operator/catalog/products/:id/approve|reject`,

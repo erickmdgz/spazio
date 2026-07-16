@@ -1,8 +1,18 @@
 # API
 
-> **DRAFT — proposed API surface; contract shapes still to be detailed.**
-> Nothing here is built yet. This document sketches the endpoints the product
-> *will need* so that requirements stay traceable. The concrete shape of every
+> **PARTLY AS-BUILT — the pilot core loop exists; the rest is DRAFT.**
+> *(Correction, 2026-07-15: the former "Nothing here is built yet" is no longer
+> accurate and contradicted the update log below.)* A subset of this surface is
+> **built and verified on a local stack (not deployed, no `vX.Y.Z` release)** —
+> the device-scoped client loop (byte photo upload `POST /projects/:id/photos`,
+> `POST /renders` with an optional `productIds` selection ≤3, `GET /renders/:id`
+> + `/items` + `/image`, `GET /catalog` + `/catalog/products/:id/image`, cart,
+> `GET /cart/estimates`, mock checkout with commission) and the operator console
+> (session auth + catalog-curation and order-forwarding reads). Endpoints marked
+> **as built** below are the real current shape; every other path, verb, and JSON
+> body remains **DRAFT** (illustrative structuring, not a committed interface).
+> This document sketches the endpoints the product *will need* so that
+> requirements stay traceable. The concrete shape of every
 > contract (base URL, verbs, auth scheme, payload fields, status codes, pagination,
 > async model) is still draft, but the decisions that gate it are now **Accepted for
 > the pilot** — the technology stack is a native iOS (SwiftUI) app + one managed
@@ -757,7 +767,15 @@ All of the following are **Accepted** for the one-week iOS pilot (Date 2026-07-1
 - **ADR-019 / ADR-020** privacy & warranty/disputes — Accepted: photos/renders private by default, minimum data + short consent (**ADR-019**, align Colombia Ley 1581, legal review before scale); warranty **not displayed** in the pilot, disputes handled manually by the operator (**ADR-020**). Shapes privacy defaults, warranty display, order handling.
 - **ADR-021** brand identity & visual design system — Accepted: dark-green + off-white palette, simple wordmark, system font; full design system later. Shapes client-facing surfaces.
 
-> **Reminder:** this is a DRAFT specification. Nothing here is implemented yet, and
-> no capability listed is "built" or "covered" — these are proposed contracts. The
-> gating decisions above are **Accepted for the pilot**; the concrete contract shapes
-> still await implementation and human approval.
+> **Reminder (corrected 2026-07-15):** this is a **partly as-built** specification.
+> The former "Nothing here is implemented yet, and no capability listed is 'built'
+> or 'covered'" is no longer accurate: the pilot core loop (see the header and the
+> per-endpoint **as built** markers — byte photo upload, `POST /renders` with a
+> `productIds` selection, `GET /renders/:id` + `/items` + `/image`, `GET /catalog`
+> + `/catalog/products/:id/image`, cart, `GET /cart/estimates`, mock checkout, and
+> the operator session/queue reads) is **built and verified on a local stack
+> (not deployed, no release)**. The endpoints **not** marked as built remain
+> proposed contracts. The gating decisions above are **Accepted for the pilot**;
+> the still-DRAFT contract shapes await implementation and human approval, and the
+> payment provider (ADR-003) is still unchosen so checkout is a **mock/fake
+> gateway**.

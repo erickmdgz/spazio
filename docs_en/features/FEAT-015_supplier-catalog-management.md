@@ -1,6 +1,6 @@
 # FEAT-015 - Supplier catalog management & operator curation
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** operator catalog curation (the `catalog_curator` gate, product create/edit and approve/reject, the seeded catalog served through the public browse endpoint) is implemented and **verified on a local stack (not deployed)**; supplier self-service ingestion (ADR-006) stays specification.
 
 ## 1. Summary
 

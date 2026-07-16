@@ -1,6 +1,6 @@
 # FEAT-007 - Product tagging & interaction
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** product tagging overlaid on the real backend render is implemented and **verified on a local stack (not deployed)** — see the dated **As built** note below; remaining items stay specification.
 
 ## 1. Summary
 
