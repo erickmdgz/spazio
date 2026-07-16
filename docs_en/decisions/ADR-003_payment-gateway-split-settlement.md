@@ -4,6 +4,8 @@
 
 Accepted.
 
+**Demo-scope note (ADR-029, 2026-07-15):** for the current demo, checkout runs a **mock/fake gateway** and this decision stays **deferred** — the mock is an *accepted* demo-scope limitation, not pending work. Revisit (choose a real COP gateway + settlement model) before any real launch.
+
 ## Context
 
 The PRD reserves both the payment gateway and the split-settlement model as human decisions (PRD §12, "Human definitions": "Payment gateway," "Split-settlement model"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — payments remain a MOCK/fake gateway, real COP gateway + split settlement still unbuilt; see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
