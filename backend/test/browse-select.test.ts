@@ -316,6 +316,54 @@ describe("FR-067 the 3-item selection cap", () => {
     expect(enqueue).toHaveBeenCalledWith({ renderId: "r1", productIds: ["a", "b", "c"] });
   });
 
+  // TC-144 (BUG-005): the requested selection is snapshotted on the RenderRequest
+  // row — the queue payload is volatile, and RenderItem rows exist only for
+  // successful renders, so without this a failed render loses which products the
+  // user attempted.
+  it("TC-144 persists the requested selection on the RenderRequest row", async () => {
+    const renderRequestCreate = vi.fn().mockResolvedValue({ id: "rr1" });
+    const tx = {
+      project: { update: vi.fn().mockResolvedValue({}) },
+      renderRequest: { create: renderRequestCreate },
+      render: { create: vi.fn().mockResolvedValue({ id: "r1" }) },
+    };
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    ({ app } = await buildTestApp(
+      {
+        project: { findFirst: vi.fn().mockResolvedValue({ id: "proj_1" }) },
+        $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
+      },
+      { queue: { enqueue, process: vi.fn() } },
+    ));
+
+    const selected = await app.inject({
+      method: "POST",
+      url: "/api/v1/renders",
+      headers: { "x-device-token": "dev_1" },
+      payload: { projectId: "proj_1", productIds: ["a", "b"] },
+    });
+    expect(selected.statusCode).toBe(202);
+    expect(renderRequestCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requestedProductIds: ["a", "b"] }),
+      }),
+    );
+
+    // No selection (auto-match fallback) persists an empty snapshot, not null.
+    const autoMatch = await app.inject({
+      method: "POST",
+      url: "/api/v1/renders",
+      headers: { "x-device-token": "dev_1" },
+      payload: { projectId: "proj_1" },
+    });
+    expect(autoMatch.statusCode).toBe(202);
+    expect(renderRequestCreate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requestedProductIds: [] }),
+      }),
+    );
+  });
+
   it("TC-131 drops an invalid selected id in the worker (no 400) and composites only the valid ones", async () => {
     const renderItemCreateMany = vi.fn().mockResolvedValue({ count: 1 });
     const cartItemCreateMany = vi.fn().mockResolvedValue({ count: 1 });

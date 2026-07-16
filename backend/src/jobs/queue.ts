@@ -32,6 +32,7 @@ export interface Queue<T = RenderJob> {
 export class InMemoryQueue<T = RenderJob> implements Queue<T> {
   private handler: JobHandler<T> | undefined;
   private readonly pending: T[] = [];
+  private draining = false;
 
   enqueue(payload: T): Promise<void> {
     this.pending.push(payload);
@@ -45,15 +46,25 @@ export class InMemoryQueue<T = RenderJob> implements Queue<T> {
   }
 
   private async drain(): Promise<void> {
-    if (!this.handler) return;
-    while (this.pending.length > 0) {
-      const payload = this.pending.shift() as T;
-      try {
-        await this.handler(payload);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("[queue] job failed", err);
+    // Jobs run strictly serialized (BUG-005): without this guard, an enqueue()
+    // arriving while a job is awaited starts a second concurrent drain — two
+    // mflux children (~20 GB MLX peak each) would exhaust the render host
+    // (NFR-004). A payload pushed mid-job is picked up by the active loop's
+    // next `pending` check, so nothing is stranded by the early return.
+    if (!this.handler || this.draining) return;
+    this.draining = true;
+    try {
+      while (this.pending.length > 0) {
+        const payload = this.pending.shift() as T;
+        try {
+          await this.handler(payload);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[queue] job failed", err);
+        }
       }
+    } finally {
+      this.draining = false;
     }
   }
 }

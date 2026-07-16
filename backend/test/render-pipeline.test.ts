@@ -333,4 +333,33 @@ describe("MfluxRenderPipeline", () => {
     // The hung child was force-killed (no orphan survives past the cap).
     expect(kill).toHaveBeenCalledWith("SIGKILL");
   });
+
+  // TC-143 (BUG-005): a timeout must carry what the child said before the
+  // SIGKILL — the collected stderr tail is the only record of how far mflux got
+  // (the BUG-004 incident was undiagnosable from the bare "timed out" message).
+  it("includes the child's stderr tail in the timeout error (TC-143)", async () => {
+    const kill = vi.fn();
+    // Spawner whose child emits progress like the real CLI, then hangs.
+    const talkativeHangingSpawner: MfluxSpawner = () => {
+      const child = new EventEmitter() as EventEmitter & { stderr: EventEmitter; kill: typeof kill };
+      child.stderr = new EventEmitter();
+      child.kill = kill;
+      queueMicrotask(() => child.stderr.emit("data", "38% 3/8 [03:58<06:31, 78.32s/it]"));
+      return child as unknown as ReturnType<MfluxSpawner>;
+    };
+    const storage = makeStorage(new Map([[ROOM_KEY, ROOM_BYTES]]));
+    const prisma = makePrisma({});
+
+    const pipeline = new MfluxRenderPipeline(
+      storage,
+      prisma,
+      { ...OPTIONS, timeoutMs: 50 },
+      talkativeHangingSpawner,
+    );
+
+    await expect(pipeline.generate(baseInput({ candidateProductIds: [] }))).rejects.toThrow(
+      /render timed out after .* — mflux output tail: .*3\/8/,
+    );
+    expect(kill).toHaveBeenCalledWith("SIGKILL");
+  });
 });

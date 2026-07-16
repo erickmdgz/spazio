@@ -84,6 +84,9 @@ export const renderRoutes: FastifyPluginAsync = async (app) => {
             freeText: freeText ?? null,
             budgetMinCop: budgetMinCop ?? null,
             budgetMaxCop: budgetMaxCop ?? null,
+            // Snapshot the requested selection (BUG-005): the queue payload is
+            // volatile, so this row is the only durable record on failure.
+            requestedProductIds: productIds ?? [],
             status: "queued",
           },
         });

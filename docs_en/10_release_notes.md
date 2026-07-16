@@ -156,6 +156,25 @@ are recorded as dated history in *Technical changes* below.
 
 ### Fixed
 
+- **BUG-005 — the render queue could run concurrent mflux jobs, and a
+  timed-out render was undiagnosable and lost the user's selection
+  (2026-07-16).** Three gaps found while root-causing BUG-004:
+  - **Queue serialization.** `InMemoryQueue.drain` had no in-flight guard: an
+    `enqueue()` landing while a job was awaited started a second concurrent
+    drain, so two mflux children (~20 GB MLX peak each) could run at once and
+    exhaust the render host. Jobs now run strictly serialized (TC-142);
+    NFR-004.
+  - **Timeout diagnosability.** The hard-timeout rejection discarded the
+    child's collected stderr — the BUG-004 incident's only log line was a bare
+    "render timed out after 360s". The timeout error now carries the stderr
+    tail (TC-143), the worker logs job start (renderId + selection size), and
+    the pipeline logs the spawned mflux command, so a killed render records
+    how far it got and can be reproduced by hand.
+  - **Selection snapshot.** The user's requested productIds lived only on the
+    volatile queue payload and `RenderItem` rows exist only on success, so a
+    failed render lost which products were attempted. The selection is now
+    persisted as `RenderRequest.requestedProductIds` (additive column +
+    migration; empty = auto-match fallback) at request creation (TC-144).
 - **BUG-004 — the 6-minute render hard cap killed healthy real renders
   (2026-07-16).** The first real-user mflux render was SIGKILLed by the BUG-002
   hard timeout at exactly 360 s and marked `failed` while progressing normally.

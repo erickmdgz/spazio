@@ -30,6 +30,12 @@ export function registerRenderWorker(
   pipeline: RenderPipeline,
 ): void {
   queue.process(async ({ renderId, productIds }) => {
+    // Job start was previously invisible (BUG-005): the queue only logged
+    // failures, so a slow render and a never-started one looked identical.
+    // eslint-disable-next-line no-console
+    console.log(
+      `[queue] job started render=${renderId} selection=${productIds?.length ?? 0} product(s)`,
+    );
     const render = await prisma.render.findUnique({
       where: { id: renderId },
       include: { renderRequest: true },
