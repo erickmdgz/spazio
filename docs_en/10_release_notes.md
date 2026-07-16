@@ -17,7 +17,7 @@ Each release block keeps the same four sections: **Added**, **Fixed**,
 > Apple-Silicon host, and Local-supplier product images are **placeholders**.
 > Historical entries below that describe an earlier docs-only or scaffold state
 > are kept as dated history (this repo's additive convention); the current reality
-> is the *Current system (as built)* summary.
+> is the *Current system (as built)* summary. **Decision (ADR-029, 2026-07-15):** the three known gaps — placeholder local-supplier images, mock payments (`ADR-003`), and no deployment — are **accepted demo-scope limitations**, not pending work. A full system overview (with architecture, infrastructure, and flow diagrams) is now at `docs_en/00_overview.md`.
 
 ---
 

@@ -14,6 +14,8 @@ Core principle: **the AI never invents furniture.** Every rendered item maps to 
 
 This is what is **built and verified on a local stack** (Node 22 / Fastify / Prisma / Postgres backend + `web-demo/` Next.js web app). **Nothing is deployed or released** (no `vX.Y.Z` tag yet); the render host must be Apple Silicon.
 
+**Full overview** (architecture + infrastructure diagrams, main features, and app flow): [`docs_en/00_overview.md`](./docs_en/00_overview.md). Three known gaps — placeholder local-supplier images (generic renders), mock payments, and no deployment — are **accepted demo-scope limitations**, not pending work, recorded in [`ADR-029`](./docs_en/decisions/ADR-029_demo-scope-accepted-limitations.md).
+
 - **Platform:** a **web app** (`web-demo/`), not a native iOS app (ADR-024). It runs against the real backend over `/api/v1`.
 - **Flow (ADR-028):** landing → upload your room photo (real image bytes; large phone photos are downscaled + EXIF-oriented, BUG-001) + approximate dimensions → choose **SOURCE** (Local suppliers | Brand suppliers) → choose **STYLE** + COP budget → **browse the real catalog & select up to 3 products** → **render** the selection → "like it?": *Love it → cart* (Local) / per-item *View at retailer* (Brand) / *Try other furniture* (iterate, keeping photo/source/style) → cart → mock checkout → confirmation.
 - **Sources (ADR-027):** **Local suppliers** = `source=supplier` (seeded Bogotá SKUs) — purchasable; their images are currently placeholder SVGs, so their render is generic (known gap). **Brand suppliers** = `source=public` (Amazon Berkeley Objects, CC BY 4.0) — real product photos, composited for real, but **display-only**.

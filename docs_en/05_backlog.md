@@ -4,6 +4,8 @@
 
 This backlog lists the **features** that make up Spazio, derived from the PRD (`Spazio_PRD_v0.7.md`) and the one-week pilot (`Spazio_One_Week_iOS_Pilot.md`). It is the traceability bridge `FEAT → FR/NFR → feature doc → Issue → branch → PR → TC → release notes` described in `CLAUDE.md` (section 5) and `11_implementation_flow.md`.
 
+> **Accepted demo-scope limitations — ADR-029 (2026-07-15).** Three known gaps are **deliberately accepted for the demo** and are NOT pending backlog work: (1) local-supplier products use placeholder images (generic renders — the Brand/`source=public` track has real photos); (2) checkout is a mock gateway (`ADR-003` deferred); (3) no deployment (local-only, Apple-Silicon render host). Revisit only if the product moves beyond the demo. See `decisions/ADR-029_demo-scope-accepted-limitations.md` and `00_overview.md`.
+
 **Reading notes:**
 
 - **Status.** `Pending` = specification only. `In progress (#31)` = the render-to-purchase loop work (post-ADR-024): the web app runs the real loop against the backend — pilot-included FR subsets implemented and verified end-to-end on a local stack — but the feature does **not** meet its §2.4 Definition of Done (TC automation partial, role enforcement pending, image-gen/payment vendors still fake). No feature is `Done`. `Retired — ADR-025 (2026-07-14)` = the feature is removed from the target spec by `ADR-025` (autonomous render publication); its removal from code is in progress as `FEAT-016` (`In progress (#38)`). The class demo (see **Class-demo coverage** below) originally exercised FEAT UIs over fakes; since #31 the same UI drives the real backend. Status reflects **work progress**, not requirement validity (validity lives in `03_requirements.md`).

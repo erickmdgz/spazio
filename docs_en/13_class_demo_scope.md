@@ -94,7 +94,7 @@ Note: the "exercised at demo fidelity" features are shown **at the UI level only
 
 ## 5. What is faked
 
-> **Note (2026-07-15) — this section records the standalone `web-demo/` as originally delivered.** In the CURRENT wired app, the render is produced by the **backend render engine** — `RENDER_ENGINE=fake` by default (a placeholder/cached visual that keeps CI hermetic) or **`mflux`** for the real self-hosted **FLUX.2 Klein 4B** engine (**ADR-026**), not the `OpenAIRenderProvider`/`IMAGE_API_KEY` stub named below. Checkout is still a **mock** gateway (`ADR-003` open). The provider descriptions below are kept as history.
+> **Note (2026-07-15) — this section records the standalone `web-demo/` as originally delivered.** In the CURRENT wired app, the render is produced by the **backend render engine** — `RENDER_ENGINE=fake` by default (a placeholder/cached visual that keeps CI hermetic) or **`mflux`** for the real self-hosted **FLUX.2 Klein 4B** engine (**ADR-026**), not the `OpenAIRenderProvider`/`IMAGE_API_KEY` stub named below. Checkout is still a **mock** gateway (`ADR-003` open). The provider descriptions below are kept as history. **Accepted for the demo (ADR-029, 2026-07-15):** the three current demo-scope limitations — **placeholder local-supplier images** (generic renders; the Brand/ABO source has real photos), **mock payments** (`ADR-003` open), and **no deployment** (local-only, Apple-Silicon render host) — are deliberately accepted, not pending work.
 
 Three things are deliberately simulated so the demo always works and never depends on external services:
 
