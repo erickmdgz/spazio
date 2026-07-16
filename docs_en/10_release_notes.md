@@ -156,6 +156,21 @@ are recorded as dated history in *Technical changes* below.
 
 ### Fixed
 
+- **BUG-004 — the 6-minute render hard cap killed healthy real renders
+  (2026-07-16).** The first real-user mflux render was SIGKILLed by the BUG-002
+  hard timeout at exactly 360 s and marked `failed` while progressing normally.
+  A timed reproduction with the same room photo and 3 reference products
+  completed in **617 s** (~75 s per diffusion step × 8; peak 19.75 GB MLX
+  memory): per-step cost grows steeply with reference-image count and
+  resolution, so a worst-case (3-product) render **cannot** fit the original
+  6-min budget on the M2 render host — the cap was killing real work, not
+  hangs. The budget is now **`RENDER_TIMEOUT_MS` default `900000` = 15 min**
+  (config.ts / .env.example) with the web client backstop raised to
+  **`CLIENT_TIMEOUT_MS = 930_000`** so the backend still fails first
+  (TC-141). The ~2–5 min render figure remains a **soft target with no hard
+  SLA** (ADR-013/NFR-001 unchanged); the timeout mechanism itself (BUG-002,
+  TC-136/TC-137) is value-agnostic and unchanged. Related diagnosability and
+  queue-serialization gaps found in the same incident are tracked as BUG-005.
 - **BUG-003 — the render page deadlocked on the spinner in dev and any reload
   lost the whole wizard (2026-07-15).** Two independent web-app defects hid
   completed renders from the user:

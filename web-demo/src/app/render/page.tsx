@@ -26,10 +26,11 @@ const LOADING_MESSAGES = [
 const POLL_MS = 2500;
 
 // Client backstop timeout (BUG-002): a bit above the backend RENDER_TIMEOUT_MS
-// hard cap (default 6 min) so the backend normally fails first and polling sees
-// 'failed'. If that signal never arrives (e.g. the backend is unreachable), this
-// still moves the UI to the failed screen rather than spinning forever.
-const CLIENT_TIMEOUT_MS = 390_000; // 6.5 min
+// hard cap (default 15 min, BUG-004 — a real 3-reference render measures ~10 min
+// on the M2 host) so the backend normally fails first and polling sees 'failed'.
+// If that signal never arrives (e.g. the backend is unreachable), this still
+// moves the UI to the failed screen rather than spinning forever.
+const CLIENT_TIMEOUT_MS = 930_000; // 15.5 min
 
 // Backstop for the brief 'loading' (submit/enqueue) phase (BUG-003): the enqueue
 // is one fast HTTP round-trip, so a minute without an answer means it stalled —
