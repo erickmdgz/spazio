@@ -14,7 +14,7 @@ The system's main flows will be tested before closing each feature.
 
 ## Test cases
 
-<!-- Each TC- maps 1:1 to an acceptance criterion of an FR (see 03_requirements.md). Status is validity of the case, not execution result; all start Pending. `Automated (#NN)` = validated by automated tests in that PR. `Retired — ADR-025 (2026-07-14)` = the case tests the removed render-review gate and is no longer a valid case; rows are kept for history. Nothing here is implemented. -->
+<!-- Each TC- maps 1:1 to an acceptance criterion of an FR (see 03_requirements.md). Status is validity of the case, not execution result; all start Pending. `Automated (#NN)` = validated by automated tests in that PR. `Retired — ADR-025 (2026-07-14)` = the case tests the removed render-review gate and is no longer a valid case; rows are kept for history. NOTE (2026-07-15): "Status" tracks case validity / automated-test coverage, **not** whether the feature runs — a large slice of the system (the browse-and-select flow, photo byte-upload + render display, the render loop, cart, and mock checkout) is now **built and verified on a local dev stack**, though only the rows marked `Automated (#NN)` are covered by automated tests, and nothing is deployed or released to production. -->
 
 | ID | Feature | Requirement | Case | Expected result | Status |
 |---|---|---|---|---|---|

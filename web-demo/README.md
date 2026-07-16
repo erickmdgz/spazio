@@ -10,21 +10,78 @@ supplier.
 > **product platform**, wired to the real backend. The wizard runs over `/api/v1`
 > (Next.js rewrite → `../backend`, Fastify + Prisma + Postgres): the project,
 > render, cart and order are real rows; renders are published **immediately on
-> generation success** (no operator approval step); checkout
-> captures on a **fake gateway** (no real money — ADR-003 vendor open) and the
-> composite image is still a cached local asset (ADR-002 vendor open).
-> **Run the backend first** — see `../backend/README.md` (Postgres via Docker,
-> migrate, seed, operator account, `PORT=3001 npm run dev`), or set
-> `BACKEND_ORIGIN` if it runs elsewhere. The offline, in-memory demo described
-> below is preserved in git history (tag: the PR #22 merge).
-> Per **ADR-025** (2026-07-14,
-> `../docs_en/decisions/ADR-025_autonomous-render-publication.md`) the operator
-> render-approval gate that #31 originally shipped was removed; the removal is
-> implemented by **FEAT-016 (#38)** — no console action is needed between render
-> and cart (the console at `/operator/console` remains for catalog curation and
-> order forwarding).
+> generation success** (no operator approval step — ADR-025); checkout
+> captures on a **mock/fake gateway** (no real money — ADR-003 vendor still
+> unchosen). The render is produced by the backend's **self-hosted FLUX.2 Klein 4B
+> engine via mflux** (ADR-026) when the backend runs `RENDER_ENGINE=mflux` on an
+> Apple-Silicon host; otherwise the backend's default `RENDER_ENGINE=fake` serves a
+> placeholder/cached visual. **Run the backend first** — see `../backend/README.md`
+> (Postgres via Docker, migrate, seed, operator account, `PORT=3001 npm run dev`),
+> or set `BACKEND_ORIGIN` if it runs elsewhere. The offline, in-memory demo
+> described **in the "Historical" section further down** is preserved for
+> reference (and in git history, tag: the PR #22 merge) — it is **not** the current
+> system. Per **FEAT-016 (#38)** the operator render-approval gate that #31
+> originally shipped was removed; the console at `/operator/console` remains for
+> catalog curation and order forwarding.
+>
+> **Current flow (ADR-027 + ADR-028, 2026-07-15):** the user picks a **source**
+> (Local suppliers = purchasable `source=supplier` | Brand suppliers = display-only
+> `source=public`, Amazon Berkeley Objects / CC BY 4.0), picks a **style** + COP
+> budget, **browses the real catalog and selects up to 3 products**, and the render
+> composites **exactly that selection** (auto-match is only a selection-less
+> fallback). See the **Current system** section next; the old auto-furnish +
+> tappable-hotspots flow described under **Historical** is superseded.
 
 ---
+
+## Current system (as built, 2026-07-15)
+
+Built and verified on a local stack; **not deployed, not released** (no `vX.Y.Z` tag).
+
+**Flow (ADR-028):** landing → **upload your room photo** (real image bytes; large
+phone photos are downscaled + EXIF-oriented, BUG-001) + approximate dimensions →
+choose **SOURCE** (Local suppliers | Brand suppliers) → choose **STYLE** + COP
+budget → **browse the real catalog & select up to 3 products** → **render** the
+selection into the room → "like it?": *Love it → cart* (Local), per-item *View at
+retailer* links (Brand), or *Try other furniture* (iterate — keeps the
+photo/source/style, pick again, re-render) → cart → **mock** checkout →
+confirmation. The 3-item cap matches the render engine's ~2–3 reference-image
+limit (ADR-026) and is enforced server-side.
+
+**Sources (ADR-027):** **Local suppliers** (`source=supplier`, seeded Bogotá SKUs)
+are **purchasable** (cart/checkout); their catalog images are still placeholder
+SVGs, so their render is generic (known gap). **Brand suppliers** (`source=public`,
+Amazon Berkeley Objects, CC BY 4.0) have real product photos and composite for
+real, but are **display-only**: shown "not sold by Spazio" with a "View at
+retailer" outbound link and CC BY 4.0 attribution, never carted or checked out,
+and excluded from the render-to-purchase metric. A Brand-only render therefore
+yields an empty cart by design.
+
+**Run it (full stack):**
+
+1. **Backend first** — follow `../backend/README.md`: Postgres via Docker, migrate,
+   seed, create an operator account, then `PORT=3001 npm run dev` (backend on
+   `:3001`, operator console at `/operator/console`). For **real** renders set
+   `RENDER_ENGINE=mflux` in `../backend/.env` (needs the mflux CLI on an
+   Apple-Silicon host — ADR-026); otherwise the default `fake` engine serves a
+   placeholder visual.
+2. **Web app** — in this folder: `npm install && npm run dev`, open
+   **http://localhost:3000**. The app proxies `/api/v1` to the backend (set
+   `BACKEND_ORIGIN` if the backend is not on `:3001`).
+
+---
+
+# Historical — the original offline class demo (superseded)
+
+> **Everything below describes the original 2-day offline, in-memory class demo
+> (ADR-023, PR #22).** It is preserved for reference and is **not** the current
+> system: the app is now wired to the real backend (see **Current system** above),
+> the flow is browse-and-select (ADR-028) rather than auto-furnish with tappable
+> hotspots, the render comes from the backend (mflux / fake engine, ADR-026) rather
+> than a bundled cached provider, and there are two catalog sources (ADR-027). The
+> `RENDER_PROVIDER` / `IMAGE_API_KEY` and Vercel notes below apply to that old
+> standalone demo, not to the current full-stack app. Read the sections above for
+> how to run and use the current system.
 
 ## Scope note — this demo supersedes ADR-001 (for the demo only)
 

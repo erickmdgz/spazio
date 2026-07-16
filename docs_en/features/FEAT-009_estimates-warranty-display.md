@@ -1,6 +1,6 @@
 # FEAT-009 - Estimates & warranty display
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** per-item supplier-sourced delivery/production estimates shown before checkout and at confirmation (FR-036) are implemented and **verified on a local stack (not deployed)**; the aggregated order estimate (FR-037) and per-item warranty display (FR-038) stay specification (out of pilot).
 
 ## 1. Summary
 

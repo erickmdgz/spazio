@@ -1,6 +1,6 @@
 # FEAT-002 - Room capture & inputs
 
-> **Status legend used in this document:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = reasonable structuring by the author, not yet confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend used in this document:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = reasonable structuring by the author, not yet confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** FR-005 is implemented as a real image-byte upload and **verified on a local stack (not deployed)** — see the dated **As built** note below; the remaining items (in-app camera FR-006, automated photo-quality FR-024) stay specification.
 
 ## 1. Summary
 
@@ -78,7 +78,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend
 
 - A service to **receive and store** the uploaded room photo as a private `RoomPhoto` and to persist the dimension inputs on the user's `Project` (DRAFT / PROPOSED entities — see below). Storage/back-end technology **decided for the pilot: one managed backend service with a managed Postgres database and object storage for photos/renders — see ADR-001**.
-- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline, which is **decided for the pilot as a hosted generative image API (image-to-image / inpainting) — see ADR-002** *(its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*. Not built in the pilot.
+- **Photo-quality validation** (FR-024, full product): the detection/validation approach depends on the rendering/AI pipeline, which is **decided for the pilot as a hosted generative image API (image-to-image / inpainting) — see ADR-002** *(its hosted-image-API engine clause superseded by ADR-026, 2026-07-14 — self-hosted FLUX.2 Klein 4B via mflux; its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*. Not built in the pilot.
 
 ### Database
 

@@ -1,6 +1,6 @@
 # FEAT-008 - Shopping cart & stock holds
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** the cart (auto-populated from the render's supplier items — public items excluded, ADR-027 — with COP totals, the budget-tolerance indicator, and remove/swap) is implemented and **verified on a local stack (not deployed)**; stock holds remain deferred/specification.
 
 ## 1. Summary
 

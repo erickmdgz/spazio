@@ -27,13 +27,15 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 **Status (requirement validity):** `Proposed` / `Approved` / `Deprecated`. Implementation progress is not recorded here; it is read in `05_backlog.md`.
 
-> **Governance note (read before treating any value as final).** PRD v0.7 §12 reserves a set of decisions for humans. Where an FR below references a numeric value or a mechanism that the PRD gives only as an **example or default** — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%", render time "~2–5 min" — the value has been **adopted for the one-week pilot** as a human decision recorded in its `ADR-XXX` (the simplest option consistent with the PRD and the pilot), and is linked to that ADR. Structural proposals that go beyond what the PRD states (status codes, field names, response shapes) are marked **Draft / Proposed**. Nothing in this document is implemented; every block is a specification. Traceability tags used below: **VERIFIED** = stated in PRD v0.7 or the one-week pilot; **DRAFT/PROPOSED** = reasonable structuring by the author; **TBD/PENDING** = a human decision (see `docs_en/decisions/`).
+> **Governance note (read before treating any value as final).** PRD v0.7 §12 reserves a set of decisions for humans. Where an FR below references a numeric value or a mechanism that the PRD gives only as an **example or default** — commission "for example 10%", daily render limit "defaulting to five", cart hold "15 minutes", budget tolerance "such as 10%", render time "~2–5 min" — the value has been **adopted for the one-week pilot** as a human decision recorded in its `ADR-XXX` (the simplest option consistent with the PRD and the pilot), and is linked to that ADR. Structural proposals that go beyond what the PRD states (status codes, field names, response shapes) are marked **Draft / Proposed**. *(Correction, 2026-07-15: the former blanket "Nothing in this document is implemented; every block is a specification" is no longer accurate. A substantial part of the current flow is **built and verified on a local stack (not deployed, no `vX.Y.Z` release)** — see the "Current system (as built)" note below and the per-FR "As built" markers on FR-005, FR-015, FR-066–FR-069, and the pilot-loop FRs. Many other FRs remain specification only; each block states which.)* Traceability tags used below: **VERIFIED** = stated in PRD v0.7 or the one-week pilot; **DRAFT/PROPOSED** = reasonable structuring by the author; **TBD/PENDING** = a human decision (see `docs_en/decisions/`).
 
 > **Update (ADR-025, 2026-07-14):** the human render-review gate is retired. FR-027 is Deprecated (superseded by ADR-025); renders are published to the requesting user immediately upon successful generation. Review-gate preconditions in FR-015, FR-028, FR-029, and FR-031 are updated accordingly; TC-051/TC-052/TC-053 are retired with FR-027 (see `08_test_plan.md`).
 
 > **Update (ADR-027, 2026-07-15):** a temporary, additive **public-catalog bootstrap fallback** is introduced (FEAT-017, issue #43). While Spazio has no onboarded suppliers, when no supplier catalog satisfies the matching constraints the system may present products from the **Amazon Berkeley Objects** public dataset (CC BY 4.0) as a clearly-labeled, **non-purchasable, display-only** `source=public` track (new FR-062–FR-065). This **qualifies — does not delete** — the founding real-purchasable-SKU-only invariant: **FR-016** is scoped to the **supplier track** (a public product is real and attributed but not purchasable), and **FR-018**'s current-availability gate is carved out for the non-purchasable public track. The supplier track (BR-6/BR-14/FR-016, in-app checkout, commission, MoR) stays fully in force and unchanged. Same dated-marker precedent as ADR-024/ADR-025/ADR-026. See `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md` and `docs_en/features/FEAT-017_public-catalog-fallback.md`.
 
 > **Update (ADR-028, 2026-07-15):** the furnishing flow is **inverted** to **user-curated selection** (FEAT-018). Instead of the AI auto-selecting furniture and rendering a whole room (PRD §8), the user chooses a **source** (Local suppliers = `source=supplier` | Brand suppliers = `source=public`) and **style**, **browses the real catalog, selects up to 3 products**, and renders **exactly those** into the room photo; "try other furniture" iterates with the same photo/source/style. New **FR-066–FR-069** (browse / select ≤3 / render the selection / iterate). This **scopes — does not delete** — the auto-match requirements: **FR-014** and **FR-015** are now **optional (ADR-028)**, used only when a render request carries no user selection (backward compatible). The **3-item cap** is the hard product rule (owner decision), enforced server-side, and matches the FLUX.2 Klein engine's ~2–3 reference-image limit (**ADR-026**). Provenance (ADR-027) is unchanged: a Local selection populates the cart; a Brand selection is display-only and yields an empty cart. Same dated-marker precedent as ADR-024/ADR-025/ADR-026/ADR-027. See `docs_en/decisions/ADR-028_user-curated-furniture-selection.md` and `docs_en/features/FEAT-018_browse-select-furniture.md`.
+
+> **Current system (as built) — 2026-07-15.** So a reader sees today's reality at a glance. The product is a **web app** (`web-demo/`, Next.js) wired to a Node/Fastify/Prisma/Postgres backend with local object storage — **there is no native iOS app** (ADR-024). The **current primary flow is user-curated selection** (ADR-028 / FEAT-018): landing → upload the user's real room photo (bytes; large phone photos downscaled + EXIF-oriented, BUG-001) + approximate dimensions → choose a **source** (Local suppliers = `source=supplier` | Brand suppliers = `source=public`) → choose a **style** (+ COP budget) → **browse the real catalog and select up to 3 products** (FR-066/FR-067) → **render exactly that selection** into the room photo (FR-068) → iterate ("try other furniture", FR-069) → cart → mock checkout → confirmation. Auto-match (FR-014/FR-015) is now the **optional fallback** used only when a render request carries no selection. The render engine is self-hosted **FLUX.2 Klein 4B via the mflux CLI** on an Apple-Silicon worker (ADR-026); `RENDER_ENGINE` defaults to `fake` (a placeholder/cached visual that keeps CI hermetic), and `mflux` runs the real engine. Renders are **published immediately on generation success** — there is **no operator render-review** (ADR-025 / FEAT-016 retired FR-027). This is **built and verified locally only**: nothing is deployed, real payments (ADR-003) are not chosen so checkout is **mock**, and Local-supplier product images are still **placeholder SVGs** (their render is generic). Per-FR "As built" markers below state precisely what is built vs. still specification.
 
 ## Requirements index
 
@@ -173,7 +175,7 @@ The system shall, when a registered user submits credentials, verify them and es
 
 ### Business rules
 
-- Authentication must protect account and order data (VERIFIED, PRD §7 → NFR-008). Session/token mechanism is **DRAFT/PROPOSED**; the technology stack is decided for the pilot (native iOS/SwiftUI + one managed backend service + a managed Postgres DB) → ADR-001.
+- Authentication must protect account and order data (VERIFIED, PRD §7 → NFR-008). Session/token mechanism is **DRAFT/PROPOSED**; the technology stack is decided for the pilot (one managed backend service + a managed Postgres DB) → ADR-001. *(Correction, 2026-07-15: the client is the **web app** (`web-demo/`), not a native iOS/SwiftUI app — the iOS client of ADR-001 was superseded by ADR-024, 2026-07-14. End-user accounts are not built in the current system — the web client is device-scoped with no login, ADR-022; the only authenticated surface as built is the operator console.)*
 
 ## FR-003 — Manage a basic profile and preferences
 
@@ -1210,8 +1212,10 @@ The system shall, when no supplier catalog satisfies the project's matching cons
 
 ## FR-063 — Tag every product with its source and distinguish public products across matching, render tags, and cart
 
-**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017; data-model spec `07_data_model.md` (`Product.source`)
+
+> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). Every product carries a `source` of `supplier` or `public`; `source=public` products (Amazon Berkeley Objects) are seeded and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), kept distinguishable from supplier products and labeled "not sold by Spazio". Supplier products retain the full purchasable-SKU treatment (FR-016 unchanged). The `source=public` fallback-activation gating of FR-062 (activate only when no supplier catalog exists) remains partly specification. See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 
@@ -1228,8 +1232,10 @@ The system shall, for every catalog product, carry a `source` of `supplier` or `
 
 ## FR-064 — Keep public products display-only with a labeled "View at retailer" outbound link, excluded from cart, checkout, orders, commission, and merchant-of-record
 
-**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017; scopes ADR-004 (MoR), ADR-007 (commission)
+
+> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). `source=public` (Brand suppliers) products are display-only: shown with a "not sold by Spazio" label and a "View at retailer" outbound link, never added to cart/checkout, and excluded from orders/commission/merchant-of-record — a Brand-only render yields an empty cart by design. The CC BY 4.0 attribution propagation of FR-065 remains partly specification. See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 
@@ -1264,8 +1270,10 @@ The system shall, for a `source=public` product, record and display its required
 
 ## FR-066 — Browse the catalog by source and style, returning approved renderable products with an image URL
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(As built — FEAT-018, 2026-07-15)*
 **Origin:** ADR-028 (2026-07-15); FEAT-018; ADR-027 (`Product.source`); reuses the style-matching helper of FR-014
+
+> **As built — FEAT-018 (2026-07-15).** Implemented and verified on the local stack (not deployed). The public browse surface `GET /api/v1/catalog?source=&styleId=&budgetMaxCop=` returns the approved, renderable products of the requested source/style, each with an `imageUrl`, and `GET /api/v1/catalog/products/:id/image` streams a product's stored image bytes (404 when absent/unknown). It is not device-scoped (public data, like `GET /styles`) and reuses the FR-014 style-matching helper. See `features/FEAT-018_browse-select-furniture.md`; validated by **TC-127 / TC-128 / TC-129** (`08_test_plan.md`).
 
 ### Description
 
@@ -1283,8 +1291,10 @@ The system shall, given a `source` (`supplier` | `public`) and a `styleId` (and 
 
 ## FR-067 — Let the user select up to 3 products; reject a render request carrying more than 3
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(As built — FEAT-018, 2026-07-15)*
 **Origin:** ADR-028 (2026-07-15); FEAT-018; ADR-026 (Klein ~2–3 reference-image limit)
+
+> **As built — FEAT-018 (2026-07-15).** Implemented and verified on the local stack (not deployed). `POST /api/v1/renders` accepts an optional `productIds` selection; a selection of more than 3 is rejected server-side with `400 too_many_products` and no render is created, and a selection of ≤3 is accepted with the worker validating each id and silently dropping any that is missing/unapproved/not-renderable/out-of-stock. The 3-item cap is enforced server-side, not client-only. See `features/FEAT-018_browse-select-furniture.md`; validated by **TC-130 / TC-131** (`08_test_plan.md`).
 
 ### Description
 
@@ -1301,8 +1311,10 @@ The system shall accept an optional user selection of product ids on a render re
 
 ## FR-068 — Render exactly the user's selected products
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(As built — FEAT-018, 2026-07-15)*
 **Origin:** ADR-028 (2026-07-15); FEAT-018; scopes FR-014/FR-015 (auto-match now optional)
+
+> **As built — FEAT-018 (2026-07-15).** Implemented and verified on the local stack (not deployed). When a render request carries a valid `productIds` selection the composite is built from exactly those validated products and auto-match (FR-014) is not run; when no selection is provided, auto-match (FR-014/FR-015) runs as the optional fallback (backward compatible — ADR-028). The cart auto-populates from the render's items with `source=public` items excluded (FR-064): a Local selection populates the cart, a Brand selection yields an empty cart. See `features/FEAT-018_browse-select-furniture.md`; validated by **TC-132 / TC-133** (`08_test_plan.md`).
 
 ### Description
 
@@ -1319,8 +1331,10 @@ The system shall, when a render request carries a valid user selection (`product
 
 ## FR-069 — Iterate: re-render on the same project with a different selection, keeping the photo, source, and style
 
-**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-018, 2026-07-15)*
 **Origin:** ADR-028 (2026-07-15); FEAT-018
+
+> **As built — FEAT-018 (2026-07-15).** Implemented and verified on the local stack (not deployed). "Try other furniture" returns the user to `/select` keeping the same room photo, source, and style and clearing only the selection; picking a new set (≤3) and re-rendering issues an ordinary render request (FR-068) on the same project and produces a new render of the new selection. See `features/FEAT-018_browse-select-furniture.md`; validated by **TC-134** (`08_test_plan.md`).
 
 ### Description
 

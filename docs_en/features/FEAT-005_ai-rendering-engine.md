@@ -1,6 +1,6 @@
 # FEAT-005 - AI rendering engine
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. Nothing here is implemented; this is a specification.
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** matching, render generation, and the real render served to the client are implemented and **verified on a local stack (not deployed; real renders need `RENDER_ENGINE=mflux` on an Apple-Silicon host)** — see the dated **As built** note below; the full-product items (FR-019/FR-022/FR-023) stay specification.
 
 ## 1. Summary
 
