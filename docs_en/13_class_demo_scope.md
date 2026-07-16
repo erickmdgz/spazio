@@ -49,16 +49,19 @@ Two further notes on fidelity:
 
 ## 3. The happy-path flow (routes)
 
-The demo is an 8-step flow across 7 routes (the product detail sheet, step 5, is a modal overlay rather than a route):
+The demo is a 9-step flow across 8 routes (the product detail sheet, step 6, is a modal overlay rather than a route) *(updated by ADR-028/FEAT-018 — a `/select` browse-and-pick route was added between style and render)*:
 
 1. `/` — landing (value prop + Start).
 2. `/room` — **upload a photo of your room** (primary; real image bytes are sent to the backend and composited by the engine — ADR-026), or, with no photo handy, pick the **single real sample photo** ("No photo handy? Try a sample"); approximate dimensions. *(As built 2026-07-15: the two prior illustration samples were replaced by one real sample photo; upload is no longer routed to a preset — see FEAT-002.)*
-3. `/style` — pick a style (**Modern Mediterranean**, **Warm Minimalist**, **Scandinavian**), optional free-text note, and a **COP budget slider** (2,000,000 – 12,000,000).
-4. `/render` — a simulated "generating…" state, then the furnished render with **tappable product hotspots** and a budget indicator (**10% tolerance**).
-5. **Product detail sheet** (`ProductSheet.tsx`) — image, name, price (COP), supplier, category, lead time, add/remove.
-6. `/cart` — items with per-item and total COP, budget-vs-total indicator, remove/swap.
-7. `/checkout` — minimal contact (email / phone / address per **ADR-022** — no accounts); order **grouped by supplier, one PO each**; a **mock** "Pay $ X" button (amount in COP).
-8. `/confirmation` — order number, per-supplier breakdown, per-item delivery/production dates, and an operator-in-the-loop message.
+3. `/style` — choose a **SOURCE** (**Local suppliers** = `source=supplier` | **Brand suppliers** = `source=public`), pick a style (**Modern Mediterranean**, **Warm Minimalist**, **Scandinavian**), optional free-text note, and a **COP budget slider** (2,000,000 – 12,000,000). *(SOURCE toggle added by ADR-028/FEAT-018.)*
+4. `/select` — **browse the real catalog** for the chosen source + style and **select up to 3 products** (clear selected state + `N/3` counter; deselect allowed; a budget meter for Local-supplier picks). Brand/public products show a **"not sold by Spazio"** chip, a **"View at retailer"** outbound link, and CC BY 4.0 attribution. A primary "Render these (N) →" button. *(New route — ADR-028/FEAT-018.)*
+5. `/render` — a "generating…" state, then the furnished render of **exactly the selected products** with **tappable product hotspots** and a budget indicator (**10% tolerance**), plus two actions: **"Love it → Cart"** and **"Try other furniture"** (back to `/select`, keeping photo/source/style, clearing the selection — the iterate loop, FR-069).
+6. **Product detail sheet** (`ProductSheet.tsx`) — image, name, price (COP), supplier, category, lead time, add/remove.
+7. `/cart` — items with per-item and total COP, budget-vs-total indicator, remove/swap. *(A Local-suppliers render populates the cart; a Brand-suppliers render yields an empty cart by design — public products are display-only, ADR-027/FR-064.)*
+8. `/checkout` — minimal contact (email / phone / address per **ADR-022** — no accounts); order **grouped by supplier, one PO each**; a **mock** "Pay $ X" button (amount in COP).
+9. `/confirmation` — order number, per-supplier breakdown, per-item delivery/production dates, and an operator-in-the-loop message.
+
+*(Flow updated by ADR-028/FEAT-018, 2026-07-15: the AI no longer auto-furnishes the room; the user browses and picks up to 3 products at `/select`, and the render composites exactly those. Auto-match, FR-014/FR-015, remains an optional fallback.)*
 
 ---
 
@@ -83,6 +86,7 @@ Demo status legend: **Exercised at demo fidelity** = present in the UI along the
 | FEAT-013 | Render metering & monetization | Not in demo |
 | FEAT-014 | Targeted render refinement | Not in demo |
 | FEAT-015 | Supplier catalog management | Not in demo (replaced by the seeded catalog) |
+| FEAT-018 | Browse & select furniture (user-curated render) | Exercised at demo fidelity (SOURCE toggle + `/select` browse-and-pick up to 3 → render exactly the selection — ADR-028) |
 
 Note: the "exercised at demo fidelity" features are shown **at the UI level only, backed by fakes** — they demonstrate the intended user experience, not the production implementation.
 

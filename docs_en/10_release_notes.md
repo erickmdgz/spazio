@@ -271,6 +271,34 @@ below).
   doc: `docs_en/features/FEAT-005_ai-rendering-engine.md`; decision:
   `docs_en/decisions/ADR-026_self-hosted-render-engine.md`.
 
+- **Furnishing flow inverted to user-curated selection — specified
+  (`ADR-028`, `FEAT-018`).** The product owner's 2026-07-15 decision replaces the
+  PRD §8 auto-furnish flow with **browse-and-pick**: the user chooses a **source**
+  (Local suppliers = `source=supplier` | Brand suppliers = `source=public`) and a
+  **style**, **browses the real catalog, selects up to 3 products**, and renders
+  **exactly those** into the room photo; "try other furniture" iterates with the
+  same photo/source/style, and "love it" proceeds to the cart. The **3-item cap**
+  is the hard product rule (owner decision), enforced **server-side**, and matches
+  the FLUX.2 Klein engine's **~2–3 reference-image limit** (**ADR-026**). Auto-match
+  (**FR-014 / FR-015**) is **scoped to an optional fallback** — run only when a
+  render request carries no `productIds` (backward compatible) — **not deleted**.
+  Product provenance (**ADR-027**) is unchanged: a **Local** (`source=supplier`)
+  selection populates the cart (FR-031), a **Brand** (`source=public`) selection is
+  display-only ("not sold by Spazio" + "View at retailer" link) and yields an
+  **empty cart** by design (FR-064). This pass adds **FR-066..FR-069**
+  (`03_requirements.md`) and test cases **TC-127..TC-135** (`08_test_plan.md`,
+  Status Pending), and specifies the API contract in `06_api.md`: two **public**
+  (not device-scoped) client browse endpoints — `GET /api/v1/catalog?source&styleId&budgetMaxCop`
+  and `GET /api/v1/catalog/products/:id/image` — and an optional `productIds` field
+  on `POST /api/v1/renders` (`400 too_many_products` when more than 3). **No schema
+  change and no new npm dependency** (`source`, attribution, and styles already
+  exist — ADR-027). NFR-007 device scoping on the project/render routes is
+  preserved; the catalog GETs are intentionally unauthenticated. Recording a
+  decision is not building it: **no application code is listed as shipped here**,
+  nothing is deployed, and no requirement is listed as covered. Feature doc:
+  `docs_en/features/FEAT-018_browse-select-furniture.md`; decision:
+  `docs_en/decisions/ADR-028_user-curated-furniture-selection.md`.
+
 - **Public-catalog bootstrap fallback decided and specified — docs only
   (`ADR-027`, `FEAT-017`, Issue #43).** The product owner's 2026-07-15 decision:
   because Spazio has **no onboarded suppliers yet**, a clearly-labeled, temporary

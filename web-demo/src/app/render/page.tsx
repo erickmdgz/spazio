@@ -11,7 +11,7 @@ import { useDemo } from "@/lib/store";
 
 const LOADING_MESSAGES = [
   "Reading your room…",
-  "Matching real, in-stock products…",
+  "Placing your selected products…",
   "Composing the layout…",
   "Rendering your space…",
 ];
@@ -25,6 +25,9 @@ export default function RenderPage() {
   const {
     room,
     style,
+    source,
+    selectedProductIds,
+    clearSelection,
     renderVisual,
     setRenderVisual,
     renderItems,
@@ -40,11 +43,13 @@ export default function RenderPage() {
   const [backendImageUrl, setBackendImageUrl] = useState<string | null>(null);
   const startedKey = useRef<string | null>(null);
 
-  // Soft guard.
+  // Soft guard: this step needs a room, a style, and a furniture selection
+  // (ADR-028 — the user curates what gets rendered on /select).
   useEffect(() => {
     if (!room) router.replace("/room");
     else if (!style) router.replace("/style");
-  }, [room, style, router]);
+    else if (selectedProductIds.length === 0) router.replace("/select");
+  }, [room, style, selectedProductIds, router]);
 
   // Rotate loading messages.
   useEffect(() => {
@@ -58,8 +63,10 @@ export default function RenderPage() {
   // immediately on generation success (ADR-025). Both run together; generation
   // is what the user waits on.
   useEffect(() => {
-    if (!room || !style) return;
-    const key = `${room.id}:${style.id}`;
+    if (!room || !style || selectedProductIds.length === 0) return;
+    // Key on the selection too: picking different furniture (FR-069 iterate)
+    // starts a fresh render of exactly those products.
+    const key = `${room.id}:${style.id}:${selectedProductIds.join(",")}`;
     if (startedKey.current === key) return;
     startedKey.current = key;
     setPhase("loading");
@@ -93,7 +100,7 @@ export default function RenderPage() {
     return () => {
       cancelled = true;
     };
-  }, [room, style, submitRender, setRenderVisual]);
+  }, [room, style, selectedProductIds, submitRender, setRenderVisual]);
 
   // Poll while the backend generates (the poll may legitimately stay
   // queued/processing for a while — ~2–5 min soft target, no hard render SLA,
@@ -153,6 +160,9 @@ export default function RenderPage() {
     [cart],
   );
   const withinBudget = cartTotal <= budget * 1.1;
+  // Brand (public) selections are display-only: the cart stays empty by design
+  // (ADR-027/028) — the user buys via the retailer link on each product.
+  const isBrand = source === "public";
 
   const roomName = room ? getRoom(room.id)?.name : "";
   const styleName = style ? getStyle(style.id)?.name : "";
@@ -175,7 +185,7 @@ export default function RenderPage() {
     });
   }, [renderItems, scenario]);
 
-  if (!room || !style) return null;
+  if (!room || !style || selectedProductIds.length === 0) return null;
 
   if (phase !== "ready") {
     return (
@@ -247,11 +257,11 @@ export default function RenderPage() {
             Your furnished {roomName?.toLowerCase()}
           </h1>
           <p className="mt-1 text-muted/70">
-            {styleName} · tap a dot to view a real, purchasable product.
+            {styleName} · tap a dot to view a product you selected.
           </p>
         </div>
         <span className="chip bg-forest-800/10 text-forest-900">
-          {hotspots.length} real {hotspots.length === 1 ? "product" : "products"} matched
+          {hotspots.length} {hotspots.length === 1 ? "product" : "products"} placed
         </span>
       </div>
 
@@ -292,40 +302,77 @@ export default function RenderPage() {
         ))}
         {hotspots.length === 0 && (
           <div className="absolute inset-x-0 bottom-0 bg-forest-900/80 p-3 text-center text-sm text-cream-50">
-            No purchasable products matched this request yet — the curated catalog may still be
-            loading. The operator curates SKUs in the console.
+            Your selected products couldn&apos;t be placed in this render — try re-rendering or go
+            back to pick different furniture.
           </div>
         )}
       </div>
 
-      {/* Render-to-purchase bar */}
+      {/* Like it? bar (ADR-028): keep this selection to cart, or go back to
+          browse a different set of furniture with the same photo/source/style. */}
       <div className="card mt-5 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-muted/70">
-            {cart?.items.length ?? 0} {(cart?.items.length ?? 0) === 1 ? "item" : "items"} in your
-            cart — auto-filled from this render
-          </p>
-          <p className="font-serif text-2xl text-forest-900">{formatCop(cartTotal)}</p>
-          <span
-            className={`chip mt-1 ${
-              withinBudget ? "bg-forest-800/10 text-forest-900" : "bg-wood/20 text-wood-dark"
-            }`}
-          >
-            {withinBudget ? "Within budget" : `Over budget by ${formatCop(cartTotal - budget)}`}
-          </span>
+          <p className="font-serif text-xl text-forest-900">Like what you see?</p>
+          {isBrand ? (
+            <p className="mt-1 text-sm text-muted/70">
+              These are brand products, not sold by Spazio — buy them at their retailer using the
+              links here.
+            </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted/70">
+                {cart?.items.length ?? 0} {(cart?.items.length ?? 0) === 1 ? "item" : "items"} in
+                your cart · {formatCop(cartTotal)}
+              </p>
+              <span
+                className={`chip mt-1 ${
+                  withinBudget ? "bg-forest-800/10 text-forest-900" : "bg-wood/20 text-wood-dark"
+                }`}
+              >
+                {withinBudget ? "Within budget" : `Over budget by ${formatCop(cartTotal - budget)}`}
+              </span>
+            </>
+          )}
         </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => router.push("/style")} className="btn-secondary">
-            <span aria-hidden>←</span> Change style
-          </button>
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => router.push("/cart")}
-            className="btn-primary"
-            disabled={(cart?.items.length ?? 0) === 0}
+            onClick={() => {
+              clearSelection();
+              router.push("/select");
+            }}
+            className="btn-secondary"
           >
-            Review cart <span aria-hidden>→</span>
+            <span aria-hidden>←</span> Try other furniture
           </button>
+          {isBrand ? (
+            // Brand (source=public) is the terminal step: the cart is empty by design
+            // (ADR-027/028), so the forward action is buying at the retailer. Surface
+            // each selected product's "View at retailer" outbound link directly here
+            // instead of a permanently-disabled cart button.
+            renderItems
+              .filter((it) => isPublicProduct(it.product) && it.product.outboundUrl)
+              .map((it) => (
+                <a
+                  key={it.id}
+                  href={it.product.outboundUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary"
+                >
+                  View {it.product.name} at retailer <span aria-hidden>↗</span>
+                </a>
+              ))
+          ) : (
+            <button
+              type="button"
+              onClick={() => router.push("/cart")}
+              className="btn-primary"
+              disabled={(cart?.items.length ?? 0) === 0}
+            >
+              Love it → Cart <span aria-hidden>→</span>
+            </button>
+          )}
         </div>
       </div>
 

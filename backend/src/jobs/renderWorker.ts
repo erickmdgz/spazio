@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import type { Queue, RenderJob } from "./queue.js";
 import type { RenderPipeline } from "../services/render/pipeline.js";
 import { matchProducts } from "../services/matching.js";
+import { selectProductsByIds } from "../services/catalog.js";
 import { populateCartFromRender } from "../services/cart.js";
 import { attributionOf } from "../services/attribution.js";
 
@@ -14,13 +15,21 @@ import { attributionOf } from "../services/attribution.js";
  * the project's cart (FR-031, BR-31), and marks the request `completed` — the
  * render is published to the requesting user immediately on generation success
  * (ADR-025; no operator review). A pipeline failure marks the request `failed`.
+ *
+ * User-curated selection (ADR-028/FR-068): when the job carries the user's chosen
+ * productIds, the worker composites EXACTLY those (after re-validating existence /
+ * approval / renderability / stock / attribution via selectProductsByIds) instead
+ * of auto-matching. With no selection it falls back to matchProducts() as before
+ * (backward compatible). Either way the fabrication guard and the public-excluded
+ * cart auto-populate are unchanged: a source=public selection is still composited
+ * and tagged for display but never carted (FR-064, ADR-027).
  */
 export function registerRenderWorker(
   queue: Queue<RenderJob>,
   prisma: PrismaClient,
   pipeline: RenderPipeline,
 ): void {
-  queue.process(async ({ renderId }) => {
+  queue.process(async ({ renderId, productIds }) => {
     const render = await prisma.render.findUnique({
       where: { id: renderId },
       include: { renderRequest: true },
@@ -38,11 +47,16 @@ export function registerRenderWorker(
         orderBy: { createdAt: "desc" },
       });
 
-      const products = await matchProducts(prisma, {
-        styleId: render.renderRequest.styleId,
-        budgetMinCop: render.renderRequest.budgetMinCop,
-        budgetMaxCop: render.renderRequest.budgetMaxCop,
-      });
+      // User-curated selection composites EXACTLY the chosen products (ADR-028/
+      // FR-068), re-validated here; otherwise fall back to auto-match (FR-014/015).
+      const products =
+        productIds && productIds.length > 0
+          ? await selectProductsByIds(prisma, productIds)
+          : await matchProducts(prisma, {
+              styleId: render.renderRequest.styleId,
+              budgetMinCop: render.renderRequest.budgetMinCop,
+              budgetMaxCop: render.renderRequest.budgetMaxCop,
+            });
       const productsById = new Map(products.map((product) => [product.id, product]));
 
       const result = await pipeline.generate({

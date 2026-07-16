@@ -41,6 +41,22 @@ export interface MatchInput {
 
 export const DEFAULT_MATCH_LIMIT = 6;
 
+/**
+ * Resolve a styleId to its stable style `code` (or null when no style is chosen,
+ * or the id does not resolve). The catalog's `styleAttributes` reference this code,
+ * so every style-aware query (matching AND the browse/select catalog surface,
+ * ADR-028/FR-066) must map id -> code the same way. Shared here so the style logic
+ * is not duplicated.
+ */
+export async function resolveStyleCode(
+  prisma: PrismaClient,
+  styleId: string | null,
+): Promise<string | null> {
+  if (!styleId) return null;
+  const style = await prisma.style.findUnique({ where: { id: styleId } });
+  return style?.code ?? null;
+}
+
 /** Greedy budget pass (FR-021, ADR-008): cheapest-first within budget + tolerance. */
 function selectWithinBudget(
   candidates: Product[],
@@ -62,9 +78,7 @@ function selectWithinBudget(
 }
 
 export async function matchProducts(prisma: PrismaClient, input: MatchInput): Promise<Product[]> {
-  const style = input.styleId
-    ? await prisma.style.findUnique({ where: { id: input.styleId } })
-    : null;
+  const styleCode = await resolveStyleCode(prisma, input.styleId);
 
   const limit = input.limit ?? DEFAULT_MATCH_LIMIT;
 
@@ -78,7 +92,7 @@ export async function matchProducts(prisma: PrismaClient, input: MatchInput): Pr
         { classification: "ready_made", stock: { gt: 0 } },
         { classification: "made_to_order" },
       ],
-      ...(style ? { styleAttributes: { has: style.code } } : {}),
+      ...(styleCode ? { styleAttributes: { has: styleCode } } : {}),
     },
     orderBy: { priceCop: "asc" },
   });
@@ -99,7 +113,7 @@ export async function matchProducts(prisma: PrismaClient, input: MatchInput): Pr
       source: "public",
       approvalStatus: "approved",
       completenessStatus: "complete",
-      ...(style ? { styleAttributes: { has: style.code } } : {}),
+      ...(styleCode ? { styleAttributes: { has: styleCode } } : {}),
       // DB-level attribution pre-filter (FR-065/TC-110): exclude rows missing any
       // CC BY 4.0 field.
       sourceName: { not: null },

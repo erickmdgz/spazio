@@ -33,6 +33,8 @@ This document catalogs what the system must do. Each functional requirement (FR)
 
 > **Update (ADR-027, 2026-07-15):** a temporary, additive **public-catalog bootstrap fallback** is introduced (FEAT-017, issue #43). While Spazio has no onboarded suppliers, when no supplier catalog satisfies the matching constraints the system may present products from the **Amazon Berkeley Objects** public dataset (CC BY 4.0) as a clearly-labeled, **non-purchasable, display-only** `source=public` track (new FR-062–FR-065). This **qualifies — does not delete** — the founding real-purchasable-SKU-only invariant: **FR-016** is scoped to the **supplier track** (a public product is real and attributed but not purchasable), and **FR-018**'s current-availability gate is carved out for the non-purchasable public track. The supplier track (BR-6/BR-14/FR-016, in-app checkout, commission, MoR) stays fully in force and unchanged. Same dated-marker precedent as ADR-024/ADR-025/ADR-026. See `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md` and `docs_en/features/FEAT-017_public-catalog-fallback.md`.
 
+> **Update (ADR-028, 2026-07-15):** the furnishing flow is **inverted** to **user-curated selection** (FEAT-018). Instead of the AI auto-selecting furniture and rendering a whole room (PRD §8), the user chooses a **source** (Local suppliers = `source=supplier` | Brand suppliers = `source=public`) and **style**, **browses the real catalog, selects up to 3 products**, and renders **exactly those** into the room photo; "try other furniture" iterates with the same photo/source/style. New **FR-066–FR-069** (browse / select ≤3 / render the selection / iterate). This **scopes — does not delete** — the auto-match requirements: **FR-014** and **FR-015** are now **optional (ADR-028)**, used only when a render request carries no user selection (backward compatible). The **3-item cap** is the hard product rule (owner decision), enforced server-side, and matches the FLUX.2 Klein engine's ~2–3 reference-image limit (**ADR-026**). Provenance (ADR-027) is unchanged: a Local selection populates the cart; a Brand selection is display-only and yields an empty cart. Same dated-marker precedent as ADR-024/ADR-025/ADR-026/ADR-027. See `docs_en/decisions/ADR-028_user-curated-furniture-selection.md` and `docs_en/features/FEAT-018_browse-select-furniture.md`.
+
 ## Requirements index
 
 <!-- Catalog at a glance; the detail lives in each FR-XXX block below. -->
@@ -104,6 +106,10 @@ This document catalogs what the system must do. Each functional requirement (FR)
 | FR-063 | Tag every product with its source and distinguish public products across matching, render tags, and cart *(ADR-027)* | Medium |
 | FR-064 | Keep public products display-only with a "View at retailer" link; exclude them from cart, checkout, orders, commission, and MoR *(ADR-027)* | Medium |
 | FR-065 | Record and surface required CC BY 4.0 attribution for public products and propagate provenance into composited renders *(ADR-027)* | Medium |
+| FR-066 | Browse the catalog by source and style, returning approved renderable products with an image URL (optional budget filter) *(ADR-028)* | High |
+| FR-067 | Let the user select up to 3 products; reject a render request carrying more than 3 *(ADR-028)* | High |
+| FR-068 | Render exactly the user's selected products (composite the validated selection instead of auto-match) *(ADR-028)* | High |
+| FR-069 | Iterate: re-render on the same project with a different selection, keeping the photo, source, and style *(ADR-028)* | Medium |
 
 > **Deferred / not yet catalogued (PRD Must-have coverage gap).** Two PRD §3 "Must have" items are **deliberately not yet written as FRs**. They are recorded here so the gap is visible instead of lost; no FR is invented for them yet.
 >
@@ -353,8 +359,10 @@ The system shall, when a user's location is available, determine the applicable 
 
 ## FR-014 — Match real, available catalog SKUs to style, dimensions, budget, and locality
 
-**Actor:** System · **Priority:** High · **Status:** Proposed
+**Actor:** System · **Priority:** High · **Status:** Proposed · *(Optional fallback — ADR-028, 2026-07-15)*
 **Origin:** PRD FR-06 (§6); Spazio_One_Week_iOS_Pilot.md (Included); 01_product_vision.md
+
+> **Scoped by ADR-028 (2026-07-15) — optional, not deleted.** The flow is inverted to **user-curated selection** (FEAT-018): the user browses the catalog and picks up to 3 products, which are rendered exactly (FR-066–FR-069). Auto-match is now an **optional fallback**, run only when a render request carries **no** user selection (`productIds` omitted — backward compatible). The description, criteria, and rule below are unchanged and remain fully in force for that fallback path.
 
 ### Description
 
@@ -375,6 +383,8 @@ The system shall, when a project has style, dimensions, budget, and locality inp
 **Origin:** PRD FR-06 (§6); PRD §1; Spazio_One_Week_iOS_Pilot.md ("the one core thing"); 01_product_vision.md
 
 > **As built — render display (FEAT-002, 2026-07-15).** The render *output* is now served to and displayed by the client. A new device-scoped `GET /api/v1/renders/:id/image` streams the stored render (`Render.imageKey`) from object storage with an image content-type; once `GET /renders/:id` reports `completed`, the web app fetches this route with `x-device-token` and shows the **real backend render** (the cached preset visual is kept only as the while-generating placeholder / fetch-failure fallback; supplier + public product tags per ADR-027 still overlay). A foreign/unknown device → 404, and a render with no `imageKey` yet → 404 (client keeps polling), so no other device's render is leaked (NFR-007). See `06_api.md` (§5), `features/FEAT-005_ai-rendering-engine.md`, `features/FEAT-007_product-tagging-interaction.md`; validated by **TC-122 / TC-123 / TC-124** (`08_test_plan.md`).
+
+> **Scoped by ADR-028 (2026-07-15) — the composited set may be user-curated.** Under user-curated selection (FEAT-018, FR-066–FR-069), when a render request carries `productIds` the composite is built from **exactly** those validated products (up to 3) instead of the auto-matched set (FR-068). This FR's observable result — a completed photorealistic composite of the chosen SKUs into the room photo — is unchanged; only the *source of the set* (user selection vs. auto-match fallback per FR-014) changes. The real-SKU-only invariant (FR-016) and the criteria/TCs below are unchanged.
 
 ### Description
 
@@ -1251,3 +1261,75 @@ The system shall, for a `source=public` product, record and display its required
 ### Business rules
 
 - CC BY 4.0 requires attribution both for use and for derivative works (**ADR-027**, **NFR-019**). A render compositing a public image is a derivative work (**ADR-026**); the attribution must flow from the source into the stored render and its display. Attribution fields (`source_name`, `source_url`, `source_image_url`, `image_license`) are specified on `Product` in `07_data_model.md`. Failure to carry attribution is a license violation (NFR-019).
+
+## FR-066 — Browse the catalog by source and style, returning approved renderable products with an image URL
+
+**Actor:** System · **Priority:** High · **Status:** Proposed
+**Origin:** ADR-028 (2026-07-15); FEAT-018; ADR-027 (`Product.source`); reuses the style-matching helper of FR-014
+
+### Description
+
+The system shall, given a `source` (`supplier` | `public`) and a `styleId` (and an optional maximum budget), return the approved, renderable products of that source whose style attributes include the requested style — each product carrying an image URL — and shall stream a product's stored image on request.
+
+### Acceptance criteria
+
+- [ ] Given approved, renderable products of a source that match the requested style, when the browse endpoint is called with that `source` and `styleId`, then those products are returned, each with an `imageUrl` (a `source=public` product's image URL resolves to the product-image endpoint; a `source=supplier` product's to its web-asset `photos[0]`). → TC-127
+- [ ] Given products that are unapproved, not renderable, of a different source, of a different style, or over an optional `budgetMaxCop`, when the browse endpoint is called, then those products are excluded, and when none match, an empty product list is returned. → TC-128
+- [ ] Given a `source=public` product with a stored image, when its product-image endpoint is called, then the stored image bytes are streamed with the correct content-type; given a product with no stored image or that does not exist, then `404` is returned. → TC-129
+
+### Business rules
+
+- The browse surface is **public data** (like `GET /styles`) and is **not** device-scoped (**ADR-028**). It reuses the `styleId → style` matching logic used by matching (FR-014) — do not duplicate it — and the existing product-summary shape, adding only `imageUrl`. Only approved, renderable products are returned (the FR-019 completeness / FR-018 availability gates apply as written; public products follow the ADR-027 completeness stance). Provenance and labeling for `source=public` products follow FR-063/FR-064/FR-065.
+
+## FR-067 — Let the user select up to 3 products; reject a render request carrying more than 3
+
+**Actor:** System · **Priority:** High · **Status:** Proposed
+**Origin:** ADR-028 (2026-07-15); FEAT-018; ADR-026 (Klein ~2–3 reference-image limit)
+
+### Description
+
+The system shall accept an optional user selection of product ids on a render request and, when the selection carries more than 3 products, reject the request server-side; when 3 or fewer are provided, the render worker validates each id and composites only those that reference an existing, approved, renderable product (in-stock if ready-made), silently dropping the rest. *(The render request carries no `source` field — source scoping is a browse-time UI concern only; a selection is validated per id and the ADR-027 cart-exclusion is applied per item, so a mixed-source selection is accepted with public items kept display-only.)*
+
+### Acceptance criteria
+
+- [ ] Given a render request whose `productIds` contains more than 3 entries, when it is submitted, then it is rejected server-side with a `400 too_many_products` status and no render is created. → TC-130
+- [ ] Given a render request whose `productIds` (3 or fewer) include a product that does not exist, is not approved, is not renderable, or is an out-of-stock ready-made item, when it is submitted, then the render is still created (no 400) and the worker's selection validation silently drops the invalid id(s), compositing only the valid selected products. → TC-131
+
+### Business rules
+
+- The **3-item cap is the hard product rule** (owner decision, **ADR-028**) and is enforced **server-side** — a client-only limit is insufficient. The cap matches the FLUX.2 Klein engine's ~2–3 reference-image limit (**ADR-026**). Every selected id must be a real, approved, renderable SKU (the FR-016 real-SKU-only invariant holds); a `source=public` selection is permitted for rendering but stays display-only (FR-064).
+
+## FR-068 — Render exactly the user's selected products
+
+**Actor:** System · **Priority:** High · **Status:** Proposed
+**Origin:** ADR-028 (2026-07-15); FEAT-018; scopes FR-014/FR-015 (auto-match now optional)
+
+### Description
+
+The system shall, when a render request carries a valid user selection (`productIds`), composite **exactly** those validated products into the room photo instead of running auto-match; and when no selection is provided, shall fall back to auto-match (FR-014/FR-015).
+
+### Acceptance criteria
+
+- [ ] Given a render request with a valid `productIds` selection, when the render is generated, then the composite contains exactly the selected products (validated) and auto-match (FR-014) is not run. → TC-132
+- [ ] Given a render request with no `productIds`, when the render is generated, then auto-match (FR-014/FR-015) runs as the fallback and the behavior is unchanged (backward compatible). → TC-133
+
+### Business rules
+
+- User-curated selection is the default flow (**ADR-028**); auto-match (FR-014/FR-015) is the **optional fallback** used only when no selection is provided. The fabrication guard is unchanged — only real, matched SKUs may be composited (FR-016). The cart is auto-populated from the render's items (FR-031) with `source=public` items excluded (FR-064): a Local (`source=supplier`) selection populates the cart, a Brand (`source=public`) selection yields an empty cart by design.
+
+## FR-069 — Iterate: re-render on the same project with a different selection, keeping the photo, source, and style
+
+**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Origin:** ADR-028 (2026-07-15); FEAT-018
+
+### Description
+
+The system shall allow a user who is not satisfied with a render to select a different set of products and re-render on the same project, reusing the same room photo, source, and style, and producing a new render of the new selection.
+
+### Acceptance criteria
+
+- [ ] Given a completed render on a project, when the user selects a different set of products (≤3) and re-renders, then a new render compositing the new selection is produced for the same project, reusing the same photo, source, and style. → TC-134
+
+### Business rules
+
+- Iteration ("try other furniture") keeps the room photo, source, and style and clears only the product selection (**ADR-028**). Each re-render is an ordinary render request (FR-068) on the same project; the ≤3 cap (FR-067) and the real-SKU-only invariant (FR-016) apply to every iteration.
