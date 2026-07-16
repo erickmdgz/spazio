@@ -6,7 +6,7 @@ Accepted. **Client choice superseded by ADR-024 (2026-07-14):** the product clie
 
 ## Context
 
-The PRD reserves the technology stack as a human decision (PRD §12, "Human definitions"). Nothing is built yet; this ADR records the stack decision now made for the one-week pilot.
+The PRD reserves the technology stack as a human decision (PRD §12, "Human definitions"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim); this ADR records the stack decision now made for the one-week pilot.
 
 Several documented constraints shape it:
 

@@ -87,7 +87,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist** in `08_test_plan.md` (status `Pending` — written, not yet executed; nothing here is implemented):
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist** in `08_test_plan.md` (status `Pending` — written, not yet executed). **Build-status correction (2026-07-15):** tagging (FR-028) and tap-to-view (FR-029) are **built and verified on a local stack** — the web app overlays the product tags on the real backend render (`GET /api/v1/renders/:id/image`, device-scoped) with a tap-to-open product sheet — so the earlier "nothing here is implemented" boilerplate is superseded; `Pending` here means **TCs pending automation**, not code-not-built:
 
 - **TC-054** (FR-028, pilot) — generate tags for a completed render: each rendered product carries name, price, supplier, warranty terms, and a listing link.
 - **TC-055** (FR-029, pilot) — tap a product tag on a completed render: the product's details (name, price, supplier, warranty, listing link) are displayed. Covers the happy path plus a tag with missing/omitted optional data.

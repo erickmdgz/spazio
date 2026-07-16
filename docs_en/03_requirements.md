@@ -1194,8 +1194,10 @@ The system shall, when an operator forwards a confirmed (paid) order, transmit i
 
 ## FR-062 — Present public-dataset (ABO) products as a fallback when no supplier catalog satisfies the constraints
 
-**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017 (issue #43); PRD §10 (two-sided cold-start risk); ADR-024 (web app), ADR-023 (class demo)
+
+> **As built — FEAT-017 (2026-07-15).** The fallback gating is implemented and verified on the local stack (not deployed). `matchProducts` (`backend/src/services/matching.ts`) queries the `source=supplier` track first and draws `source=public` ABO candidates **only when no eligible supplier SKU satisfies the constraints**; when a supplier catalog does satisfy them the public track stays inactive and no `source=public` product is presented (TC-110/TC-111). The public candidate query additionally requires full CC BY 4.0 attribution (FR-065). This automatic gating runs in the **auto-match path**, which ADR-028 made the optional selection-less fallback (FR-014/FR-068); in the current **primary browse-and-select flow** the user picks the Brand/public source directly (FR-066), so public products are surfaced there by explicit user choice rather than by this automatic no-supplier trigger. See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 
@@ -1215,7 +1217,7 @@ The system shall, when no supplier catalog satisfies the project's matching cons
 **Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017; data-model spec `07_data_model.md` (`Product.source`)
 
-> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). Every product carries a `source` of `supplier` or `public`; `source=public` products (Amazon Berkeley Objects) are seeded and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), kept distinguishable from supplier products and labeled "not sold by Spazio". Supplier products retain the full purchasable-SKU treatment (FR-016 unchanged). The `source=public` fallback-activation gating of FR-062 (activate only when no supplier catalog exists) remains partly specification. See `features/FEAT-017_public-catalog-fallback.md`.
+> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). Every product carries a `source` of `supplier` or `public`; `source=public` products (Amazon Berkeley Objects) are seeded and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), kept distinguishable from supplier products and labeled "not sold by Spazio". Supplier products retain the full purchasable-SKU treatment (FR-016 unchanged). *(Correction, 2026-07-15: the `source=public` fallback-activation gating of FR-062 — activate only when no supplier catalog satisfies the constraints — is **also built and verified locally**, not "partly specification": `matchProducts` draws public candidates only on an empty supplier match and stays inactive otherwise, TC-110/TC-111. See the FR-062 "As built" marker for the one nuance — that automatic gating runs in the now-optional auto-match path, while the primary browse flow surfaces the Brand/public source by explicit user selection, FR-066.)* See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 
@@ -1235,7 +1237,7 @@ The system shall, for every catalog product, carry a `source` of `supplier` or `
 **Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017; scopes ADR-004 (MoR), ADR-007 (commission)
 
-> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). `source=public` (Brand suppliers) products are display-only: shown with a "not sold by Spazio" label and a "View at retailer" outbound link, never added to cart/checkout, and excluded from orders/commission/merchant-of-record — a Brand-only render yields an empty cart by design. The CC BY 4.0 attribution propagation of FR-065 remains partly specification. See `features/FEAT-017_public-catalog-fallback.md`.
+> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). `source=public` (Brand suppliers) products are display-only: shown with a "not sold by Spazio" label and a "View at retailer" outbound link, never added to cart/checkout, and excluded from orders/commission/merchant-of-record — a Brand-only render yields an empty cart by design (`populateCartFromRender` drops public items). There is **no manual add-to-cart endpoint** (POST `/cart/items` is intentionally absent, FR-030 deferred); a public product is refused where it could still enter a cart: a cart-item **swap** onto one (`PUT /cart/items/:id`) and the **checkout boundary** (`POST /checkout`) each reply `400 { error: "display_only" }`. *(Correction, 2026-07-15: the acceptance criterion below names a `not-purchasable` status; the implemented and tested discriminator is the `display-only` status — code returns `display_only`, matching TC-115.)* *(Correction, 2026-07-15: the CC BY 4.0 attribution propagation of FR-065 is **also built and verified locally**, not "partly specification" — the render worker copies each public item's attribution + outbound link onto the stored `RenderItem` and the render-items route surfaces them, TC-116/TC-117; see the FR-065 "As built" marker.)* See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 
@@ -1252,8 +1254,10 @@ The system shall, for a `source=public` product, present it as display-only with
 
 ## FR-065 — Record and surface required CC BY 4.0 attribution for public products and propagate image provenance into composited renders
 
-**Actor:** System · **Priority:** Medium · **Status:** Proposed
+**Actor:** System · **Priority:** Medium · **Status:** Proposed · *(As built — FEAT-017, 2026-07-15)*
 **Origin:** ADR-027 (2026-07-15); FEAT-017; NFR-019; ADR-026 (render engine — derivative work)
+
+> **As built — FEAT-017 (2026-07-15).** Implemented and verified on the local stack (not deployed). A `source=public` product's CC BY 4.0 attribution (`sourceName`/`sourceUrl`/`sourceImageUrl`/`imageLicense`) is recorded on the `Product` row and surfaced through `productSummary` (`attribution`, `outboundUrl`, `notSoldBySpazio` — TC-116). The render worker copies that attribution and the "View at retailer" outbound link onto every composited public `RenderItem`, so provenance **propagates onto the stored render** (a derivative work) and the `GET /renders/:id/items` route returns it (TC-117). A public product missing any required attribution field is excluded at matching/browse and dropped by the worker, so it is **neither displayed nor composited** (TC-118) — this exclusion is realized as a silent drop, not a surfaced `missing-attribution` status string. See `features/FEAT-017_public-catalog-fallback.md`.
 
 ### Description
 

@@ -87,7 +87,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 ### Backend (`backend/src`)
 
 - **New client-facing catalog route** (registered in `app.ts` with the other client routes): `GET /catalog` (browse by source+style, optional budget) and `GET /catalog/products/:id/image` (stream the stored image). Reuse `services/productSummary.ts` (add an `imageUrl` per product) and the style-matching helper used by `matching.ts` (do not duplicate style logic). Public (not device-scoped).
-- **renders route** — accept and validate optional `productIds` (≤3; each existing/approved/renderable/in-stock-if-ready-made/of the requested source); thread the selection to the render job. `renderWorker`: if the job carries a selection, use it as the composited products (after validation); else `matchProducts()` as now. Keep the fabrication guard (only real matched SKUs) and the FR-031 cart auto-populate (public excluded).
+- **renders route** — accept and validate optional `productIds` (≤3; each existing/approved/renderable/in-stock-if-ready-made). *(As built, 2026-07-15: `selectProductsByIds` in `backend/src/services/catalog.ts` does not re-check that a selected id belongs to the requested source — source membership is not a rejection gate; it validates existence + approval + completeness + stock-if-ready-made + CC BY attribution for public.)* Thread the selection to the render job. `renderWorker`: if the job carries a selection, use it as the composited products (after validation); else `matchProducts()` as now. Keep the fabrication guard (only real matched SKUs) and the FR-031 cart auto-populate (public excluded).
 
 ### Database
 
@@ -110,7 +110,7 @@ Test cases live in `docs_en/08_test_plan.md`, where **each `TC-` maps 1:1 to an 
 | TC-128 | Browse filters out unapproved/over-budget products and returns an empty list when none match (FR-066) | Functional / Validation |
 | TC-129 | `GET /catalog/products/:id/image` streams a public product's stored image; 404 when there is no stored image or the product does not exist (FR-066) | Functional |
 | TC-130 | A render request with more than 3 `productIds` is rejected with `400 too_many_products` (FR-067) | Validation / Security |
-| TC-131 | A render request whose `productIds` include a non-existent/unapproved/out-of-stock product is rejected (FR-067) | Validation |
+| TC-131 | A render request whose `productIds` include a non-existent/unapproved/out-of-stock product is accepted (no 400); the worker silently drops the invalid id(s) and composites only the valid selected products (FR-067) | Validation |
 | TC-132 | A render request with valid `productIds` composites exactly those products, not auto-match (FR-068) | Functional |
 | TC-133 | A render request with no `productIds` falls back to auto-match (FR-014/FR-015), backward compatible (FR-068) | Functional |
 | TC-134 | A second render on the same project with a different selection re-renders the new pick, keeping the photo/source/style (FR-069) | Functional |

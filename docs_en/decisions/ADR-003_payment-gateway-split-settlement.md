@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-The PRD reserves both the payment gateway and the split-settlement model as human decisions (PRD §12, "Human definitions": "Payment gateway," "Split-settlement model"). Nothing is built yet.
+The PRD reserves both the payment gateway and the split-settlement model as human decisions (PRD §12, "Human definitions": "Payment gateway," "Split-settlement model"). Nothing is built yet (point-in-time context as of this decision, 2026-07-10; 2026-07-15: a working web app + backend are now built and verified locally — payments remain a MOCK/fake gateway, real COP gateway + split settlement still unbuilt; see ADR-024+ and the current-system summary — so this reads as historical, not a present-tense claim).
 
 The requirements the gateway must eventually satisfy are documented:
 

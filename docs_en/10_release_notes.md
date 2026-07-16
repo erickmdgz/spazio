@@ -351,6 +351,13 @@ are recorded as dated history in *Technical changes* below.
   nothing is deployed, and no requirement is listed as covered. Feature doc:
   `docs_en/features/FEAT-018_browse-select-furniture.md`; decision:
   `docs_en/decisions/ADR-028_user-curated-furniture-selection.md`.
+  *(Clarifier, 2026-07-15: this is the decision/spec entry. The code has since
+  landed and is **built and verified on the local dev stack** — see the
+  "Current system (as built)" summary above — `POST /renders` `productIds` with
+  `400 too_many_products`, `GET /catalog` + `/catalog/products/:id/image`, the
+  selection-first render worker, and the web app's source toggle + `/select`
+  route, covered by `backend/test/browse-select.test.ts`. Still not
+  deployed/released.)*
 
 - **Public-catalog bootstrap fallback decided and specified — docs only
   (`ADR-027`, `FEAT-017`, Issue #43).** The product owner's 2026-07-15 decision:
@@ -383,6 +390,13 @@ are recorded as dated history in *Technical changes* below.
   after these docs are approved. Feature doc:
   `docs_en/features/FEAT-017_public-catalog-fallback.md`; decision:
   `docs_en/decisions/ADR-027_public-catalog-bootstrap-fallback.md`.
+  *(Clarifier, 2026-07-15: this is the docs-first decision entry. The code has
+  since landed and is **built and verified on the local dev stack** — see the
+  "Current system (as built)" summary above — the `source`/attribution schema
+  fields, the `GET /catalog` + `/catalog/products/:id/image` routes, ~12 seeded
+  `source=public` ABO products, cart/metric exclusion of public, and the web
+  app's Brand-suppliers track, covered by `backend/test/public-catalog.test.ts`.
+  Still not deployed/released; Local-supplier images remain placeholders.)*
 
 - **Real photo upload + render display wired end-to-end (FEAT-002, 2026-07-15).**
   The image pipeline is connected to the UI at both ends, closing two gaps the
