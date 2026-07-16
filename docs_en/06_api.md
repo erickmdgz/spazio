@@ -7,8 +7,8 @@
 > the device-scoped client loop (byte photo upload `POST /projects/:id/photos`,
 > `POST /renders` with an optional `productIds` selection ≤3, `GET /renders/:id`
 > + `/items` + `/image`, `GET /catalog` + `/catalog/products/:id/image`, cart,
-> `GET /cart/estimates`, mock checkout with commission) and the operator console
-> (session auth + catalog-curation and order-forwarding reads). Endpoints marked
+> `GET /cart/estimates`, cart item removal + swap, mock checkout with commission) and the operator console
+> (session auth + catalog-curation reads **and writes** — `POST/PATCH /operator/catalog/products`, `POST .../:id/approve` — and order-forwarding reads plus the forward action `POST /operator/orders/:id/forward`). Endpoints marked
 > **as built** below are the real current shape; every other path, verb, and JSON
 > body remains **DRAFT** (illustrative structuring, not a committed interface).
 > This document sketches the endpoints the product *will need* so that
@@ -253,7 +253,7 @@ source="upload"          // "upload" (FR-005) | "capture" (FR-006)
 ### `POST /api/v1/projects/:id/photos` *(as built, FEAT-002 — 2026-07-15)*
 
 The representative `POST /photos` above stays as DRAFT history. The **as-built**
-photo-upload route (on `feature/FEAT-002-photo-upload-render-display`) ingests the
+photo-upload route (delivered by `feature/FEAT-002-photo-upload-render-display`, merged in PR #46) ingests the
 **raw image bytes** so the real render pipeline (ADR-026) receives the user's
 actual photo rather than a preset key.
 
@@ -308,7 +308,7 @@ is created with that `storageKey` and `qualityStatus: "pending"`.
 ### Approximate room dimensions
 
 - **Purpose (VERIFIED):** Capture approximate room dimensions, used to scale rendered products realistically (BR-7).
-- **Modelling (PROPOSED):** dimensions are submitted as fields on the render request (see §5), e.g. `dimensions: { widthCm, lengthCm, heightCm, approximate: true }`. A separate `PATCH /photos/{id}/dimensions` is an alternative; final placement is DRAFT.
+- **Modelling (PROPOSED):** dimensions are submitted as fields on the render request (see §5), e.g. `dimensions: { widthCm, lengthCm, heightCm, approximate: true }`. A separate `PATCH /photos/{id}/dimensions` is an alternative; **as built,** dimensions are set via `PATCH /projects/:id` (see the §2 as-built note), not on the render request.
 - **Related requirements:** FR-011, FR-017. **Pilot core.**
 
 ---
@@ -586,7 +586,7 @@ gate is retired).
 
 ## 7. Cart & stock holds
 
-**Capability area:** FEAT-008. **Pilot core** (auto-populated cart, review, item removal).
+**Capability area:** FEAT-008. **Pilot core** (auto-populated cart, review, item removal; item swap shipped as built — `PUT /cart/items/:id`).
 The cart is a **suggestion** and must be explicitly confirmed before payment (BR-31).
 
 ### `GET /api/v1/cart`
@@ -600,7 +600,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 - **Purpose (VERIFIED):** Add a rendered/tagged product to the cart. Adding an item places a stock hold for the configured duration (BR-22).
 - **Note (Decided, pilot):** the pilot has **NO stock hold** (tiny operator-curated catalog; the operator checks availability) — the PRD **default of 15 minutes** applies only when holds are built post-pilot (**ADR-011**); when holds exist, on expiry the hold is released back to availability (BR-23).
 - **Note (ADR-027, 2026-07-15):** a `source=public` product is **not addable** — the add-to-cart branch rejects it (proposed `409 not-purchasable`) because public products are display-only ("View at retailer" outbound link only — FR-064). Only `source=supplier` products can be added. **DRAFT.**
-- **Related requirements:** FR-030, FR-039, FR-040; FR-064 *(ADR-027)*. (FR-030/holds not in the pilot; pilot ships auto-population + review + removal.)
+- **Related requirements:** FR-030, FR-039, FR-040; FR-064 *(ADR-027)*. (FR-030/holds not in the pilot; pilot ships auto-population + review + removal, and swap shipped as built — FR-034, `PUT /cart/items/:id`.)
 
 ### `DELETE /api/v1/cart/items/{itemId}`
 
@@ -610,7 +610,7 @@ The cart is a **suggestion** and must be explicitly confirmed before payment (BR
 ### `PATCH /api/v1/cart/items/{itemId}`
 
 - **Purpose (VERIFIED):** Swap a cart item for an alternative product.
-- **Related requirements:** FR-034. **Excluded from the pilot.**
+- **Related requirements:** FR-034. ~~Excluded from the pilot.~~ **As built (verified 2026-07-16):** shipped as **`PUT /api/v1/cart/items/{itemId}`** (body `{ productId }`, device-scoped); swapping onto a `source=public` product is refused with `400 display_only` (ADR-027, TC-115). The PATCH verb here was the draft shape; PUT is the real contract.
 
 ### `POST /api/v1/cart/confirm`
 
@@ -789,7 +789,7 @@ Capability area → feature → FRs the endpoints serve. IDs are canonical (see 
 | 4 | Localization & delivery | FEAT-004 | FR-012, FR-013, FR-020, FR-046, FR-053 | Partial (fixed zone) |
 | 5 | Render generation & edit | FEAT-005, FEAT-014, FEAT-013 *(FEAT-006 retired — ADR-025)* | FR-014–FR-023, FR-048–FR-052 *(FR-027 retired — ADR-025)* | Core; edits/metering no |
 | 6 | Product tags & interaction | FEAT-007 | FR-028, FR-029 | Core |
-| 7 | Cart & stock holds | FEAT-008 | FR-030–FR-035, FR-039, FR-040 | Core (holds/swap no) |
+| 7 | Cart & stock holds | FEAT-008 | FR-030–FR-035, FR-039, FR-040 | Core (holds no; swap as built — `PUT /cart/items/:id`) |
 | 8 | Estimates & warranty | FEAT-009 | FR-036, FR-037, FR-038 | Partial (FR-036 only) |
 | 9 | Checkout & payment | FEAT-010 | FR-004, FR-035, FR-041–FR-045, FR-046 | Core (single payment); split/PO/commission no |
 | 10 | Orders & tracking | FEAT-011 | FR-047, FR-061 | Core (FR-061 manual forward) |

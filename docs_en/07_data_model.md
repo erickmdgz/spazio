@@ -112,7 +112,7 @@ A local furniture/decor vendor whose catalog powers the marketplace, with onboar
 
 A real, purchasable SKU with photos, dimensions, price, colors, materials, stock, category, style attributes, lead time, and warranty (PRD §4 BR-1, BR-3–BR-6). Every rendered item must map to one of these (BR-6, BR-14).
 
-> **Provenance spec (ADR-027, 2026-07-15) — built and verified locally in `schema.prisma`.** *(Correction, 2026-07-15: the earlier "PROPOSED, doc only (not `schema.prisma`)" marker was wrong — the provenance fields are present in the as-built pilot schema: `Product.source` (`ProductSource` enum `supplier`/`public`, default `supplier`), nullable `supplierId`, and `sourceName`/`sourceUrl`/`sourceImageUrl`/`imageLicense`; `RenderItem` carries `source`/`attribution`/`outboundUrl`. Built and verified on a local stack — not deployed, no `vX.Y.Z` release.)* A Product now carries a `source` of `supplier` or `public`. The purchasable-SKU invariant (BR-6/BR-14, FR-016) governs `source=supplier` products. `source=public` bootstrap products (Amazon Berkeley Objects, CC BY 4.0) are real and attributed but **display-only / non-purchasable** — a scoped, labeled exception (FR-062–FR-065). `supplier_id` is present only for supplier products; the `source_*` attribution fields are required for public products. Their required-attribute completeness follows the ADR-027 stance: prefer seeding **complete** ABO records so the BR-1/FR-019/ADR-014 gate holds unchanged; only a documented relaxed completeness profile for `source=public` is acceptable (ADR-014 carve-out). Supplier-only fields such as `warranty_terms` and lead times may be absent for public products, which are never checked out (NFR-015).
+> **Provenance spec (ADR-027, 2026-07-15) — built and verified locally in `schema.prisma`.** *(Correction, 2026-07-15: the earlier "PROPOSED, doc only (not `schema.prisma`)" marker was wrong — the provenance fields are present in the as-built pilot schema: `Product.source` (`ProductSource` enum `supplier`/`public`, default `supplier`), nullable `supplierId`, and `sourceName`/`sourceUrl`/`sourceImageUrl`/`imageLicense`; `RenderItem` carries `source`/`attribution`/`outboundUrl`. Built and verified on a local stack — not deployed, no `vX.Y.Z` release.)* A Product now carries a `source` of `supplier` or `public`. The purchasable-SKU invariant (BR-6/BR-14, FR-016) governs `source=supplier` products. `source=public` bootstrap products (Amazon Berkeley Objects, CC BY 4.0) are real and attributed but **display-only / non-purchasable** — a scoped, labeled exception (FR-062–FR-065). `supplier_id` is present only for supplier products; the `source_*` attribution fields are required for public products. Their required-attribute completeness follows the ADR-027 stance: prefer seeding **complete** ABO records so the BR-1/FR-019/ADR-014 gate holds unchanged; only a documented relaxed completeness profile for `source=public` is acceptable (ADR-014 carve-out). Supplier-only fields such as `warranty_terms` and lead times may be absent for public products, which are never checked out (NFR-015). *(As-built note: `schema.prisma` keeps `deliveryLeadTimeDays` and `warrantyTerms` non-nullable for all products; public seeds carry placeholder values — the may-be-absent rule is spec-level only.)*
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -146,7 +146,7 @@ A real, purchasable SKU with photos, dimensions, price, colors, materials, stock
 
 ## Entity: Style
 
-A predefined visual style a user can select, mapped to product style attributes (PRD FR-03, §5). The pilot ships one or two predefined styles.
+A predefined visual style a user can select, mapped to product style attributes (PRD FR-03, §5). The pilot spec said one or two predefined styles; **as built, the demo ships three** (Modern Mediterranean, Warm Minimalist, Scandinavian — `backend/prisma/seed.ts`).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -453,7 +453,7 @@ A paid premium-visibility record usable only to break ties among similarly relev
 
 ## Rules
 
-PRD-derived invariants that constrain the data model. Each cites its source. Decision values are tagged with their `ADR-` and are adopted for the one-week iOS pilot (some carry an explicit revisit-before-scale caveat).
+PRD-derived invariants that constrain the data model. Each cites its source. Decision values are tagged with their `ADR-` and were adopted for the (historical) one-week iOS pilot, carrying forward to the current web demo unless superseded (ADR-024; some carry an explicit revisit-before-scale caveat).
 
 ### Identity and accounts
 
@@ -493,7 +493,7 @@ PRD-derived invariants that constrain the data model. Each cites its source. Dec
 - **Cart is a suggestion.** The cart is auto-populated from the render and must be explicitly confirmed before payment (PRD BR-31, FR-08, FR-35).
 - **Stock hold.** Adding an item to the cart holds stock for a configured duration — decided (pilot): no stock hold; the PRD default of 15 minutes applies only post-pilot - see ADR-011 (PRD BR-22); expired holds return stock to availability (BR-23). *(Stock holds are excluded from the pilot.)*
 - **Revalidate at checkout.** Price and stock must be revalidated at checkout before payment (PRD BR-24).
-- **Estimates and warranty before checkout.** Supplier-sourced production and delivery estimates and supplier-declared warranty terms must be shown before checkout (PRD BR-17, BR-18, NFR-015).
+- **Estimates and warranty before checkout.** Supplier-sourced production and delivery estimates and supplier-declared warranty terms must be shown before checkout (PRD BR-17, BR-18, NFR-015). *(Warranty display decided (pilot): **NOT displayed** — supplier terms apply and disputes are handled manually by the operator, see ADR-020; `warranty_terms` is stored on `Product` but not surfaced. Estimates ARE shown — `GET /cart/estimates`, FR-036.)*
 
 ### Payments and settlement
 
