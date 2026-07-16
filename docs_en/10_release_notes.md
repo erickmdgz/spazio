@@ -163,7 +163,11 @@ are recorded as dated history in *Technical changes* below.
     `enqueue()` landing while a job was awaited started a second concurrent
     drain, so two mflux children (~20 GB MLX peak each) could run at once and
     exhaust the render host. Jobs now run strictly serialized (TC-142);
-    NFR-004.
+    NFR-004. Serialization makes `queued` a long-lived state, so the worker
+    now also **skips a job whose request is already terminal at dequeue**
+    (cancelled while it waited) instead of resurrecting it to `processing`
+    and rendering for nobody (TC-145; keeps TC-137's terminal-stays-terminal
+    contract).
   - **Timeout diagnosability.** The hard-timeout rejection discarded the
     child's collected stderr — the BUG-004 incident's only log line was a bare
     "render timed out after 360s". The timeout error now carries the stderr

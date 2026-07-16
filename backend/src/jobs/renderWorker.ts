@@ -42,6 +42,18 @@ export function registerRenderWorker(
     });
     if (!render) return;
 
+    // With serialized jobs (BUG-005) a render can sit queued for minutes behind
+    // another job. If it was cancelled while waiting, its request is already
+    // terminal — skip it rather than resurrect it to 'processing' and burn a
+    // ~10-min mflux run on a render nobody is watching (TC-137 idempotence,
+    // TC-145).
+    const requestStatus = render.renderRequest.status;
+    if (requestStatus === "failed" || requestStatus === "completed") {
+      // eslint-disable-next-line no-console
+      console.log(`[queue] job skipped render=${renderId} (request already ${requestStatus})`);
+      return;
+    }
+
     await prisma.renderRequest.update({
       where: { id: render.renderRequestId },
       data: { status: "processing" },
