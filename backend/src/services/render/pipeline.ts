@@ -343,17 +343,29 @@ export class MfluxRenderPipeline implements RenderPipeline {
    */
   private runMflux(command: string, args: string[], renderId: string): Promise<void> {
     return new Promise<void>((resolvePromise, rejectPromise) => {
+      // The spawned command is otherwise unrecorded (BUG-005) — without it a
+      // failed render can't be reproduced by hand.
+      // eslint-disable-next-line no-console
+      console.log(`[render] ${renderId}: spawning ${command} ${args.join(" ")}`);
       const child = this.spawner(command, args);
       let stderr = "";
       let settled = false;
 
       const timer = setTimeout(() => {
         child.kill("SIGKILL");
-        settle(() =>
+        settle(() => {
+          // Include what the child said before the SIGKILL (BUG-005): a bare
+          // "timed out" left the BUG-004 incident undiagnosable — the stderr
+          // collected up to the kill is the only record of how far mflux got.
+          const tail = stderr.trim().slice(-2000);
           rejectPromise(
-            new Error(`render timed out after ${Math.round(this.options.timeoutMs / 1000)}s`),
-          ),
-        );
+            new Error(
+              `render timed out after ${Math.round(this.options.timeoutMs / 1000)}s${
+                tail ? ` — mflux output tail: ${tail}` : " — no mflux output captured"
+              }`,
+            ),
+          );
+        });
       }, this.options.timeoutMs);
 
       // Run the given resolution exactly once, then release the timer + registry.

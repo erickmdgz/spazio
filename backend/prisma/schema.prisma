@@ -306,6 +306,11 @@ model RenderRequest {
   freeText     String?
   budgetMinCop Int?
   budgetMaxCop Int?
+  // The user's curated selection as requested (ADR-028/FR-068), snapshotted here
+  // (BUG-005) because the queue payload is volatile and RenderItem rows exist
+  // only for successful renders — without this, a failed render loses which
+  // products were attempted. Empty = auto-match fallback (FR-014/FR-015).
+  requestedProductIds String[] @default([])
   status       RenderRequestStatus @default(queued)
   createdAt    DateTime            @default(now())
 
