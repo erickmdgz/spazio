@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { extname, join, resolve as resolvePath } from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import type { ObjectStorage } from "../storage.js";
+import { register, unregister } from "./registry.js";
 
 export interface RenderPipelineInput {
   renderId: string;
@@ -94,6 +95,15 @@ export interface MfluxOptions {
    * dependency. Derived from editBin's directory when not set explicitly.
    */
   pythonBin: string;
+  /**
+   * Hard cap (ms) on a single mflux run (BUG-002 / NFR-004). If the child hangs —
+   * e.g. the render host is out of RAM and the model never finishes loading — it
+   * would otherwise never exit, so the RenderRequest would stay 'processing'
+   * forever and orphan a memory-thrashing child even after the browser closes.
+   * On timeout the child is SIGKILLed and the render rejects (worker marks it
+   * 'failed'), self-healing without any client. From config RENDER_TIMEOUT_MS.
+   */
+  timeoutMs: number;
 }
 
 /** Minimal child-process surface MfluxRenderPipeline needs (lets tests inject a fake). */
@@ -101,6 +111,8 @@ export interface MfluxChildProcess {
   stderr: { on(event: "data", listener: (chunk: Buffer | string) => void): unknown } | null;
   on(event: "close", listener: (code: number | null) => void): unknown;
   on(event: "error", listener: (err: Error) => void): unknown;
+  /** Terminate the child. Used by the hard timeout and the cancel registry (BUG-002). */
+  kill(signal?: "SIGKILL"): boolean;
 }
 
 export type MfluxSpawner = (command: string, args: string[]) => MfluxChildProcess;
@@ -189,7 +201,7 @@ export class MfluxRenderPipeline implements RenderPipeline {
         outPath,
       ];
 
-      await this.runMflux(this.options.editBin, args);
+      await this.runMflux(this.options.editBin, args, input.renderId);
 
       const outBytes = await readFile(outPath);
       const imageKey = `renders/${input.renderId}/composite.png`;
@@ -313,24 +325,67 @@ export class MfluxRenderPipeline implements RenderPipeline {
     });
   }
 
-  private runMflux(command: string, args: string[]): Promise<void> {
+  /**
+   * Spawn the mflux child and await its exit, guarded by two BUG-002 safeguards:
+   *
+   *  1. Hard timeout (options.timeoutMs, NFR-004 graceful degradation): a hung
+   *     child (e.g. OOM, model never loads) never emits 'close', which would leave
+   *     the RenderRequest 'processing' forever and orphan a memory-thrashing
+   *     process. When the timer fires we SIGKILL the child and reject with a clear
+   *     'render timed out' error; the worker marks the request 'failed'. This
+   *     self-heals even if the browser is gone — no orphan survives past the cap.
+   *  2. Cancel registry: while the child is alive its SIGKILL is registered under
+   *     renderId so POST /renders/:id/cancel can stop it immediately (frees memory
+   *     now, not at the cap). Unregistered — and the timer cleared — on settle.
+   *
+   * A killed child (timeout or cancel) still emits 'close' with a non-zero/null
+   * code, but `settled` guards against a double-settle so the timeout error wins.
+   */
+  private runMflux(command: string, args: string[], renderId: string): Promise<void> {
     return new Promise<void>((resolvePromise, rejectPromise) => {
       const child = this.spawner(command, args);
       let stderr = "";
+      let settled = false;
+
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        settle(() =>
+          rejectPromise(
+            new Error(`render timed out after ${Math.round(this.options.timeoutMs / 1000)}s`),
+          ),
+        );
+      }, this.options.timeoutMs);
+
+      // Run the given resolution exactly once, then release the timer + registry.
+      function settle(finish: () => void): void {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        unregister(renderId);
+        finish();
+      }
+
+      // Let a cancel request SIGKILL this child mid-flight (BUG-002).
+      register(renderId, () => child.kill("SIGKILL"));
+
       child.stderr?.on("data", (chunk) => {
         stderr += chunk.toString();
       });
       child.on("error", (err) => {
-        rejectPromise(new Error(`mflux failed to start (${command}): ${err.message}`));
+        settle(() =>
+          rejectPromise(new Error(`mflux failed to start (${command}): ${err.message}`)),
+        );
       });
       child.on("close", (code) => {
-        if (code === 0) {
-          resolvePromise();
-        } else {
-          rejectPromise(
-            new Error(`mflux exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`),
-          );
-        }
+        settle(() => {
+          if (code === 0) {
+            resolvePromise();
+          } else {
+            rejectPromise(
+              new Error(`mflux exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`),
+            );
+          }
+        });
       });
     });
   }

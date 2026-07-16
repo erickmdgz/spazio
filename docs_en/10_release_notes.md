@@ -156,6 +156,31 @@ are recorded as dated history in *Technical changes* below.
 
 ### Fixed
 
+- **BUG-002 — a stuck render spun forever and orphaned a memory-thrashing child
+  (2026-07-15).** When the mflux render child hung (e.g. the render host ran out of
+  RAM and the model never finished loading) the child never exited, so the render
+  worker's promise never settled: the `RenderRequest` stayed `processing` forever
+  and the `/render` page polled endlessly showing "Generating your render" with no
+  end. If the user then closed the tab, the mflux child kept running as an
+  **orphan**, thrashing memory. There was no timeout and no cancellation anywhere.
+  Two backend safeguards now make a stuck/failed render fail **gracefully** and
+  **stop the work** (a browser cannot kill a server process, so this is enforced on
+  the backend):
+  - **Hard render timeout + SIGKILL.** The render pipeline enforces a hard cap on a
+    single mflux run (`RENDER_TIMEOUT_MS`, default `360000` = 6 min). On timeout the
+    child is **SIGKILLed** and the render is marked **`failed`**. This self-heals
+    even when the browser is gone — a request never stays `processing` past the cap
+    and no orphan child survives it.
+  - **Cancel endpoint.** `POST /renders/:id/cancel` (device-scoped, NFR-007) lets
+    the client stop an in-flight render **now** — on its own backstop timeout and
+    when leaving the `/render` page — SIGKILLing any live child via an in-process
+    render registry and marking a still-running request `failed` (idempotent).
+  No schema/migration change (cancellation reuses the existing `failed` status) and
+  no new dependency. Realizes **NFR-004** (graceful degradation); no new ADR. Tests:
+  **TC-136** (timeout kills the child and fails the render), **TC-137** (cancel
+  kills + marks failed, 404 for a foreign device, idempotent when terminal). See
+  `features/FEAT-005`.
+
 - **BUG-001 — large room photos crashed the render engine (GPU OOM).** Real phone
   photos (~24 MP; e.g. an iPhone 5712×4284 JPEG) were passed to the mflux engine at
   full resolution and exhausted GPU memory (`[METAL] … Insufficient Memory`),

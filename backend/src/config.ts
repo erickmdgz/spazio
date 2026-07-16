@@ -60,6 +60,11 @@ const envSchema = z.object({
   // Python for the Pillow downscale (ships with the mflux venv — no new dep).
   // Empty = derive from MFLUX_EDIT_BIN's directory (else "python3" on PATH).
   MFLUX_PYTHON_BIN: z.string().default(""),
+  // Hard cap (ms) on a single render (BUG-002 / NFR-004 graceful degradation). If
+  // the mflux child hangs (OOM, model never loads) it is SIGKILLed at this cap and
+  // the render fails — so a request never stays 'processing' forever and no orphan
+  // child survives past it. Default 360000 = 6 min.
+  RENDER_TIMEOUT_MS: numberFromString(360000),
 
   // Payments (single COP capture, ADR-003/004). Placeholder vendor fields.
   PAYMENT_DRIVER: z.enum(["fake"]).default("fake"),
