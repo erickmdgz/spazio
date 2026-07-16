@@ -10,6 +10,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -92,14 +93,98 @@ interface DemoState {
   backendStyleId?: string;
   renderVisual?: RenderResult;
   renderId?: string;
+  /**
+   * The room:style:selection key renderId was submitted for (BUG-003). Lets the
+   * render page resume polling an already-submitted render after a reload
+   * instead of submitting a duplicate; cleared by resetRender().
+   */
+  renderKey?: string;
   renderStatus: RenderStatus;
   renderItems: BackendRenderItem[];
   cart?: BackendCart;
   order?: PlacedOrder;
 }
 
+/**
+ * Wizard slices that survive a page reload (BUG-003), kept in sessionStorage —
+ * per-tab, gone when the tab closes. Before this, all state lived in memory
+ * only: any reload wiped room/style/selection/renderId, the guards bounced the
+ * user back to /room, and a render that had COMPLETED server-side became
+ * unreachable. Never persisted: the room File (its bytes are already uploaded),
+ * and server-derived data (render items, cart, visuals — refetched by id).
+ */
+const PERSIST_KEY = "spazio_demo_v1";
+
+type PersistedState = Pick<
+  DemoState,
+  | "projectId"
+  | "room"
+  | "style"
+  | "backendStyleId"
+  | "source"
+  | "selectedProductIds"
+  | "renderId"
+  | "renderKey"
+>;
+
+/** Read + sanitize the persisted wizard; null on missing/corrupted storage. */
+function readPersisted(): Partial<PersistedState> | null {
+  try {
+    const raw = window.sessionStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as Partial<PersistedState>;
+    if (typeof saved !== "object" || saved === null) return null;
+    const out: Partial<PersistedState> = {};
+    if (typeof saved.projectId === "string") out.projectId = saved.projectId;
+    if (
+      saved.room &&
+      typeof saved.room.id === "string" &&
+      Number.isFinite(saved.room.widthM) &&
+      Number.isFinite(saved.room.lengthM)
+    ) {
+      out.room = { id: saved.room.id, widthM: saved.room.widthM, lengthM: saved.room.lengthM };
+    }
+    if (
+      saved.style &&
+      typeof saved.style.id === "string" &&
+      Number.isFinite(saved.style.budgetCop) &&
+      saved.style.budgetCop > 0
+    ) {
+      out.style = {
+        id: saved.style.id,
+        note: typeof saved.style.note === "string" ? saved.style.note : "",
+        budgetCop: saved.style.budgetCop,
+      };
+    }
+    if (typeof saved.backendStyleId === "string") out.backendStyleId = saved.backendStyleId;
+    if (saved.source === "supplier" || saved.source === "public") out.source = saved.source;
+    if (Array.isArray(saved.selectedProductIds)) {
+      out.selectedProductIds = saved.selectedProductIds
+        .filter((id): id is string => typeof id === "string")
+        .slice(0, 3);
+    }
+    if (typeof saved.renderId === "string") out.renderId = saved.renderId;
+    if (typeof saved.renderKey === "string") out.renderKey = saved.renderKey;
+    return out;
+  } catch {
+    return null; // corrupted or unavailable storage — start fresh
+  }
+}
+
 interface DemoStore extends DemoState {
   budgetCop: number;
+  /**
+   * True once the sessionStorage rehydration effect has run (BUG-003). Page
+   * redirect guards MUST wait for this — before it, the state is still the
+   * empty INITIAL and a guard would bounce a legitimate reload back to /room.
+   */
+  hydrated: boolean;
+  /**
+   * Forget the current render (id/key/status/items/visual) so the next visit to
+   * /render submits a FRESH job for the same selection instead of resuming —
+   * used after a failed render and by "Try other furniture" (BUG-003).
+   */
+  resetRender: () => void;
   /** Room selected: bootstrap the project at first input (§0.1#3) + photo + dimensions. */
   beginRoom: (room: RoomSelection) => Promise<void>;
   /** Style/budget selected: resolve the backend style by code and patch the project. */
@@ -141,6 +226,44 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
   const stylesRef = useRef<BackendStyle[] | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Rehydrate the wizard from sessionStorage after mount (BUG-003). Reading
+  // storage inside the useState initializer would desync the server-rendered
+  // HTML from the first client render (hydration mismatch), so it happens in an
+  // effect and pages gate their guards on `hydrated`. Strict Mode re-runs this
+  // in dev; the merge is idempotent.
+  useEffect(() => {
+    const saved = readPersisted();
+    if (saved) setState((s) => ({ ...s, ...saved }));
+    setHydrated(true);
+  }, []);
+
+  // Persist the wizard slices on every change so a reload resumes the session
+  // instead of restarting it (BUG-003).
+  useEffect(() => {
+    if (!hydrated) return;
+    const { projectId, room, style, backendStyleId, source, selectedProductIds, renderId, renderKey } =
+      state;
+    try {
+      window.sessionStorage.setItem(
+        PERSIST_KEY,
+        JSON.stringify({
+          projectId,
+          // Strip the File explicitly — its bytes are already on the backend.
+          room: room ? { id: room.id, widthM: room.widthM, lengthM: room.lengthM } : undefined,
+          style,
+          backendStyleId,
+          source,
+          selectedProductIds,
+          renderId,
+          renderKey,
+        } satisfies Partial<PersistedState>),
+      );
+    } catch {
+      // Quota/private-mode write failures only lose persistence, never the session.
+    }
+  }, [hydrated, state]);
 
   const beginRoom = useCallback(async (room: RoomSelection) => {
     let projectId = stateRef.current.projectId;
@@ -207,7 +330,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const submitRender = useCallback(async () => {
-    const { projectId, backendStyleId, style, selectedProductIds } = stateRef.current;
+    const { projectId, backendStyleId, style, selectedProductIds, room } = stateRef.current;
     if (!projectId || !style) throw new Error("Missing room or style.");
     const created = await api.createRender({
       projectId,
@@ -221,9 +344,23 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setState((s) => ({
       ...s,
       renderId: created.renderId,
+      // Same key format the render page computes — lets a reload resume THIS
+      // render instead of submitting a duplicate (BUG-003).
+      renderKey: room ? `${room.id}:${style.id}:${selectedProductIds.join(",")}` : undefined,
       renderStatus: created.status,
       renderItems: [],
       cart: undefined,
+    }));
+  }, []);
+
+  const resetRender = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      renderId: undefined,
+      renderKey: undefined,
+      renderStatus: "idle",
+      renderItems: [],
+      renderVisual: undefined,
     }));
   }, []);
 
@@ -289,6 +426,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => {
+    try {
+      window.sessionStorage.removeItem(PERSIST_KEY);
+    } catch {
+      // Storage unavailable — the in-memory reset below still applies.
+    }
     setState(INITIAL);
   }, []);
 
@@ -296,6 +438,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       budgetCop: state.style?.budgetCop ?? BUDGET_DEFAULT,
+      hydrated,
       beginRoom,
       applyStyle,
       setSource,
@@ -304,6 +447,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       clearSelection,
       setRenderVisual,
       submitRender,
+      resetRender,
       refreshRender,
       reloadCart,
       removeItem,
@@ -314,6 +458,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      hydrated,
       beginRoom,
       applyStyle,
       setSource,
@@ -322,6 +467,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       clearSelection,
       setRenderVisual,
       submitRender,
+      resetRender,
       refreshRender,
       reloadCart,
       removeItem,

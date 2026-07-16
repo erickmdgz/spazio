@@ -145,3 +145,28 @@ Related decision: **ADR-028**. (GitHub Issue: to be linked when opened.)
 - [ ] Pull request reviewed.
 - [ ] Documentation updated.
 - [ ] Release notes updated.
+
+---
+
+## As-built note (2026-07-15) — BUG-003: reliable render page + wizard persistence
+
+Two web-app defects in this flow were fixed under **BUG-003** (see
+`10_release_notes.md` and TC-138..TC-140 in `08_test_plan.md`):
+
+- **Strict-safe render kickoff.** The `/render` submit effect previously
+  deadlocked under React Strict Mode's dev remount (the page spun on the
+  spinner forever while the backend render completed unseen). The kickoff
+  promise now lives in a ref, starts at most once per photo+style+selection
+  key, and every effect run re-attaches to it; a 60 s backstop also covers the
+  `loading` (enqueue) phase.
+- **sessionStorage wizard persistence + resume.** The wizard slices
+  (`projectId`, room dims, style, source, selection, `renderId`, `renderKey`)
+  survive a reload; page guards wait for rehydration before redirecting. A
+  reload on `/render` resumes polling the already-submitted render (matched by
+  `renderKey` = room:style:selection — no duplicate job). "Try other furniture"
+  (FR-069) and the failed-render path call `resetRender()` so the next render of
+  even an identical selection is a **fresh** job, never a resume of a dead one.
+  The photo `File` is never persisted (its bytes are already on the backend,
+  FR-005), nor is server-derived data (render items/cart — refetched by id).
+
+Web-only change: no backend, API, schema, or dependency change.

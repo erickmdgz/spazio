@@ -27,7 +27,7 @@ const SOURCES: { id: ProductSource; label: string; blurb: string }[] = [
 
 export default function StylePage() {
   const router = useRouter();
-  const { room, style, applyStyle, source, setSource } = useDemo();
+  const { hydrated, room, style, applyStyle, source, setSource } = useDemo();
   const [selected, setSelected] = useState<string>(style?.id ?? "");
   const [note, setNote] = useState<string>(style?.note ?? "");
   const [saving, setSaving] = useState(false);
@@ -37,9 +37,12 @@ export default function StylePage() {
   );
 
   // Soft guard: if the user deep-links here without a room, send them back.
+  // Waits for the sessionStorage rehydration (BUG-003) — before it, the store
+  // is still empty and a legitimate reload would bounce to /room.
   useEffect(() => {
+    if (!hydrated) return;
     if (!room) router.replace("/room");
-  }, [room, router]);
+  }, [hydrated, room, router]);
 
   // Persists style + budget on the backend project (FR-007/008/009), then moves
   // on to browse & select real products for the chosen source (ADR-028).

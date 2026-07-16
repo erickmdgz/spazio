@@ -156,6 +156,35 @@ are recorded as dated history in *Technical changes* below.
 
 ### Fixed
 
+- **BUG-003 — the render page deadlocked on the spinner in dev and any reload
+  lost the whole wizard (2026-07-15).** Two independent web-app defects hid
+  completed renders from the user:
+  - **Strict Mode kickoff deadlock.** The `/render` kickoff effect started its
+    async submit inside the effect and gated the resulting state updates on a
+    per-run `cancelled` flag, while a ref (`startedKey`) blocked re-submission.
+    Under React Strict Mode's dev remount (`reactStrictMode: true`), the first
+    run's cleanup cancelled the only run — so `setPhase("generating")` was
+    silently discarded, **no poll ever started, and the page spun on the loading
+    screen forever while the backend render completed unseen** (the BUG-002
+    client protections are keyed to the `generating` phase, so none engaged).
+    The kickoff promise now lives in a ref, started at most once per
+    photo+style+selection key, and **every effect run re-attaches to it**, so the
+    phase transition always lands. A 60 s backstop now also covers the `loading`
+    phase — no phase can spin silently.
+  - **No wizard persistence.** All wizard state (room, style, selection,
+    `projectId`, `renderId`) lived in memory only; any reload wiped it, the page
+    guards bounced the user to `/room`, and an already-submitted render became
+    unreachable. The wizard slices now persist to **sessionStorage** (never the
+    photo `File` — its bytes are already uploaded; never server-derived data) and
+    rehydrate on mount; guards wait for rehydration. A reload on `/render`
+    **resumes polling the same render** (`renderKey` matches the submitted
+    room:style:selection — no duplicate job), and "Try other furniture" / a
+    failed render **reset** the stored render so retrying submits fresh instead
+    of resuming a dead job. Verified end-to-end with a scripted browser
+    click-through on the dev stack (TC-138/TC-139/TC-140): full flow to a
+    displayed render, reload-resume with the same `renderId`, and fresh-render
+    iteration, with no hydration mismatches. Web-only change — no backend, API,
+    schema, or dependency change.
 - **BUG-002 — a stuck render spun forever and orphaned a memory-thrashing child
   (2026-07-15).** When the mflux render child hung (e.g. the render host ran out of
   RAM and the model never finished loading) the child never exited, so the render
