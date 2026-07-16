@@ -533,12 +533,16 @@ gate is retired).
 > **Render-job robustness & diagnosability (BUG-005, 2026-07-16).** Render jobs
 > run **strictly serialized** — the in-memory queue drains one job at a time, so
 > two mflux children (~20 GB MLX peak each) can never run concurrently and
-> exhaust the render host (NFR-004; TC-142). A timed-out render's error now
-> carries the **tail of the child's stderr** (how far mflux got — TC-143), the
-> worker logs **job start** (renderId + selection size) and the pipeline logs the
-> **spawned mflux command**, and the requested selection is **persisted** on
-> `RenderRequest.requestedProductIds` (TC-144; see `07_data_model.md`) so a
-> failed render keeps the attempted products. No API-contract change.
+> exhaust the render host (NFR-004; TC-142). Because that makes `queued` a
+> long-lived state, a job **cancelled while it waited is skipped at dequeue**
+> (a terminal request is never resurrected to `processing` — TC-145, upholding
+> the cancel idempotence of TC-137). A timed-out render's error now carries the
+> **tail of the child's stderr** (how far mflux got — TC-143), the worker logs
+> **job start** (renderId + selection size) and the pipeline logs the
+> **spawned mflux command** (args quoted, copy-paste reproducible), and the
+> requested selection is **persisted** on `RenderRequest.requestedProductIds`
+> (TC-144; see `07_data_model.md`) so a failed render keeps the attempted
+> products. No API-contract change.
 
 ### `POST /api/v1/renders/{renderId}/edits`
 

@@ -84,6 +84,8 @@ function workerPrisma(opts: {
   cartItemCreateMany: ReturnType<typeof vi.fn>;
   productFindMany?: ReturnType<typeof vi.fn>;
   renderItemsForCart?: Array<Record<string, unknown>>;
+  /** RenderRequest.status seen at dequeue (default "queued"; TC-145 uses "failed"). */
+  requestStatus?: string;
 }) {
   const byId = new Map(opts.catalog.map((p) => [p.id, p]));
   const productFindMany =
@@ -104,6 +106,7 @@ function workerPrisma(opts: {
         renderRequestId: `${where.id}_rr`,
         renderRequest: {
           id: `${where.id}_rr`,
+          status: opts.requestStatus ?? "queued",
           styleId: null,
           freeText: null,
           budgetMinCop: null,
@@ -362,6 +365,27 @@ describe("FR-067 the 3-item selection cap", () => {
         data: expect.objectContaining({ requestedProductIds: [] }),
       }),
     );
+  });
+
+  // TC-145 (BUG-005): with serialized jobs, 'queued' is a long-lived state — a
+  // render cancelled while waiting must be skipped at dequeue, not resurrected
+  // to 'processing' and rendered anyway (terminal stays terminal, TC-137).
+  it("TC-145 skips a job cancelled while it waited in the queue", async () => {
+    const renderItemCreateMany = vi.fn();
+    const cartItemCreateMany = vi.fn();
+    const prisma = workerPrisma({
+      catalog: [supplierProduct()],
+      renderItemCreateMany,
+      cartItemCreateMany,
+      requestStatus: "failed", // cancelled via POST /renders/:id/cancel while queued
+    });
+
+    await runWorker(prisma, { renderId: "r1", productIds: ["sup_prod_1"] });
+
+    // Not flipped back to 'processing', nothing composited, nothing carted.
+    expect(prisma.renderRequest.update).not.toHaveBeenCalled();
+    expect(renderItemCreateMany).not.toHaveBeenCalled();
+    expect(cartItemCreateMany).not.toHaveBeenCalled();
   });
 
   it("TC-131 drops an invalid selected id in the worker (no 400) and composites only the valid ones", async () => {

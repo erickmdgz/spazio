@@ -344,9 +344,12 @@ export class MfluxRenderPipeline implements RenderPipeline {
   private runMflux(command: string, args: string[], renderId: string): Promise<void> {
     return new Promise<void>((resolvePromise, rejectPromise) => {
       // The spawned command is otherwise unrecorded (BUG-005) — without it a
-      // failed render can't be reproduced by hand.
+      // failed render can't be reproduced by hand. Each arg is quoted so the
+      // logged line is copy-paste runnable (the prompt contains spaces).
       // eslint-disable-next-line no-console
-      console.log(`[render] ${renderId}: spawning ${command} ${args.join(" ")}`);
+      console.log(
+        `[render] ${renderId}: spawning ${[command, ...args].map((a) => JSON.stringify(a)).join(" ")}`,
+      );
       const child = this.spawner(command, args);
       let stderr = "";
       let settled = false;
@@ -381,7 +384,9 @@ export class MfluxRenderPipeline implements RenderPipeline {
       register(renderId, () => child.kill("SIGKILL"));
 
       child.stderr?.on("data", (chunk) => {
-        stderr += chunk.toString();
+        // Keep only a bounded tail (BUG-005): enough to diagnose, and it cannot
+        // grow in memory for the whole (up to 15-min) life of the child.
+        stderr = (stderr + chunk.toString()).slice(-8192);
       });
       child.on("error", (err) => {
         settle(() =>
@@ -394,7 +399,9 @@ export class MfluxRenderPipeline implements RenderPipeline {
             resolvePromise();
           } else {
             rejectPromise(
-              new Error(`mflux exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`),
+              new Error(
+                `mflux exited with code ${code}${stderr ? `: ${stderr.trim().slice(-2000)}` : ""}`,
+              ),
             );
           }
         });
