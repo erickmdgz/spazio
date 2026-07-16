@@ -66,7 +66,11 @@ const envSchema = z.object({
   // child survives past it. Default 900000 = 15 min: a healthy worst-case render
   // (3 reference products) measures ~10 min on the M2 render host (~75 s/step × 8,
   // BUG-004), so the cap must sit above real work, not just hangs. The web client's
-  // CLIENT_TIMEOUT_MS backstop must stay above this value.
+  // CLIENT_TIMEOUT_MS backstop must stay above this value; note the two clocks
+  // differ — this cap is armed at mflux spawn (after dequeue), the client's at
+  // enqueue — so a render that waits behind another job can still hit the client
+  // backstop first (queue wait is uncapped; BUG-005 skips cancelled-while-queued
+  // jobs at dequeue).
   RENDER_TIMEOUT_MS: numberFromString(900000),
 
   // Payments (single COP capture, ADR-003/004). Placeholder vendor fields.

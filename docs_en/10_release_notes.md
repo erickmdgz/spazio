@@ -185,9 +185,15 @@ are recorded as dated history in *Technical changes* below.
   6-min budget on the M2 render host — the cap was killing real work, not
   hangs. The budget is now **`RENDER_TIMEOUT_MS` default `900000` = 15 min**
   (config.ts / .env.example) with the web client backstop raised to
-  **`CLIENT_TIMEOUT_MS = 930_000`** so the backend still fails first
-  (TC-141). The ~2–5 min render figure remains a **soft target with no hard
-  SLA** (ADR-013/NFR-001 unchanged); the timeout mechanism itself (BUG-002,
+  **`CLIENT_TIMEOUT_MS = 930_000`**, kept above the backend cap so the backend
+  normally fails first **once the job is running** (TC-141 pins the backend
+  default; the client constant lives in the web app and is kept above it by
+  inspection). Caveat: the backend cap is armed at mflux spawn while the
+  client's timer runs from enqueue, so queue wait behind another job is
+  uncovered — a long-queued render can still hit the client backstop first
+  (cancelled-while-queued handling is part of BUG-005). The ~2–5 min render
+  figure remains a **soft target with no hard SLA** (ADR-013; NFR-001 carries
+  the new measurement as a re-note); the timeout mechanism itself (BUG-002,
   TC-136/TC-137) is value-agnostic and unchanged. Related diagnosability and
   queue-serialization gaps found in the same incident are tracked as BUG-005.
 - **BUG-003 — the render page deadlocked on the spinner in dev and any reload
@@ -230,7 +236,8 @@ are recorded as dated history in *Technical changes* below.
   **stop the work** (a browser cannot kill a server process, so this is enforced on
   the backend):
   - **Hard render timeout + SIGKILL.** The render pipeline enforces a hard cap on a
-    single mflux run (`RENDER_TIMEOUT_MS`, default `360000` = 6 min). On timeout the
+    single mflux run (`RENDER_TIMEOUT_MS`, default `360000` = 6 min at the time —
+    raised to `900000` = 15 min by BUG-004, 2026-07-16). On timeout the
     child is **SIGKILLed** and the render is marked **`failed`**. This self-heals
     even when the browser is gone — a request never stays `processing` past the cap
     and no orphan child survives it.

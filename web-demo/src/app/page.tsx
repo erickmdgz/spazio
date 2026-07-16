@@ -41,7 +41,7 @@ export default function LandingPage() {
               <span aria-hidden>→</span>
             </Link>
             <span className="text-sm text-forest-900/50">
-              Takes about a minute
+              Setup takes about a minute — rendering a few more
             </span>
           </div>
         </div>

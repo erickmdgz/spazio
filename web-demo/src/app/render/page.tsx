@@ -176,8 +176,9 @@ export default function RenderPage() {
   }, [hydrated, room, style, selectedProductIds, renderKey, renderId, submitRender, setRenderVisual]);
 
   // Poll while the backend generates (the poll may legitimately stay
-  // queued/processing for a while — ~2–5 min soft target, no hard render SLA,
-  // ADR-013).
+  // queued/processing for a while — ~2–5 min soft target with no hard render SLA
+  // (ADR-013), but a worst-case 3-product render measures ~10 min on the M2 host
+  // (BUG-004), plus uncapped queue wait behind another job).
   useEffect(() => {
     if (phase !== "generating") return;
     let stopped = false;
@@ -362,8 +363,8 @@ export default function RenderPage() {
                   {formatElapsed(elapsedSec)}
                 </p>
                 <p className="mt-4 max-w-sm text-xs text-muted/50">
-                  Your render appears here the moment it&apos;s ready — this usually takes a few
-                  minutes.
+                  Your render appears here the moment it&apos;s ready — a render with several
+                  products can take around ten minutes.
                 </p>
               </>
             )}

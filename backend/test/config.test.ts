@@ -42,15 +42,15 @@ describe("config validation", () => {
   });
 
   // TC-141 (BUG-004): the render hard cap must clear a healthy worst-case render
-  // (~10 min with 3 reference products on the M2 host), not just hangs. The web
-  // client's CLIENT_TIMEOUT_MS backstop (930_000, render/page.tsx) must stay
-  // above this so the backend fails first and polling sees 'failed'.
+  // (~10 min with 3 reference products on the M2 host), not just hangs. This test
+  // pins the backend default only; the companion invariant — the web client's
+  // CLIENT_TIMEOUT_MS (render/page.tsx) staying above this cap — lives in another
+  // codebase and cannot be asserted from here (kept by inspection/review).
   it("defaults the render hard cap to 15 min, above a worst-case real render (TC-141)", () => {
     const cfg = loadConfig({
       DATABASE_URL: "postgresql://x",
       OPERATOR_SESSION_SECRET: "test-session-secret-0123456789",
     } as NodeJS.ProcessEnv);
     expect(cfg.RENDER_TIMEOUT_MS).toBe(900000);
-    expect(cfg.RENDER_TIMEOUT_MS).toBeLessThan(930_000);
   });
 });
