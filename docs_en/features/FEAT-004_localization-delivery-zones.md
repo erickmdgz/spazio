@@ -34,7 +34,7 @@ Functional (canonical set from `05_backlog.md`):
 
 Non-functional:
 
-- NFR-011 — Multi-currency payment processing *(pilot is single-currency COP; gateway is **Decided (pilot): a single PCI-compliant hosted checkout, one payment in COP, no split settlement (provider selection revisit before scale)** — see ADR-003)*
+- NFR-011 — Multi-currency payment processing *(pilot is single-currency COP; gateway is **Decided (pilot): a single PCI-compliant hosted checkout, one payment in COP, no split settlement (provider selection revisit before scale)** — see ADR-003; per ADR-029, 2026-07-15, the demo runs a mock gateway and the provider choice is deferred — this applies wherever ADR-003 is cited in this doc)*
 - NFR-016 — Supplier onboarding scales by region *(supplier partners/terms **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement** — see ADR-016)*
 - NFR-017 — Architecture supports multiple countries and currencies *(explicitly traces to FEAT-004; pilot targets a single market/currency)*
 - NFR-018 — Per-market taxes, payment methods, and legal config *(values **Decided (pilot): single market Bogotá, Colombia (COP); taxes/invoicing handled manually with no tax engine (revisit before scale)** — see ADR-015, ADR-018)*
@@ -80,13 +80,13 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- A **localization step** on the iOS client corresponding to PRD §8 step 2 (DRAFT / PROPOSED). In the pilot this is effectively fixed to Bogotá / COP (VERIFIED pilot scope); the general location-entry/permission UX is a full-product concern.
+- A **localization step** on the web client (`web-demo/` — the iOS framing was superseded by ADR-024, 2026-07-14) corresponding to PRD §8 step 2 (DRAFT / PROPOSED). In the pilot this is effectively fixed to Bogotá / COP (VERIFIED pilot scope); the general location-entry/permission UX is a full-product concern.
 - **Local-currency formatting** wherever prices appear — product tags (FEAT-007), cart (FEAT-008), estimates (FEAT-009), checkout (FEAT-010) — driven by the resolved `Market` (FR-046). Pilot renders all prices in **COP**.
 - On `no-coverage` / local delivery unavailable (full product), surface the **fallback options** (nearby regions / alternative shipping / pickup) or a clear `no-delivery-available` state (FR-053).
 
 ### Backend
 
-- **Location-resolution service** (DRAFT / PROPOSED): maps a user location to a `Market` and a `DeliveryZone`, returning `unresolved-location` when it cannot resolve (FR-012) and `no-coverage` when the location falls outside all defined zones (FR-013). Geocoding/resolution mechanism is **DRAFT / PROPOSED**; the stack is **Decided (pilot): native iOS (SwiftUI) + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
+- **Location-resolution service** (DRAFT / PROPOSED): maps a user location to a `Market` and a `DeliveryZone`, returning `unresolved-location` when it cannot resolve (FR-012) and `no-coverage` when the location falls outside all defined zones (FR-013). Geocoding/resolution mechanism is **DRAFT / PROPOSED**; the stack is **Decided (pilot): native iOS (SwiftUI) + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001** *(iOS client clause superseded by ADR-024, 2026-07-14 — the client is the web app `web-demo/`; the backend half stands)*.
 - **Supplier-coverage service** (DRAFT / PROPOSED): returns the set of suppliers whose `DeliveryZone` coverage includes the locality (FR-012). Candidate supplier/catalog data comes from FEAT-015; the supplier partner set is **Decided (pilot): hand-pick 2-4 Bogotá suppliers with a one-page written agreement — see ADR-016**.
 - **Locality gate for matching/rendering:** exposes the deliverable-product constraint consumed by FEAT-005 so non-deliverable products are excluded with a `locality` exclusion (FR-020). Integration point with the rendering pipeline is **Decided (pilot): a hosted generative image API (image-to-image / inpainting) — see ADR-002** *(its hosted-image-API engine clause superseded by ADR-026, 2026-07-14 — self-hosted FLUX.2 Klein 4B via mflux; its mandatory-operator-QA clause superseded by ADR-025, 2026-07-14)*.
 - **Delivery-fallback resolver** (DRAFT / PROPOSED): computes nearby regions / alternative shipping / pickup, or `no-delivery-available` (FR-053) from `DeliveryZone.fallback_options`.

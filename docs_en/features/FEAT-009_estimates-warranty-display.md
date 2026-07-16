@@ -72,7 +72,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): each **cart line** shows the item's production/delivery estimate next to price and supplier (FR-036). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
+- On iOS (pilot, VERIFIED) *(as built on the web app — ADR-024; the cart line estimates come from `GET /cart/estimates`, FR-036)*: each **cart line** shows the item's production/delivery estimate next to price and supplier (FR-036). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001** *(iOS client clause superseded by ADR-024; the backend half stands)*.
 - Full product adds an **order-summary estimate** line (FR-037) and a **warranty** field per item / in the product detail (FR-038). Warranty presentation is **out of the pilot**.
 - Items with no supplier estimate are shown with a `missing-estimate` indicator **(DRAFT / PROPOSED)** rather than a fabricated value.
 
@@ -89,7 +89,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `CartItem` / `Cart` — the cart lines the per-item estimate and warranty are displayed against, and the scope over which the order-level estimate (FR-037) is aggregated.
   - `RenderItem` — carries `warranty_terms` captured at render time (PRD FR-07), a possible display source for FR-038.
   - `PurchaseOrder` — carries `production_estimate` / `delivery_estimate` **(proposed)** as the *post-order* counterpart (generated at checkout, FEAT-010/FR-044); the *pre-checkout* aggregate for FR-037 is derived at the cart level.
-- Field-level schema and the `missing-estimate` status value are **DRAFT / PROPOSED**; final types follow the pilot stack, now decided (ADR-001).
+- The involved Product lead-time/warranty fields are **as built** in `backend/prisma/schema.prisma` (`productionLeadTimeDays`, `deliveryLeadTimeDays`, `warrantyTerms` — stored, not displayed per ADR-020); the `missing-estimate` status value and the FR-037 aggregation remain **DRAFT / PROPOSED**.
 
 ### Security
 
