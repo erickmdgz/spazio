@@ -4,8 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestRender } from "@/app/actions";
 import { ProductSheet } from "@/components/ProductSheet";
-import { cancelRender, fetchRenderImage, isPublicProduct, type ProductSummary } from "@/lib/api";
+import {
+  ApiError,
+  cancelRender,
+  fetchRenderImage,
+  isPublicProduct,
+  type ProductSummary,
+} from "@/lib/api";
 import { formatCop } from "@/lib/format";
+import type { RenderResult } from "@/lib/render/types";
 import { getScenario, getRoom, getStyle } from "@/lib/scenarios";
 import { useDemo } from "@/lib/store";
 
@@ -24,12 +31,20 @@ const POLL_MS = 2500;
 // still moves the UI to the failed screen rather than spinning forever.
 const CLIENT_TIMEOUT_MS = 390_000; // 6.5 min
 
+// Backstop for the brief 'loading' (submit/enqueue) phase (BUG-003): the enqueue
+// is one fast HTTP round-trip, so a minute without an answer means it stalled —
+// fail visibly instead of spinning (the spinner looks identical to 'generating').
+const START_TIMEOUT_MS = 60_000;
+
 // Seconds after which the failed screen auto-returns the user to /select so they
 // can adjust their picks and retry (their photo + source + style are kept).
 const REDIRECT_MS = 5_000;
 
 const FAILED_MESSAGE =
   "It took too long or the engine ran out of memory — returning you to your selection so you can try again.";
+
+const START_FAILED_MESSAGE =
+  "Starting the render took too long — returning you to your selection so you can try again.";
 
 /** mm:ss for the elapsed-time readout while generating. */
 function formatElapsed(totalSeconds: number): string {
@@ -43,6 +58,7 @@ type Phase = "loading" | "generating" | "ready" | "error";
 export default function RenderPage() {
   const router = useRouter();
   const {
+    hydrated,
     room,
     style,
     source,
@@ -52,7 +68,9 @@ export default function RenderPage() {
     setRenderVisual,
     renderItems,
     renderId,
+    renderKey,
     submitRender,
+    resetRender,
     refreshRender,
     cart,
   } = useDemo();
@@ -63,6 +81,8 @@ export default function RenderPage() {
   const [backendImageUrl, setBackendImageUrl] = useState<string | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedKey = useRef<string | null>(null);
+  // The in-flight kickoff, shared across effect re-runs (BUG-003 — see below).
+  const kickoffRef = useRef<Promise<RenderResult | null> | null>(null);
 
   // Live mirrors of phase + renderId so the unmount cleanup (empty-deps effect)
   // can cancel a still-running backend render without capturing stale values.
@@ -72,12 +92,15 @@ export default function RenderPage() {
   renderIdRef.current = renderId;
 
   // Soft guard: this step needs a room, a style, and a furniture selection
-  // (ADR-028 — the user curates what gets rendered on /select).
+  // (ADR-028 — the user curates what gets rendered on /select). Waits for the
+  // sessionStorage rehydration (BUG-003): before it, the store is still empty
+  // and a legitimate reload would bounce to /room.
   useEffect(() => {
+    if (!hydrated) return;
     if (!room) router.replace("/room");
     else if (!style) router.replace("/style");
     else if (selectedProductIds.length === 0) router.replace("/select");
-  }, [room, style, selectedProductIds, router]);
+  }, [hydrated, room, style, selectedProductIds, router]);
 
   // Rotate loading messages.
   useEffect(() => {
@@ -86,49 +109,70 @@ export default function RenderPage() {
     return () => clearInterval(t);
   }, [phase]);
 
-  // Kick off the render: the cached visual (ADR-002 vendor still open) plus the
-  // REAL backend job — submit → poll; the render is published to the user
-  // immediately on generation success (ADR-025). Both run together; generation
-  // is what the user waits on.
+  // Kick off the render: the cached visual (fallback imagery) plus the REAL
+  // backend job — submit → poll; the render is published to the user
+  // immediately on generation success (ADR-025). Generation is what the user
+  // waits on.
+  //
+  // Strict-Mode-safe (BUG-003): the kickoff promise is started at most ONCE per
+  // photo+style+selection key and lives in a ref; every effect run re-attaches
+  // to that same promise. The previous shape started the async work inside the
+  // effect and gated its state updates on a per-run `cancelled` flag — under
+  // React Strict Mode's dev remount, the first run's cleanup cancelled the only
+  // run (the ref guard blocked the second), so setPhase("generating") was
+  // silently discarded and the page spun on the loading screen forever while
+  // the backend render completed unseen.
   useEffect(() => {
-    if (!room || !style || selectedProductIds.length === 0) return;
+    if (!hydrated || !room || !style || selectedProductIds.length === 0) return;
     // Key on the selection too: picking different furniture (FR-069 iterate)
     // starts a fresh render of exactly those products.
     const key = `${room.id}:${style.id}:${selectedProductIds.join(",")}`;
-    if (startedKey.current === key) return;
-    startedKey.current = key;
-    setPhase("loading");
-    setError(null);
+
+    if (startedKey.current !== key) {
+      startedKey.current = key;
+      setPhase("loading");
+      setError(null);
+      const visualInput = {
+        roomId: room.id,
+        styleId: style.id,
+        styleNote: style.note,
+        budgetCop: style.budgetCop,
+        widthM: room.widthM,
+        lengthM: room.lengthM,
+      };
+      // Resume (BUG-003): a render for this exact key was already submitted —
+      // the page reloaded while it generated (or after it completed) — so poll
+      // the existing render instead of submitting a duplicate. Only the
+      // fallback visual is re-requested, and it must never block the resume.
+      kickoffRef.current =
+        renderKey === key && renderId
+          ? requestRender(visualInput).catch(() => null)
+          : (async () => {
+              const [visual] = await Promise.all([requestRender(visualInput), submitRender()]);
+              return visual;
+            })();
+    }
 
     let cancelled = false;
-    (async () => {
-      try {
-        const [visual] = await Promise.all([
-          requestRender({
-            roomId: room.id,
-            styleId: style.id,
-            styleNote: style.note,
-            budgetCop: style.budgetCop,
-            widthM: room.widthM,
-            lengthM: room.lengthM,
-          }),
-          submitRender(),
-        ]);
+    kickoffRef.current
+      ?.then((visual) => {
         if (cancelled) return;
-        setRenderVisual(visual);
-        setPhase("generating");
-      } catch (e) {
+        if (visual) setRenderVisual(visual);
+        // Only advance out of 'loading' — a re-attached run (deps changed after
+        // the promise settled) must never pull an 'error' or 'ready' page back.
+        setPhase((p) => (p === "loading" ? "generating" : p));
+      })
+      .catch((e) => {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : "Could not start the render.");
         setPhase("error");
         startedKey.current = null; // allow retry
-      }
-    })();
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [room, style, selectedProductIds, submitRender, setRenderVisual]);
+  }, [hydrated, room, style, selectedProductIds, renderKey, renderId, submitRender, setRenderVisual]);
 
   // Poll while the backend generates (the poll may legitimately stay
   // queued/processing for a while — ~2–5 min soft target, no hard render SLA,
@@ -145,8 +189,15 @@ export default function RenderPage() {
           setError(FAILED_MESSAGE);
           setPhase("error");
         }
-      } catch {
-        // Transient poll failure — keep polling; generation is async.
+      } catch (e) {
+        if (stopped) return;
+        // A vanished render (404 — e.g. resuming after a backend/DB reset) can
+        // never complete: fail now instead of polling out the full backstop.
+        if (e instanceof ApiError && e.status === 404) {
+          setError(FAILED_MESSAGE);
+          setPhase("error");
+        }
+        // Anything else is transient — keep polling; generation is async.
       }
     };
     void tick();
@@ -169,27 +220,40 @@ export default function RenderPage() {
     return () => clearInterval(t);
   }, [phase]);
 
-  // Client backstop timeout (BUG-002): if we're still generating past the cap,
-  // fail gracefully even without a backend 'failed' signal. The primary path
-  // stays the poll seeing status 'failed' (backend hard timeout / kill).
+  // Client backstop timeouts (BUG-002/BUG-003): NO phase may spin forever —
+  // 'generating' is capped just above the backend hard timeout, and 'loading'
+  // (the fast submit/enqueue round-trip) is capped at a minute. The primary
+  // failure path stays the poll seeing status 'failed' (backend timeout/kill);
+  // these only catch a dead backend or a stalled kickoff.
   useEffect(() => {
-    if (phase !== "generating") return;
-    const t = setTimeout(() => {
-      setError(FAILED_MESSAGE);
-      setPhase("error");
-    }, CLIENT_TIMEOUT_MS);
+    if (phase !== "loading" && phase !== "generating") return;
+    const stalled = phase === "loading";
+    const t = setTimeout(
+      () => {
+        setError(stalled ? START_FAILED_MESSAGE : FAILED_MESSAGE);
+        setPhase("error");
+      },
+      stalled ? START_TIMEOUT_MS : CLIENT_TIMEOUT_MS,
+    );
     return () => clearTimeout(t);
   }, [phase]);
 
   // On the failed screen (BUG-002): stop any lingering backend render now
   // (best-effort cancel), then auto-return to /select after a few seconds so the
-  // user can adjust their picks and retry — their photo + source + style are kept.
+  // user can adjust their picks and retry — their photo + source + style are
+  // kept. resetRender() forgets the dead render so re-rendering the SAME
+  // selection submits a fresh job instead of resuming the failed one (BUG-003).
+  // renderId is read via ref so the reset doesn't re-trigger this effect.
   useEffect(() => {
     if (phase !== "error") return;
-    if (renderId) cancelRender(renderId);
-    const t = setTimeout(() => router.push("/select"), REDIRECT_MS);
+    const failedRenderId = renderIdRef.current;
+    if (failedRenderId) cancelRender(failedRenderId);
+    const t = setTimeout(() => {
+      resetRender();
+      router.push("/select");
+    }, REDIRECT_MS);
     return () => clearTimeout(t);
-  }, [phase, renderId, router]);
+  }, [phase, router, resetRender]);
 
   // Cancel on leave (BUG-002): if the user navigates away while a render is
   // still generating, tell the backend to stop it now (keepalive fetch) rather
@@ -258,7 +322,9 @@ export default function RenderPage() {
     });
   }, [renderItems, scenario]);
 
-  if (!room || !style || selectedProductIds.length === 0) return null;
+  // Render nothing until rehydration lands (BUG-003) — the guard above decides
+  // where to go once the persisted state is known.
+  if (!hydrated || !room || !style || selectedProductIds.length === 0) return null;
 
   if (phase !== "ready") {
     return (
@@ -311,7 +377,10 @@ export default function RenderPage() {
             <p className="mt-2 max-w-sm text-muted/70">{error ?? FAILED_MESSAGE}</p>
             <button
               type="button"
-              onClick={() => router.push("/select")}
+              onClick={() => {
+                resetRender();
+                router.push("/select");
+              }}
               className="btn-primary mt-6"
             >
               Try again
@@ -419,6 +488,9 @@ export default function RenderPage() {
           <button
             type="button"
             onClick={() => {
+              // Iterating (FR-069) means a NEW render next time — forget this
+              // one so an identical re-pick doesn't just resume it (BUG-003).
+              resetRender();
               clearSelection();
               router.push("/select");
             }}

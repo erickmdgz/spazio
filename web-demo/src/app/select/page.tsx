@@ -15,6 +15,7 @@ const MAX_SELECTION = 3;
 export default function SelectPage() {
   const router = useRouter();
   const {
+    hydrated,
     room,
     style,
     source,
@@ -30,11 +31,22 @@ export default function SelectPage() {
   // from /render via "Try other furniture" starts clean but a back-nav keeps it.
   const [picked, setPicked] = useState<string[]>(selectedProductIds);
 
-  // Soft guard: this step needs a room + style.
+  // Soft guard: this step needs a room + style. Waits for the sessionStorage
+  // rehydration (BUG-003) — before it, the store is still empty and a
+  // legitimate reload would bounce to /room.
   useEffect(() => {
+    if (!hydrated) return;
     if (!room) router.replace("/room");
     else if (!style) router.replace("/style");
-  }, [room, style, router]);
+  }, [hydrated, room, style, router]);
+
+  // Re-seed the working picks once rehydration lands (BUG-003): the useState
+  // initializer above ran before sessionStorage was read, so a reload would
+  // otherwise show an empty selection despite one being persisted.
+  useEffect(() => {
+    if (!hydrated || selectedProductIds.length === 0) return;
+    setPicked((prev) => (prev.length === 0 ? selectedProductIds : prev));
+  }, [hydrated, selectedProductIds]);
 
   const fetchCatalog = useCallback(() => {
     setLoading(true);
