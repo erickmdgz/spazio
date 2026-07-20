@@ -92,7 +92,7 @@ All living documentation is under [`docs_en/`](./docs_en/):
 | `09_ai_usage.md` | AI usage rules |
 | `10_release_notes.md` | Release notes per version |
 | `11_implementation_flow.md` | Mandatory implementation flow |
-| `12_pilot_build_plan.md` | Approved pilot build plan (iOS program superseded by ADR-024; loop design still authoritative except the render-review step, superseded by ADR-025) |
+| `12_pilot_build_plan.md` | Approved pilot build plan (iOS program superseded by ADR-024; the loop's original design remains the reference, with the render-review step retired — ADR-025 — and the request flow inverted to browse-and-select — ADR-028) |
 | `13_class_demo_scope.md` | Class-demo scope and feature mapping |
 | `decisions/` | ADR-001..ADR-028 |
 | `features/` | FEAT specifications |

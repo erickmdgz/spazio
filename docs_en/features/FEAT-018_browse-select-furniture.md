@@ -51,7 +51,7 @@ Related decisions:
 3. The system returns the approved, renderable products of that source and style (optionally price-filtered), each with an image URL (**FR-066**). Brand/public products show a "not sold by Spazio" chip, a "View at retailer" outbound link, and CC BY 4.0 attribution (FR-064/FR-065).
 4. The user **selects up to 3** products (a clear selected state + `N/3` counter; further selection disabled at 3, deselect allowed). A budget meter tracks the running total for Local-supplier selections (**FR-067**).
 5. The user renders the selection (**FR-068**): the render worker composites **exactly** those validated products into the room photo (not auto-match), and serves the render back (FEAT-002 `GET /renders/:id/image`).
-6. On "like it?": **(no) "Try other furniture"** returns to the browse surface with the same photo/source/style and a cleared selection to pick a different set and re-render (**FR-069**); **(yes) "Love it → Cart"** proceeds to the cart.
+6. On "like it?": **(no) "Try other furniture"** returns to the browse surface with the same photo/source/style and a cleared selection to pick a different set and re-render (**FR-069**); **(yes)** for a **Local** selection, "Love it → Cart" proceeds to the cart; for a **Brand** (public) render there is no cart CTA — the yes-path is the per-product **"View at retailer"** links on the render page (the cart stays empty by design, FR-064).
 7. The cart is populated from the render's items: `source=supplier` items populate it; `source=public` items are excluded (display-only) — a Brand selection yields an empty cart by design (**FR-064**, FR-031).
 
 ## 6. Acceptance criteria
@@ -91,7 +91,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Database
 
-- **No schema change.** `source`, attribution, and styles already exist (ADR-027, `07_data_model.md`). This feature adds no tables or fields.
+- **No schema change** *(as originally delivered)*. `source`, attribution, and styles already exist (ADR-027, `07_data_model.md`). This feature added no tables or fields at delivery; BUG-005 (2026-07-16) later added `RenderRequest.requestedProductIds` to persist this feature's selection (see the header as-built note).
 
 ### Security / scope
 

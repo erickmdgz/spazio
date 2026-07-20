@@ -15,7 +15,7 @@ What the PRD states:
 - Most users lack formal design vocabulary and style selection should be visual (PRD §5, "User context"); budget must be visible throughout (PRD §5).
 - The AI implements the interface and user flows (PRD §12, "AI role"), but brand/design decisions are human-reserved.
 
-Pilot context: the pilot is a native iOS app for one persona (Valentina) in Bogotá (Pilot). A minimal, credible visual treatment is needed for the pilot even though the full design system is human-reserved. This ADR frames the choice; it does not set brand or copy.
+Pilot context: the pilot (as planned 2026-07-10; platform since superseded by ADR-024 — the product is the web app, no native iOS) was a native iOS app for one persona (Valentina) in Bogotá (Pilot). A minimal, credible visual treatment is needed for the pilot even though the full design system is human-reserved. This ADR frames the choice; it does not set brand or copy.
 
 ## Decision
 

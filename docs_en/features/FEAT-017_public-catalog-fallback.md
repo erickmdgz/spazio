@@ -1,6 +1,6 @@
 # FEAT-017 - Public-catalog bootstrap fallback
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. **As built (2026-07-15):** the `source=public` track (Amazon Berkeley Objects, CC BY 4.0) is implemented and **verified on a local stack (not deployed)** — public products are seeded, display-only, labeled "not sold by Spazio" with a "View at retailer" link, and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), not only the auto-match fallback this document originally described. Attribution/compliance handling and the "activate only when no supplier catalog exists" gating remain partly specification. This feature is governed by **ADR-027** (2026-07-15).
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. **As built (2026-07-15):** the `source=public` track (Amazon Berkeley Objects, CC BY 4.0) is implemented and **verified on a local stack (not deployed)** — public products are seeded, display-only, labeled "not sold by Spazio" with a "View at retailer" link, and surfaced as the user-selectable **Brand suppliers** source (ADR-028/FEAT-018), not only the auto-match fallback this document originally described. The no-supplier gating (supplier track queried first, public drawn only when it comes up empty — `backend/src/services/matching.ts`, TC-110/TC-111) and the CC BY 4.0 attribution propagation onto render items (`renderWorker.ts` → `RenderItem`, TC-116/TC-117) are **built and verified on the local stack** (not deployed). This feature is governed by **ADR-027** (2026-07-15).
 
 ## 1. Summary
 
@@ -23,8 +23,8 @@ Spazio has **no onboarded suppliers yet** (supplier self-service ingestion is no
 Functional (new — defined in `docs_en/03_requirements.md`):
 
 - **FR-062** — Present public-dataset (ABO) products as a fallback when no supplier catalog is available *(bootstrap/demo)*
-- **FR-063** — Mark public products `source=public`, label them "not sold by Spazio", and exclude them from cart/checkout/orders/commission/MoR *(display-only)*
-- **FR-064** — Provide a labeled "View at retailer" outbound link for public products *(not a monetized affiliate program)*
+- **FR-063** — Tag every product with its source and distinguish public products ("not sold by Spazio") across matching, render tags, and cart
+- **FR-064** — Keep public products display-only with a labeled "View at retailer" outbound link *(not a monetized affiliate program)*; exclude them from cart/checkout/orders/commission/MoR
 - **FR-065** — Record and display required CC BY 4.0 attribution for public products, and propagate image provenance/attribution into any render that composites a public product image *(derivative work)*
 
 Non-functional (new):
@@ -47,7 +47,7 @@ Related decisions:
 2. **If a supplier catalog exists**, the loop proceeds unchanged on supplier SKUs (in-app checkout, commission, MoR — no change).
 3. **If no supplier catalog is available**, the system draws candidates from the seeded **`source=public`** ABO subset (FR-062), matching on style/dimensions/budget as usual and compositing the real ABO product image into the room photo (ADR-026).
 4. Public products render and display **labeled "not sold by Spazio"** with required **CC BY 4.0 attribution** shown (FR-063, FR-065); the stored render carries the propagated image provenance/attribution (FR-065, NFR-019).
-5. For a public product the user sees a **"View at retailer" outbound link** (FR-064). Public products are **not** addable to cart/checkout and are **excluded** from orders, commission, MoR, and the render-to-purchase metric (FR-063; NFR-006 segmented).
+5. For a public product the user sees a **"View at retailer" outbound link** (FR-064). Public products are **not** addable to cart/checkout and are **excluded** from orders, commission, MoR, and the render-to-purchase metric (FR-064; NFR-006 segmented).
 
 ## 6. Acceptance criteria
 
@@ -80,22 +80,22 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - A **public-catalog / bootstrap ingestion adapter**, distinct from supplier ingestion (ADR-006 carve-out), imports the ABO subset and stores `source=public` products with attribution fields (data-model spec in `07_data_model.md`).
 - Match/render selection falls back to `source=public` candidates only when no supplier catalog is available (FR-062).
-- Cart/checkout/order/commission/MoR paths **exclude** `source=public` products (FR-063); the render-to-purchase metric (NFR-006) is **segmented** to exclude non-purchasable public renders.
+- Cart/checkout/order/commission/MoR paths **exclude** `source=public` products (FR-064); the render-to-purchase metric (NFR-006) is **segmented** to exclude non-purchasable public renders.
 - Image provenance/attribution propagates from the source into the stored render (FR-065, NFR-019, ADR-026).
 
 ### Database
 
-- `Product` gains a `source` enum (`supplier` | `public`); `supplier_id` becomes conditional (present for `supplier`, absent for `public`); attribution fields added: `source_name`, `source_url`, `source_image_url`, `image_license`. **PROPOSED spec only** — see `docs_en/07_data_model.md`; not implemented by this doc.
+- `Product` gains a `source` enum (`supplier` | `public`); `supplier_id` becomes conditional (present for `supplier`, absent for `public`); attribution fields added: `source_name`, `source_url`, `source_image_url`, `image_license`. **As built** — implemented in `backend/prisma/schema.prisma` + migration `20260715175858_feat_017_public_catalog_fallback` (verified locally, not deployed); modeled in `docs_en/07_data_model.md`.
 
 ### Security / compliance
 
 - CC BY 4.0 **attribution is required** and recorded for every public product and derived render (NFR-019).
 - External egress (public-dataset import + outbound retailer links) is controlled and recorded (NFR-019).
-- No public product may enter cart/checkout/commission/MoR (FR-063).
+- No public product may enter cart/checkout/commission/MoR (FR-064).
 
 ## 9. Required tests
 
-Test cases live in `docs_en/08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR/NFR**. The rows for this feature are **TC-110..TC-119** (Status: Pending); the authoritative definitions and requirement mapping are in `08_test_plan.md`:
+Test cases live in `docs_en/08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR/NFR**. The rows for this feature are **TC-110..TC-119**, all **automated** (`backend/test/public-catalog.test.ts`, PR #45); the authoritative definitions and requirement mapping are in `08_test_plan.md`:
 
 | ID | Test | Type |
 |---|---|---|
@@ -127,15 +127,15 @@ Related decision: **ADR-027**. GitHub Issue: **#43**.
 - [x] The feature has a clear objective.
 - [x] It is linked to requirements (FR-062..065, NFR-019, ADR-027).
 - [x] It has acceptance criteria. *(FR-062..065 in `03_requirements.md`)*
-- [ ] It has defined tests. *(TC-110..119 defined in `08_test_plan.md`, Status Pending)*
+- [x] It has defined tests. *(TC-110..119 defined in `08_test_plan.md` and automated in `backend/test/public-catalog.test.ts`, PR #45.)*
 - [x] The technical impact is understood.
 - [x] The user impact is understood.
 
 ## 12. Checklist before closing
 
-- [ ] Code implemented.
-- [ ] Tests executed.
-- [ ] Acceptance criteria met.
-- [ ] Pull request reviewed.
-- [ ] Documentation updated.
-- [ ] Release notes updated.
+- [x] Code implemented. *(PR #45, merged 2026-07-15.)*
+- [x] Tests executed. *(TC-110..119 automated — `backend/test/public-catalog.test.ts`.)*
+- [x] Acceptance criteria met. *(Verified live: supplier-empty → ABO fallback → composite; public absent from cart.)*
+- [x] Pull request reviewed. *(Merged by the owner.)*
+- [x] Documentation updated. *(PRs #44/#50/#51.)*
+- [x] Release notes updated. *(`10_release_notes.md` [Unreleased].)*
