@@ -66,7 +66,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- **Client platform:** native **iOS** for the pilot (VERIFIED). Broader stack **Decided (pilot): one small managed backend service + a managed relational (Postgres) DB + object storage for photos/renders; single environment/region; no multi-platform — see ADR-001**.
+- **Client platform:** native **iOS** for the pilot (VERIFIED). *(Superseded by ADR-024, 2026-07-14: the client is the web app `web-demo/` — no native iOS app will be built; the backend/Postgres/object-storage stack stands.)* Broader stack **Decided (pilot): one small managed backend service + a managed relational (Postgres) DB + object storage for photos/renders; single environment/region; no multi-platform — see ADR-001**.
 - Screens/components (DRAFT / PROPOSED): a **visual style picker** showing the predefined styles (PRD §5 wants style selection to be visual), designed for minimal steps (NFR-013); an **optional free-text field** for the style description (FR-008); a **budget range** control capturing minimum and maximum (FR-009). Pilot shows **one or two** predefined styles (VERIFIED, pilot).
 - Budget must remain visible throughout later steps (PRD §5) — a persistent budget indicator is a DRAFT / PROPOSED UI treatment.
 
@@ -81,16 +81,16 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `Style` — a predefined visual style a user can select, mapped to product style attributes.
   - `StyleTaxonomy` — the shared classification mapping products and user style choices to a common vocabulary (BR-16); **Decided (pilot): one or two predefined visual styles + free-text description; no taxonomy engine** (ADR-005).
   - `Project` — stores the chosen style, free-text description(s), and budget min/max for the session.
-- Field-level schema is **TBD**.
+- Field-level schema: the pilot subset is **as built** in `backend/prisma/schema.prisma` (`Project.styleId`/`freeText`/`budgetMinCop`/`budgetMaxCop`, the `Style` entity) and modeled in `07_data_model.md`; a StyleTaxonomy entity remains unmodeled (no taxonomy engine — ADR-005).
 
 ### Security
 
 - Selections are part of the user's private design session; access follows the same privacy/auth posture as the rest of the Project (NFR-007, NFR-008).
-- Input validation on the budget range (e.g., min ≤ max, non-negative) — criteria to be written into FR-009.
+- Input validation on the budget range (e.g., min ≤ max, non-negative) — criteria are written into FR-009 (TC-017/TC-018); the built UI captures a single COP budget (`budgetMaxCop`), so the min/max-range validation itself is not yet implemented.
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist in `08_test_plan.md`** (the rows tagged `FEAT-003 Style & budget selection`), all with status `Pending` — that status reflects the validity of the case, not an execution result. **Build-status correction (2026-07-15):** the pilot slice (FR-007 style, FR-008 free-text, FR-009 budget) is **built and verified on a local stack** — the `/style` step of the web app persists style/free-text/budget to the backend `Project` (with the ADR-028 SOURCE toggle added alongside) — so the earlier "nothing here is implemented" boilerplate is superseded; `Pending` here means **TCs pending automation**, not code-not-built. FR-010 (free-text room-change description) remains out of pilot/specification.
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` IDs for this feature **already exist in `08_test_plan.md`** (the rows tagged `FEAT-003 Style & budget selection`), all with status `Pending` — that status reflects the validity of the case, not an execution result. **Build-status correction (2026-07-15):** the pilot slice (FR-007 style, FR-008 free-text, FR-009 budget) is **built and verified on a local stack** — the `/style` step of the web app persists style/free-text/budget to the backend `Project` (with the ADR-028 SOURCE toggle added alongside) — so the earlier "nothing here is implemented" boilerplate is superseded; `Pending` here means **TCs pending automation**, not code-not-built — with two scoped exceptions: the budget is captured as a **single COP amount** persisted to `Project.budgetMaxCop` (no minimum input), so FR-009's min/max-range entry and its `budget-range` validation (the range half of TC-017, and TC-018) remain **unbuilt specification**; and where this doc says "one or two" predefined styles (pilot spec), the shipped app offers **three** (Modern Mediterranean, Warm Minimalist, Scandinavian — `backend/prisma/seed.ts`). FR-010 (free-text room-change description) remains out of pilot/specification.
 
 The tests for this feature are the following `TC-` rows in `08_test_plan.md`, mapped to its related FRs:
 

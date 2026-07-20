@@ -71,7 +71,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- **Client platform:** native **iOS** for the pilot (VERIFIED — pilot "Included": "Native iOS app only"). The broader technology stack is **decided for the pilot: a native iOS (SwiftUI) app + one managed backend service + a managed Postgres database + object storage, single environment/region — see ADR-001**.
+- **Client platform:** native **iOS** for the pilot (VERIFIED — pilot "Included": "Native iOS app only"). The broader technology stack is **decided for the pilot: a native iOS (SwiftUI) app + one managed backend service + a managed Postgres database + object storage, single environment/region — see ADR-001**. *(iOS client clause superseded by ADR-024, 2026-07-14 — the product client is the web app `web-demo/`; no native iOS app will be built. The backend + Postgres + object-storage decision stands.)*
 - Screens/components (DRAFT / PROPOSED): a **photo-upload** step (device photo-library picker) for FR-005; an **approximate-dimensions** input step for FR-011 (e.g., simple numeric fields or a guided estimate) designed for minimal steps (NFR-013). In-app **camera capture** UI (FR-006) is a full-product addition, out of pilot.
 - On rejected photos (full product), surface a clear **retake** prompt (FR-024).
 
@@ -89,9 +89,9 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Security
 
-- **Room photos are private by default** (NFR-007 / PRD BR-33): access restricted to the owning user and authorized operators.
+- **Room photos are private by default** (NFR-007 / PRD BR-33): access restricted to the owning device/user *(the "authorized operators" access that motivated the original wording belonged to the render-review path, retired per ADR-025, 2026-07-14)*.
 - Account/order data protected by authentication (NFR-008). *Decided (pilot): minimal contact capture at checkout (email + phone + shipping), no accounts — see ADR-022. Consistent with accounts (FEAT-001) being out of the pilot per `05_backlog.md` and NFR-008 and the pilot excluding full guest checkout; pilot users are not assumed to act under an account.*
-- Input validation on dimensions (accept only sane approximate values) — criteria to be written into FR-011.
+- Input validation on dimensions (accept only sane approximate values) — criteria defined in FR-011 (TC-020/TC-021).
 
 ## 9. Required tests
 

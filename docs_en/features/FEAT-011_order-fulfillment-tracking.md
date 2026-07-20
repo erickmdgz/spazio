@@ -6,12 +6,12 @@
 
 What happens **after** a confirmed, paid order: getting the order to the supplier and letting the user see its progress. This feature groups two distinct capabilities that sit at opposite ends of the product's maturity:
 
-- **Pilot scope (VERIFIED):** the **operator manually forwards** each confirmed (paid) order to the supplier and marks it `forwarded` — FR-061. This is the pilot's human bridge: *"No automated split payment or supplier integration is built in week one. The operator forwards the confirmed order manually"* (pilot, "The human's role"). It substitutes for the automated split-settlement and per-supplier-PO handoff (FR-043 / FR-044, FEAT-010) that the pilot excludes.
+- **Pilot scope (VERIFIED):** the **operator manually forwards** each confirmed (paid) order to the supplier and marks it `forwarded` — FR-061. This is the pilot's human bridge: *"No automated split payment or supplier integration is built in week one. The operator forwards the confirmed order manually"* (pilot, "The human's role"). It substitutes for automated split settlement (FR-043) and the automated supplier handoff; per-supplier PO **generation** (FR-044) is as built at checkout — what stays manual is the forwarding.
 - **Full-product scope (VERIFIED, PRD, out of pilot):** **per-purchase-order status and tracking** shown to the user — FR-047 (PRD FR-12; PRD §3 "Must have": *basic order tracking*). **Full order tracking is excluded from the one-week pilot** (pilot "Excluded" list).
 
 ## 2. Problem or need
 
-The full marketplace model settles one user payment across multiple local suppliers and generates one purchase order per supplier (PRD §4 BR-25; FEAT-010). In the pilot, that infrastructure does not exist yet, so *"a human operator handles fulfillment manually because the infrastructure does not yet exist"* (pilot, "Why each is excluded"). FR-061 is the operational bridge that makes the pilot's end-to-end loop complete: a paid order still has to reach the supplier, and in week one a person does that by hand (pilot Day 4: *"manual order handoff"*).
+The full marketplace model settles one user payment across multiple local suppliers and generates one purchase order per supplier (PRD §4 BR-25; FEAT-010). Split settlement does not exist (an accepted demo limit — ADR-029/ADR-003), while per-supplier **PO generation is as built** at checkout (`backend/src/routes/client/checkout.ts`); the manual piece is the forwarding/transmission (FR-061). In the pilot framing, so *"a human operator handles fulfillment manually because the infrastructure does not yet exist"* (pilot, "Why each is excluded"). FR-061 is the operational bridge that makes the pilot's end-to-end loop complete: a paid order still has to reach the supplier, and in week one a person does that by hand (pilot Day 4: *"manual order handoff"*).
 
 Order tracking is a PRD **Must have** (*"Basic order tracking"*, PRD §3) and the closing step of the PRD basic flow (*"User tracks order status"*, PRD §8 step 19). The pilot treats it as **secondary** — *"Everything else … order tracking … is secondary. If the render is not believable or the furniture is not actually purchasable, nothing else matters"* (pilot) — and therefore excludes full tracking. FR-047 specifies the capability for the full product; it is not exercised in the pilot.
 
@@ -39,7 +39,7 @@ Non-functional:
 
 This feature covers two points in the lifecycle, one of which is a numbered PRD basic-flow step and one of which is derived from the pilot's human-in-the-loop model:
 
-1. **Manual order forwarding (FR-061)** — *derived from the pilot's human-in-the-loop model, not a numbered PRD basic-flow step.* After checkout produces a paid `Order` and (full product) one `PurchaseOrder` per supplier at PRD §8 step 16, the pilot has no automated split/PO handoff. Instead, an **operator forwards** the confirmed, paid order to the supplier and the order is marked `forwarded` (pilot, "The human's role"; pilot Day 4 "manual order handoff"). This stands in for the automated split settlement / per-supplier PO of FEAT-010 (FR-043 / FR-044), which are **excluded from the pilot**.
+1. **Manual order forwarding (FR-061)** — *derived from the pilot's human-in-the-loop model, not a numbered PRD basic-flow step.* After checkout produces a paid `Order` and one `PurchaseOrder` per supplier (as built — created automatically at checkout, `checkout.ts`; PRD §8 step 16), the pilot has no automated split settlement or supplier transmission handoff. Instead, an **operator forwards** the confirmed, paid order to the supplier and the order is marked `forwarded` (pilot, "The human's role"; pilot Day 4 "manual order handoff"). This stands in for the automated split settlement / per-supplier PO of FEAT-010 (FR-043 / FR-044), which are **excluded from the pilot**.
 2. **Order status & tracking (FR-047)** — **PRD §8 step 19** (*"User tracks order status"*). The user views the current status and tracking information for each purchase order. When a purchase order has no tracking data yet, a `no-tracking-yet` status is shown (FR-047 criteria). *Full order tracking is excluded from the pilot.*
 
 ## 6. Acceptance criteria
@@ -61,32 +61,32 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. Technology (ADR-001), payment gateway & split-settlement (ADR-003), and merchant-of-record (ADR-004) are **Decided (pilot)**: a native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage; a single hosted checkout collecting one COP payment with no split settlement; and the Spazio operating entity collecting that payment and paying suppliers manually (split-settlement / provider selection and the MoR tax/legal model revisit before scale). Do not introduce any other stack, gateway, or settlement model here.*
+*High-level only. Technology (ADR-001), payment gateway & split-settlement (ADR-003), and merchant-of-record (ADR-004) are **Decided (pilot)**: a native iOS (SwiftUI) app *(client clause superseded by ADR-024, 2026-07-14 — the client is the web app `web-demo/`; the backend half stands)* + one managed backend service + managed Postgres + object storage; a single hosted checkout collecting one COP payment with no split settlement; and the Spazio operating entity collecting that payment and paying suppliers manually (split-settlement / provider selection and the MoR tax/legal model revisit before scale). Do not introduce any other stack, gateway, or settlement model here.*
 
 ### Frontend
 
-- **Operator surface (pilot, DRAFT / PROPOSED — internal tool/console):** a list of confirmed, paid orders with a **forward-to-supplier** action that marks the order `forwarded` (FR-061). Operator tooling technology is **Decided (pilot): built on the ADR-001 stack (one managed backend service); the specific operator-tool choice is left to implementation — see ADR-001**.
-- **User surface (full product, out of pilot):** an **order-tracking view** showing per-purchase-order status and tracking info (FR-047), including a `no-tracking-yet` state when no tracking data exists. Client stack is **Decided (pilot): native iOS (SwiftUI) — see ADR-001**.
+- **Operator surface (pilot, as built 2026-07-15 — the operator console at `/operator/console`, `operator/public/`):** a list of confirmed, paid orders (`paid_unforwarded`/`forwarded` filter) with a **forward-to-supplier** action (`POST /operator/orders/:id/forward`, `order_handler` role) that marks the order `forwarded` (FR-061). Operator tooling technology is **Decided (pilot): built on the ADR-001 stack (one managed backend service); the specific operator-tool choice is left to implementation — see ADR-001**.
+- **User surface (full product, out of pilot):** an **order-tracking view** showing per-purchase-order status and tracking info (FR-047), including a `no-tracking-yet` state when no tracking data exists. Client stack: the web app `web-demo/` (ADR-024; the iOS clause of ADR-001 is superseded).
 
 ### Backend
 
 - **Manual forwarding (pilot):** record the operator's forwarding action against the paid order / purchase order and transition it to `forwarded` (FR-061). The *transmission channel* to the supplier is manual/out-of-band in the pilot (no automated supplier integration — pilot); any future automated handoff is **out of the pilot: no split settlement — the operator forwards manually and the operating entity pays suppliers (revisit before scale) — see ADR-003 / ADR-004**.
-- **Status & tracking (full product):** expose the current status and tracking information per purchase order (FR-047); return a `no-tracking-yet` status when tracking data is absent. A purchase-order **status lifecycle** (DRAFT / PROPOSED) would drive both the operator forwarding transition and the user-facing tracking view; the exact state set is **TBD**.
+- **Status & tracking (full product):** expose the current status and tracking information per purchase order (FR-047); return a `no-tracking-yet` status when tracking data is absent. A purchase-order **status lifecycle** (as built for the forwarding side: `PurchaseOrderStatus` in `schema.prisma`; TBD only for how the future FR-047 tracking view consumes it) drives both the operator forwarding transition and the user-facing tracking view; the exact state set is **TBD**.
 
 ### Database
 
 - Entities involved (canonical registry in `07_data_model.md`; fields **DRAFT / PROPOSED**, to be finalized during implementation on the decided stack — `ADR-001`):
-  - `Order` — the confirmed, paid purchase the operator forwards (`status` values e.g. `pending` / `confirmed` / `in_fulfillment` / `completed` / `cancelled` are **DRAFT / PROPOSED**).
-  - `PurchaseOrder` — one per supplier, forwarded to the supplier for fulfillment. Draft fields relevant here: `status` (proposed lifecycle `created` / `sent_to_supplier` / `accepted` / `in_production` / `shipped` / `delivered` / `cancelled`), and the pilot forwarding fields `forwarded_by` → `Operator` and `forwarded_at` (all **DRAFT / PROPOSED**, pilot; FR-061).
+  - `Order` — the confirmed, paid purchase the operator forwards (`status` **as built** — `OrderStatus` enum in `schema.prisma`: `pending` / `paid_unforwarded` / `forwarded` / `completed` / `cancelled`; the earlier proposed `confirmed`/`in_fulfillment` values were never implemented).
+  - `PurchaseOrder` — one per supplier, forwarded to the supplier for fulfillment. Fields relevant here (**as built** in `backend/prisma/schema.prisma` — the listed values match the implemented `PurchaseOrderStatus` enum verbatim): `status` (lifecycle `created` / `sent_to_supplier` / `accepted` / `in_production` / `shipped` / `delivered` / `cancelled`), and the forwarding audit fields `forwardedById` → `Operator` and `forwardedAt`, written transactionally by `POST /operator/orders/:id/forward` (FR-061).
   - `OrderTracking` — status and tracking updates per purchase order (FR-047 / PRD FR-12); draft fields `status`, `tracking_number`, `carrier`, `status_updated_at`, `notes` (all **DRAFT / PROPOSED**). *Full tracking is out of pilot.*
   - `Operator` — the staff member who forwards the purchase order in the pilot.
   - `Supplier` — the recipient of the forwarded order.
-- Field-level schema is **TBD** and follows the decided stack (ADR-001).
+- Field-level schema: `Order`, `PurchaseOrder`, `Operator` and `Supplier` are **as built** in `backend/prisma/schema.prisma` (ADR-001 backend stack; client per ADR-024); only `OrderTracking` (out of pilot, FR-047) remains TBD.
 
 ### Security
 
 - **Authentication protects order data (NFR-008):** a user may view tracking only for their **own** purchase orders; the manual-forward action is restricted to authorized **operators**.
-- The eventual automated fulfillment path (split settlement / payouts) must be **auditable** (full product); the pilot's manual forwarding should still record **who** forwarded **what** and **when** (`forwarded_by` / `forwarded_at`, DRAFT / PROPOSED) for traceability.
+- The eventual automated fulfillment path (split settlement / payouts) must be **auditable** (full product); the pilot's manual forwarding records **who** forwarded **what** and **when** (**as built**: `PurchaseOrder.forwardedById` / `forwardedAt`, written by the forward endpoint with a 409 already-forwarded guard) for traceability.
 
 ## 9. Required tests
 
@@ -96,7 +96,7 @@ The tests for this feature are the following `TC-` rows in `08_test_plan.md`, gr
 
 - FR-061 (pilot) — **TC-106** (operator forwards a confirmed, paid order → the order is transmitted to the supplier and marked `forwarded`). *(Happy path — the pilot's manual handoff.)*
 - FR-047 (full product) — **TC-081** (user views order tracking for a purchase order → the current status and tracking information are displayed) and **TC-082** (user views tracking for a purchase order with no tracking data yet → a `no-tracking-yet` status is shown).
-- Cross-cutting NFR checks not yet covered by a dedicated `TC-` in `08_test_plan.md`: **Security** — a non-operator cannot forward an order and a user cannot view another user's order tracking (NFR-008). Add a `TC-` against FR-061 / FR-047 when that criterion is written.
+- The **Security** NFR check (NFR-008 — a non-`order_handler` cannot forward an order; a buyer cannot read another buyer's order) is covered by **TC-109** (`08_test_plan.md`, Automated #34).
 
 ## 10. Documentation impact
 

@@ -97,7 +97,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- A **render request** trigger and a **progress/wait** state on the iOS client while generation runs (render time target ~2–5 min soft, no hard SLA in the pilot, NFR-001 / ADR-013). Renders are published immediately on generation success (ADR-025); the former approval hold (FEAT-006) is retired.
+- A **render request** trigger and a **progress/wait** state on the web client (`web-demo/`, per ADR-024) while generation runs (render time target ~2–5 min soft, no hard SLA in the pilot, NFR-001 / ADR-013; measured 3-reference worst case ~10.3 min — BUG-004). Renders are published immediately on generation success (ADR-025); the former approval hold (FEAT-006) is retired.
 - Display of the returned render image (private by default). Tagging overlay is FEAT-007.
 
 ### Backend
@@ -111,7 +111,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - Entities involved (canonical registry; fields **DRAFT / PROPOSED** until modeled in `07_data_model.md`):
   - `RenderRequest` — a single render request; counts as one attempt (metering is FEAT-013, out of pilot) and is tracked for cost.
-  - `Render` — the generated photorealistic image, **private by default**; the render lifecycle keeps generation states only (`RenderRequest.status`: `queued` / `processing` / `completed` / `failed`; `Render.status`: `completed` / `failed` — see `07_data_model.md`). *The operator review states (pending/approved) are retired — superseded by ADR-025 (2026-07-14).*
+  - `Render` — the generated photorealistic image, **private by default**; the render lifecycle keeps generation states only (`RenderRequest.status`: `queued` / `processing` / `completed` / `failed`; the as-built `Render` row carries **no status column** — completion is signaled by `RenderRequest.status` plus the nullable `Render.imageKey`, see `07_data_model.md`). *The operator review states (pending/approved) are retired — superseded by ADR-025 (2026-07-14).*
   - `RenderItem` — the link between a `Render` and a shown `Product` (carries the data used by tagging in FEAT-007).
   - Reads from `Product`, `Style`/`StyleTaxonomy`, `Project`, `RoomPhoto`, `DeliveryZone`.
 - Field-level schema is **TBD**; minimum catalog completeness that gates eligibility requires **all PRD BR-1 fields present — decided (pilot), see ADR-014**.
@@ -124,7 +124,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The test cases for this feature **already exist** in `08_test_plan.md`: **TC-026–TC-037 and TC-040–TC-045** are the rows mapped to FEAT-005's FRs. (TC-038 and TC-039 fall inside that numeric range but belong to FEAT-004 / FR-020, locality.)
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The test cases for this feature **already exist** in `08_test_plan.md`: **TC-026–TC-037 and TC-040–TC-045** are the rows mapped to FEAT-005's FRs; the as-built work later added **TC-122/123/124** (render display, FEAT-002 branch), **TC-126**, **TC-136/137** (BUG-002 timeout/cancel) and **TC-141–TC-145** (BUG-004/005 budget, serialization, diagnosability, selection snapshot, no-resurrection). (TC-038 and TC-039 fall inside that numeric range but belong to FEAT-004 / FR-020, locality.)
 
 The `TC-` rows in `08_test_plan.md` for this feature's related FRs are:
 
@@ -135,7 +135,7 @@ The `TC-` rows in `08_test_plan.md` for this feature's related FRs are:
 - FR-021 (pilot; tolerance value 10%, adopted for the pilot — see ADR-008) (TC-040, TC-041): total product cost is kept within budget plus the agreed tolerance.
 - FR-022 (full product) (TC-042, TC-043): unmet budget is disclosed with the closest available alternative.
 - FR-023 (full product) (TC-044, TC-045): no-match yields similar suggestions or an unavailable mark.
-- Cross-cutting NFR checks — render-time target (NFR-001), cost-per-render tracking (NFR-005), render-to-purchase tracking (NFR-006), privacy of renders (NFR-007) — do not yet have dedicated `TC-` rows in `08_test_plan.md`.
+- Cross-cutting NFR checks for the render-time target (NFR-001) and cost-per-render tracking (NFR-005) do not yet have dedicated `TC-` rows in `08_test_plan.md`; render-to-purchase tracking (NFR-006) is covered by TC-119, and render privacy (NFR-007) by TC-121/TC-123/TC-137/TC-145.
 
 ## 10. Documentation impact
 

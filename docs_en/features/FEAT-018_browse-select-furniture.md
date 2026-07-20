@@ -1,6 +1,6 @@
 # FEAT-018 - Browse & select furniture (user-curated render)
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. This feature is governed by **ADR-028** (2026-07-15), which inverts the PRD §8 auto-furnish flow into a user-curated selection. **As built (2026-07-15):** this flow is implemented and **verified on a local stack (not deployed)** — the SOURCE toggle, the `/select` browse-and-pick surface (≤3, enforced server-side with `400 too_many_products`), render-exactly-the-selection (FR-068), and the "try other furniture" iterate loop (FR-069) all run against the backend (`GET /catalog`, `GET /catalog/products/:id/image`, `POST /renders` with `productIds`); the auto-match path is preserved as the selection-less fallback. §8 below is retained as the original **proposed** design and reads in future tense; the built reality is as summarized here (and in the per-FR "As built" notes on FR-066–FR-069 in `03_requirements.md`).
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or a prior accepted decision; **DRAFT / PROPOSED** = author's structuring, not yet implemented; **TBD / PENDING** = reserved for a human decision. This feature is governed by **ADR-028** (2026-07-15), which inverts the PRD §8 auto-furnish flow into a user-curated selection. **As built (2026-07-15):** this flow is implemented and **verified on a local stack (not deployed)** — the SOURCE toggle, the `/select` browse-and-pick surface (≤3, enforced server-side with `400 too_many_products`), render-exactly-the-selection (FR-068), and the "try other furniture" iterate loop (FR-069) all run against the backend (`GET /catalog`, `GET /catalog/products/:id/image`, `POST /renders` with `productIds`); the auto-match path is preserved as the selection-less fallback. Since **BUG-005 (2026-07-16)** the requested selection is also **snapshotted on `RenderRequest.requestedProductIds`** at request creation (additive migration), so a failed render keeps the attempted products — the queue payload alone is volatile (see `07_data_model.md`). §8 below is retained as the original **proposed** design and reads in future tense; the built reality is as summarized here (and in the per-FR "As built" notes on FR-066–FR-069 in `03_requirements.md`).
 
 ## 1. Summary
 
@@ -51,7 +51,7 @@ Related decisions:
 3. The system returns the approved, renderable products of that source and style (optionally price-filtered), each with an image URL (**FR-066**). Brand/public products show a "not sold by Spazio" chip, a "View at retailer" outbound link, and CC BY 4.0 attribution (FR-064/FR-065).
 4. The user **selects up to 3** products (a clear selected state + `N/3` counter; further selection disabled at 3, deselect allowed). A budget meter tracks the running total for Local-supplier selections (**FR-067**).
 5. The user renders the selection (**FR-068**): the render worker composites **exactly** those validated products into the room photo (not auto-match), and serves the render back (FEAT-002 `GET /renders/:id/image`).
-6. On "like it?": **(no) "Try other furniture"** returns to the browse surface with the same photo/source/style and a cleared selection to pick a different set and re-render (**FR-069**); **(yes) "Love it → Cart"** proceeds to the cart.
+6. On "like it?": **(no) "Try other furniture"** returns to the browse surface with the same photo/source/style and a cleared selection to pick a different set and re-render (**FR-069**); **(yes)** for a **Local** selection, "Love it → Cart" proceeds to the cart; for a **Brand** (public) render there is no cart CTA — the yes-path is the per-product **"View at retailer"** links on the render page (the cart stays empty by design, FR-064).
 7. The cart is populated from the render's items: `source=supplier` items populate it; `source=public` items are excluded (display-only) — a Brand selection yields an empty cart by design (**FR-064**, FR-031).
 
 ## 6. Acceptance criteria
@@ -91,7 +91,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Database
 
-- **No schema change.** `source`, attribution, and styles already exist (ADR-027, `07_data_model.md`). This feature adds no tables or fields.
+- **No schema change** *(as originally delivered)*. `source`, attribution, and styles already exist (ADR-027, `07_data_model.md`). This feature added no tables or fields at delivery; BUG-005 (2026-07-16) later added `RenderRequest.requestedProductIds` to persist this feature's selection (see the header as-built note).
 
 ### Security / scope
 

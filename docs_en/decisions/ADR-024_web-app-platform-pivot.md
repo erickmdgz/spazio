@@ -18,8 +18,8 @@ On 2026-07-14 the product owner decided the trade-off differently: **the opportu
 
 1. **No native iOS app will be built.** The product client is the existing web app (`web-demo/`, Next.js), which graduates from class-demo artifact to product platform.
 2. **The web app will be wired to the real backend** (`backend/` — Fastify/Prisma per the ADR-001 implementation note) and to the operator console loop (build plan §1.7), replacing the demo's in-memory state, mock checkout, faked render, and seeded catalog as work proceeds. The wiring itself follows the normal plan-approval flow before any code.
-3. **Scope is class-demo scale.** Work proceeds in small, demo-sized increments. The one-week pilot *program* (Day 1–7 schedule, TestFlight cohort, Apple Developer enrollment) no longer governs; the pilot plan document remains the reference for the loop's design (data model, API, matching → render → QA → checkout sequence, scope boundaries §0.1).
-4. ADR-023's web-delivery choices, recorded "for the demo scope only," are **adopted as product direction for the client**. Its mock substitutions remain demo artifacts slated for replacement, per (2).
+3. **Scope is class-demo scale.** Work proceeds in small, demo-sized increments. The one-week pilot *program* (Day 1–7 schedule, TestFlight cohort, Apple Developer enrollment) no longer governs; the pilot plan document remains the reference for the loop's original design (data model, API, matching → render → QA → checkout sequence, scope boundaries §0.1).
+4. ADR-023's web-delivery choices, recorded "for the demo scope only," are **adopted as product direction for the client**. Its mock substitutions remain demo artifacts slated for replacement, per (2). **Update (2026-07-15/16):** that replacement landed — in-memory state, the faked render, and the in-code catalog were replaced by the real backend (ADR-026/027/028); the request flow was further inverted to browse-and-select ≤3 products with auto-match as the selection-less fallback (ADR-028); mock checkout is now an *accepted* demo limit (ADR-029).
 
 ## Alternatives considered
 

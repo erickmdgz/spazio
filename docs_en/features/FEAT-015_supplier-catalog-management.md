@@ -4,7 +4,7 @@
 
 ## 1. Summary
 
-The catalog layer that **guarantees every rendered item is a real, purchasable product**. It provides the SKUs the rendering engine (FEAT-005) is allowed to composite, with the attributes, availability, classification, and style mapping the render depends on. Because Spazio's central invariant is that **the AI never invents furniture** (PRD §1, BR-6, BR-14), the quality of this catalog is what makes that invariant true.
+The catalog layer that **guarantees every rendered item is a real, purchasable product** *(scoped by ADR-027, 2026-07-15: the guarantee governs the supplier track; temporary `source=public` demo products render display-only, never enter cart/checkout, and do not pass this feature's curation)*. It provides the SKUs the rendering engine (FEAT-005) is allowed to composite, with the attributes, availability, classification, and style mapping the render depends on. Because Spazio's central invariant is that **the AI never invents furniture** (PRD §1, BR-6, BR-14), the quality of this catalog is what makes that invariant true.
 
 - **Pilot scope (VERIFIED):** the catalog is **curated by hand**. An operator manually loads a **small, clean set of SKUs from a few local suppliers**, each with photo, price, dimensions, stock, and a style tag, and approves what becomes renderable (pilot, "The human's role" and Day 1: *"manually load approximately 30–60 clean SKUs with photo, price, dimensions, stock, and style tag"*). This is the pilot's **real-SKU guarantee**: FR-056 (operator curation), FR-057 (required attributes), FR-058 (ready-made / in-stock classification), FR-059 (style-taxonomy mapping).
 - **Full-product scope (VERIFIED, PRD, out of pilot):** suppliers **self-ingest** catalog data through supported channels (FR-055) and catalog data **synchronizes automatically**, in real time for ready-made stock (FR-060). Both are explicitly deferred: *"Supplier self-service ingestion through API, FTP, or Excel automation — the catalog is manually loaded"* (pilot, "Cut for the pilot").
@@ -29,8 +29,8 @@ Functional (canonical set for FEAT-015, per `05_backlog.md`):
 
 - FR-056 — Operator curates and approves catalog entries *(pilot)*
 - FR-057 — Store required catalog attributes per SKU *(pilot; minimum completeness threshold — Decided (pilot): all PRD BR-1 fields present, operator-enforced — see ADR-014)*
-- FR-058 — Classify products as in-stock ready-made or made-to-order with required stock/lead-time data *(pilot uses in-stock ready-made only)*
-- FR-059 — Map each product to the shared style taxonomy *(pilot; taxonomy values — Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005)*
+- FR-058 — Classify products as in-stock ready-made or made-to-order with required stock/lead-time data *(the pilot spec planned ready-made only; **as built the seeded catalog ships both** — 2 made-to-order of 11 SKUs, `backend/prisma/seed.ts`)*
+- FR-059 — Map each product to the shared style taxonomy *(pilot; taxonomy values — Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005; **as built the demo ships three styles**, `backend/prisma/seed.ts` — this applies wherever "1–2" appears in this doc)*
 - FR-055 — Let suppliers self-ingest catalog data through supported channels *(full product, out of pilot; pilot ingestion — Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no self-service channels — see ADR-006)*
 - FR-060 — Synchronize supplier catalog data regularly, and in real time for ready-made stock *(full product, out of pilot; pilot sync — Decided (pilot): manual/on-demand refresh by the operator, no automated sync — see ADR-012)*
 
@@ -94,15 +94,15 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- An **operator catalog console** (DRAFT / PROPOSED — internal tool) to load, edit, classify, style-tag, review, and **approve / reject** catalog entries, and to surface `incomplete` / `unmapped` / `invalid-classification` flags. Client/tooling technology **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres DB + object storage; specific tool choices left to implementation — see ADR-001**.
+- An **operator catalog console** *(as built 2026-07-15: a static web shell served at `/operator/console` (`operator/public/`) surfacing `incomplete`/`unmapped`/`pending` filters with approve/reject; `invalid-classification` remains unbuilt specification)* to load, edit, classify, style-tag, review, and **approve / reject** catalog entries. Client/tooling technology **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres DB + object storage; specific tool choices left to implementation — see ADR-001**.
 - (Full product) A **supplier-facing ingestion surface** (DRAFT / PROPOSED) for self-service submission (FR-055); presentation depends on the supported channel set **Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no self-service ingestion surface — see ADR-006**.
 
 ### Backend
 
 - **Catalog ingestion service** (DRAFT / PROPOSED): accepts supplier submissions via supported channels and imports entries for curation; rejects unsupported formats/channels with an `unsupported-format` status (FR-055). The concrete channels are **Decided (pilot): operator manually loads a CSV/Excel spreadsheet, no API/FTP/self-service ingestion — see ADR-006**. **In the pilot this path is not built — entries are loaded manually by an operator.**
-- **Curation / approval workflow** (DRAFT / PROPOSED state machine): an entry moves from ingested/loaded → operator review → `active` (renderable) or `not-approved` (FR-056).
+- **Curation / approval workflow** (as built with different vocabulary: `approvalStatus` = `pending`/`approved`/`rejected`, approve/reject handlers in `backend/src/routes/operator/catalog.ts`): an entry moves from ingested/loaded → operator review → approved (renderable) or rejected (FR-056).
 - **Completeness validation** (DRAFT / PROPOSED): checks required attributes on save; complete entries are marked renderable-eligible, incomplete entries are stored `incomplete` and flagged (FR-057), which the rendering-eligibility gate consumes (FR-019). The **minimum completeness threshold is Decided (pilot): all PRD BR-1 fields present, operator-enforced — see ADR-014**.
-- **Classification logic** (DRAFT / PROPOSED): records `ready_made` (requires current stock) vs `made_to_order` (requires supplier-declared production/delivery times); missing required data yields `invalid-classification` (FR-058).
+- **Classification logic** (as built: `ready_made` requires current stock, `made_to_order` requires production/delivery times; missing classification data marks the entry `incomplete` — the distinct `invalid-classification` flag (TC-101) remains unbuilt specification) (FR-058).
 - **Style-taxonomy mapping** (DRAFT / PROPOSED): maps each product to the shared taxonomy; unmapped products are flagged `unmapped` and excluded from style matching (FR-059). The **taxonomy vocabulary is Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005**.
 - **Catalog synchronization** (DRAFT / PROPOSED — full product): scheduled sync for catalog data and **real-time sync for ready-made stock**; a per-feed failure records `sync-failed` (FR-060). The **sync frequency is Decided (pilot): manual/on-demand refresh by the operator, no automated sync — see ADR-012**; this path is **not built in the pilot** (manual load).
 
@@ -114,7 +114,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `StyleTaxonomy` and `Style` — the shared classification products are mapped to (FR-059); vocabulary **Decided (pilot): 1–2 predefined visual styles + free-text description — see ADR-005**. **(Fields DRAFT / PROPOSED.)**
   - `Operator` — the staff member who curates/approves and maps entries (FR-056, FR-059).
   - `DeliveryZone` / `Market` — supplier delivery coverage and market scoping, consumed downstream by locality filtering (FEAT-004) and multi-market onboarding (NFR-016, NFR-017); markets **Decided (pilot): Bogotá, Colombia; COP only — see ADR-015**.
-- Field-level schema is **TBD**; the physical schema and engine follow the decided stack — a managed relational (Postgres) DB — **Decided (pilot): see ADR-001**.
+- Field-level schema: the pilot subset (`Product` incl. `completenessStatus`/`approvalStatus`/`source`, `Supplier`, `Style`, `DeliveryZone`, `Operator`) is **as built** in `backend/prisma/schema.prisma` (Postgres per ADR-001) and modeled in `07_data_model.md`; `Market`/`StyleTaxonomy` and the full-product extensions remain specification.
 
 ### Security
 
@@ -124,7 +124,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 9. Required tests
 
-Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` rows for this feature's related FRs (FR-055–FR-060) **already exist** in `08_test_plan.md` (all with `Status: Pending`) — they are **TC-093 through TC-105**. **Build-status correction (2026-07-15):** the pilot slice is **built and verified on a local stack** — operator catalog curation (FR-056 create/edit + approve/reject, gated by the `catalog_curator` role via `GET/POST/PATCH /api/v1/operator/catalog/products` and `.../approve|reject`), required-attribute storage (FR-057), ready-made/made-to-order classification (FR-058), and style-taxonomy mapping (FR-059) run against the backend, with the seeded catalog served through the public browse endpoint (`GET /catalog`) — so the earlier "since nothing is implemented" boilerplate is superseded for the pilot FRs; `Pending` here means **TCs pending automation**. Supplier self-service ingestion (FR-055) and automatic sync (FR-060) remain out of pilot/specification:
+Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptance criterion of an FR** (see `03_requirements.md`). The `TC-` rows for this feature's related FRs (FR-055–FR-060) **already exist** in `08_test_plan.md` (all with `Status: Pending`) — they are **TC-093 through TC-105**. **Build-status correction (2026-07-15):** the pilot slice is **built and verified on a local stack** — operator catalog curation (FR-056 create/edit + approve/reject, gated by the `catalog_curator` role on `POST/PATCH /api/v1/operator/catalog/products` and `.../approve|reject` — the `GET` queue read requires only a signed-in operator session), required-attribute storage (FR-057), ready-made/made-to-order classification (FR-058), and style-taxonomy mapping (FR-059) run against the backend, with the seeded catalog served through the public browse endpoint (`GET /catalog`) — so the earlier "since nothing is implemented" boilerplate is superseded for the pilot FRs; `Pending` here means **TCs pending automation**. Supplier self-service ingestion (FR-055) and automatic sync (FR-060) remain out of pilot/specification:
 
 - FR-055 (full product) — **TC-093** (supplier submits via a supported channel → entries imported for curation) and **TC-094** (unsupported format/channel → `unsupported-format` status).
 - FR-056 (pilot) — **TC-095** (operator approves an ingested/manually loaded entry → becomes an active, renderable product) and **TC-096** (operator rejects → marked `not-approved` and excluded from rendering).
@@ -133,7 +133,7 @@ Test cases live in `08_test_plan.md`, where **each `TC-` maps 1:1 to an acceptan
 - FR-059 (pilot) — **TC-102** (product mapped → carries its style-taxonomy classification) and **TC-103** (no mapping → flagged `unmapped` and excluded from style matching).
 - FR-060 (full product) — **TC-104** (scheduled sync with updates → catalog updated and ready-made stock synced in real time) and **TC-105** (feed sync fails → `sync-failed` status recorded for that supplier).
 
-Not yet covered by a dedicated `TC-` in `08_test_plan.md`: **Security** — a non-operator cannot approve a catalog entry (NFR-008); and supplier-scoped write isolation for self-ingestion (NFR-008, full product). Add a `TC-` against the relevant FR when that criterion is written.
+The **Security** check for curation (NFR-008 — a non-`catalog_curator` cannot create/approve an entry) is covered by **TC-107** (`08_test_plan.md`, Automated #34); still not covered: supplier-scoped write isolation for self-ingestion (NFR-008, full product). Add a `TC-` against the relevant FR when that criterion is written.
 
 ## 10. Documentation impact
 

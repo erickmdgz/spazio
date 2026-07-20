@@ -8,7 +8,7 @@ Turn the completed render into a **shoppable image** (renders publish immediatel
 
 - **Pilot scope (VERIFIED):** *"Tappable product tags on the render"* (pilot "Included" list). Implemented as FR-028 (tagging) and FR-029 (tap to view details).
 
-> **As built — tags overlay the real render (FEAT-002, 2026-07-15).** The shoppable image now shows the **real backend render**: the web app fetches `GET /api/v1/renders/:id/image` (device-scoped, with `x-device-token`) once the render is `completed` and displays those stored bytes (FR-015), with the supplier + public (ADR-027) product tags overlaid on top exactly as before. The cached preset visual is kept only as the while-generating placeholder / fetch-failure fallback. Tagging behavior (FR-028/FR-029) is unchanged; this branch changes the underlying image the tags sit on from a cached preset to the actual render. See FEAT-005, FR-015, and `06_api.md` (§5).
+> **As built — tags overlay the real render (FEAT-002, 2026-07-15).** The shoppable image now shows the **real backend render**: the web app fetches `GET /api/v1/renders/:id/image` (device-scoped, with `x-device-token`) once the render is `completed` and displays those stored bytes (FR-015), with the supplier + public (ADR-027) product tags overlaid on top exactly as before. The cached preset visual is kept only as the fallback shown while fetching the stored render bytes is still pending or fails. Tagging behavior (FR-028/FR-029) is unchanged; this branch changes the underlying image the tags sit on from a cached preset to the actual render. See FEAT-005, FR-015, and `06_api.md` (§5).
 
 > **Cross-ref — user-curated selection (ADR-028, 2026-07-15; FEAT-018).** With the flow inverted to browse-and-pick, the render now composites **exactly the up-to-3 products the user selected** (FR-068). The tagged items on the render are therefore the user's own selection; tagging and tap-to-view behavior (FR-028/FR-029) is unchanged. For a Brand (`source=public`) selection the tag stays display-only ("not sold by Spazio" + "View at retailer", ADR-027/FR-064). See `features/FEAT-018_browse-select-furniture.md`.
 
@@ -57,7 +57,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 - FR-028 (PRD FR-07: each tag must carry name, price, supplier, warranty, and listing link. Warranty and delivery/price transparency requirements: PRD BR-17, BR-18 are surfaced in FEAT-009; price/delivery/warranty visible before checkout — NFR-015)
 - FR-029 (PRD FR-07b: tap a tagged product to view details; add/remove actions are specified with FEAT-008)
-- Underlying guarantee that makes tags meaningful: PRD BR-6/BR-14 (every tagged item is a real, purchasable SKU — enforced in FEAT-005/FR-016)
+- Underlying guarantee that makes tags meaningful: PRD BR-6/BR-14 (every tagged item is a real, purchasable SKU — enforced in FEAT-005/FR-016; scoped by ADR-027: `source=public` tags are real and attributed but display-only, never purchasable — FR-064)
 
 ## 8. Proposed technical design
 
@@ -65,7 +65,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): an **interactive render view** with tappable tag hotspots overlaid on each shown product; tapping opens a **product detail** view showing name, price, supplier, warranty, and listing link (FR-028/FR-029). Broader stack **decided for the pilot — see ADR-001 (native iOS + one managed backend + managed Postgres + object storage; single environment/region; no multi-platform)**.
+- On iOS (pilot, VERIFIED) *(client since changed to the web app — ADR-024, 2026-07-14; the interactive render view + product sheet are as built in `web-demo/`)*: an **interactive render view** with tappable tag hotspots overlaid on each shown product; tapping opens a **product detail** view showing name, price, supplier, warranty, and listing link (FR-028/FR-029). Broader stack **decided for the pilot — see ADR-001 (native iOS + one managed backend + managed Postgres + object storage; single environment/region; no multi-platform)**.
 - Prices shown in the user's local currency (pilot: **COP**, VERIFIED; general rule FR-046 in FEAT-004).
 
 ### Backend
@@ -78,7 +78,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 - Entities involved (canonical registry; fields **DRAFT / PROPOSED** until modeled in `07_data_model.md`):
   - `RenderItem` — links a `Render` to a shown `Product`, carrying tag data (position, name, price, supplier, warranty, listing link).
   - `Product` / `Supplier` — source of the displayed attributes.
-- Field-level schema is **TBD**.
+- Field-level schema: the pilot subset (`RenderItem`, `Product`, `Supplier`) is **as built** in `backend/prisma/schema.prisma` and modeled in `07_data_model.md`; only full-product extensions (e.g. warranty surfaced on the tag) remain specification.
 
 ### Security
 

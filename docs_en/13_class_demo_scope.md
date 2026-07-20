@@ -110,6 +110,8 @@ The catalog is also fixed rather than ingested: **`src/lib/catalog.ts`** seeds *
 
 Concise version below; the **full guide lives in `web-demo/README.md`** (including the demo click-path script and how to swap in real cached renders).
 
+> **Note (2026-07-16) — these run/deploy steps record the standalone demo as originally delivered.** The current app runs **full-stack**: backend on `:3001` first (`RENDER_ENGINE=fake|mflux`, Postgres via Docker), then the web app — see `web-demo/README.md` "Run it (full stack)". The Vercel path applied to the original standalone demo only; today the app is local-only (no deployment is an accepted demo limit, ADR-029).
+
 **Run locally:**
 
 ```bash
@@ -130,8 +132,8 @@ npm run dev
 
 ## 7. How it maps back to the pilot and the PRD
 
-- **Pilot build plan (`12_pilot_build_plan.md`).** The pilot proves the same core loop — *render-to-purchase*, operator-in-the-loop, manual fulfilment — but as the real system: native iOS + a managed backend + managed Postgres + object storage, a self-hosted FLUX.2 Klein 4B render (run locally via the mflux CLI) — ADR-026 ~~gated by **mandatory operator QA** (ADR-002)~~ *(QA gate since retired — ADR-025; renders publish on generation success)*, a real COP capture via hosted PCI checkout, and an operator-loaded catalog (30–60 SKUs). This class demo shows the **user-facing experience** of that loop at UI fidelity, with the render, payment, and catalog **faked** as described above. Everything the demo simplifies (§2) is fully specified in the pilot plan and its ADRs.
+- **Pilot build plan (`12_pilot_build_plan.md`).** The pilot proves the same core loop — *render-to-purchase*, operator-in-the-loop, manual fulfilment — but as the real system: native iOS *(superseded — ADR-024, 2026-07-14: the product platform is the web app `web-demo/`; no native iOS)* + a managed backend + managed Postgres + object storage, a self-hosted FLUX.2 Klein 4B render (run locally via the mflux CLI) — ADR-026 ~~gated by **mandatory operator QA** (ADR-002)~~ *(QA gate since retired — ADR-025; renders publish on generation success)*, a real COP capture via hosted PCI checkout, and an operator-loaded catalog (30–60 SKUs). This class demo shows the **user-facing experience** of that loop at UI fidelity, with the render, payment, and catalog **faked** as described above. Everything the demo simplifies (§2) is fully specified in the pilot plan and its ADRs.
 - **PRD (`Spazio_PRD_v0.7.md`).** The demo honors the product's central promise — a room furnished **only with real, purchasable SKUs**, each rendered item mapping to a real catalog entry, ending in in-session purchase. It intentionally omits the product areas outside the happy path (accounts, keep-or-replace, render metering, targeted edits, full catalog management), which remain in the PRD and pilot scope.
-- **Recent related work on `develop`.** The `backend/` foundation scaffold (Node/TS/Fastify/Prisma, PR #21) and the pilot build plan (`docs_en/12_pilot_build_plan.md`, PR #19) belong to the **real pilot track**. This class demo is a separate, self-contained teaching artifact and does not depend on them.
+- **Recent related work on `develop`.** The `backend/` foundation scaffold (Node/TS/Fastify/Prisma, PR #21) and the pilot build plan (`docs_en/12_pilot_build_plan.md`, PR #19) belong to the **real pilot track**. This class demo is a separate, self-contained teaching artifact and does not depend on them. *(True only of the original standalone demo: since #31/PR #32-33 the app runs on `backend/`, and per ADR-024 that backend is the product platform, not a pilot-track artifact.)*
 
 > **Bottom line:** the demo is a faithful, scoped illustration of the render-to-purchase experience for a 2-day academic exercise. It does not deliver production capabilities, does not process real payments, and does not change any real product decision.

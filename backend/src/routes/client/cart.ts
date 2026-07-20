@@ -8,7 +8,7 @@ import { projectOwnedByDevice, requireDeviceToken } from "./deviceScope.js";
  * there is NO manual add in the pilot — POST /cart/items is intentionally absent
  * (FR-030 deferred, §0.1#2).
  *  - GET    /cart                auto-populated cart (FR-031)
- *  - PUT    /cart/items/:id      swap a line for another product (FR-033)
+ *  - PUT    /cart/items/:id      swap a line for another product (FR-034)
  *  - DELETE /cart/items/:id      remove a line (FR-032)
  *  - POST   /cart/confirm        confirm the cart; emits cart_confirmed (FR-035)
  *  - GET    /cart/estimates      per-item production/delivery estimates (FR-036/037)

@@ -76,16 +76,16 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ## 8. Proposed technical design
 
-*High-level only. The pilot stack is decided (Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001); specific product/tool choices are left to implementation.*
+*High-level only. The pilot stack is decided (Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001; the iOS client clause was superseded by ADR-024, 2026-07-14 — the client is the web app `web-demo/`); specific product/tool choices are left to implementation.*
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): a **cart screen** pre-filled from the render, each line showing price and supplier (pilot); **remove** control (FR-033); an explicit **confirm** action before checkout (FR-035). Broader stack **decided (pilot): Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001** (specific product/tool choices left to implementation).
+- On iOS (pilot, VERIFIED) *(as built on the web app — ADR-024; `web-demo/src/app/cart/page.tsx`, incl. swap via `PUT /cart/items/:id`, FR-034)*: a **cart screen** pre-filled from the render, each line showing price and supplier (pilot); **remove** control (FR-033); an explicit **confirm** action before checkout (FR-035). Broader stack **decided (pilot): Native iOS/SwiftUI + a managed backend + managed Postgres + object storage — see ADR-001** (specific product/tool choices left to implementation).
 - Full product adds **add** (FR-030) and **swap** (FR-034) controls, and a **hold countdown** indicator (FR-039).
 
 ### Backend
 
-- **Cart service** (DRAFT / PROPOSED): build a `Cart` from a render's `RenderItem`s (FR-031); support review/remove/add/swap; capture item price at add time.
+- **Cart service** (DRAFT / PROPOSED; largely **as built** — `backend/src/services/cart.ts` + `backend/src/routes/client/cart.ts` deliver build-from-render, review, remove and swap; manual **add** is intentionally absent, FR-030 deferred): build a `Cart` from a render's `RenderItem`s (FR-031); support review/remove/add/swap; capture item price at add time.
 - **Stock-hold service** (full product, DRAFT / PROPOSED): place a `StockHold` on add for the **configured duration** and release it on expiry (FR-039/FR-040). Hold-duration value is **decided (pilot): NO stock hold in the pilot; the 15-minute default applies only when holds are built post-pilot — see ADR-011**; requires coordination with catalog availability (FEAT-015) and checkout revalidation (FEAT-010).
 - Enforce **explicit confirmation** before allowing payment (FR-035).
 
@@ -95,7 +95,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `Cart` — the auto-populated, user-confirmable suggestion derived from a render.
   - `CartItem` — a single product entry with quantity and captured price.
   - `StockHold` — a time-boxed reservation for a cart item (**PRD default 15 minutes; decided (pilot): NO stock hold in the pilot — post-pilot only, see ADR-011**), released on expiry.
-- Field-level schema is **TBD**.
+- Field-level schema: `Cart`/`CartItem` are **as built** in `backend/prisma/schema.prisma` and modeled in `07_data_model.md` (verified locally, not deployed); `StockHold` remains specification-only (no stock hold in the pilot — ADR-011).
 
 ### Security
 

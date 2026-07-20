@@ -1,6 +1,6 @@
 # Spazio — System Overview
 
-> **Read this first.** A single-glance map of what Spazio is, how it is built, and how it flows. It reflects the **current, as-built system** (verified against the code, 2026-07-15). Deeper detail lives in the numbered docs (`01`–`13`), the decisions (`decisions/ADR-*`), and the feature specs (`features/FEAT-*`).
+> **Read this first.** A single-glance map of what Spazio is, how it is built, and how it flows. It reflects the **current, as-built system** (verified against the code, 2026-07-15; re-verified 2026-07-16 after the BUG-002..005 render-robustness fixes — hard 15-min render cap, serialized render jobs, failed-render flow). Deeper detail lives in the numbered docs (`01`–`13`), the decisions (`decisions/ADR-*`), and the feature specs (`features/FEAT-*`).
 
 ## What Spazio is
 
@@ -66,6 +66,8 @@ flowchart TD
   ST --> BR["Browse catalog,<br/>select up to 3 products"]
   BR --> RN["Render the selection<br/>(mflux composites into the room)"]
   RN --> Q{"Like it?"}
+  RN -->|"fails / times out<br/>(15-min hard cap, BUG-002/004)"| RF["Failed screen<br/>(best-effort cancel)"]
+  RF -->|"auto-return"| BR
   Q -->|"Try other furniture"| BR
   Q -->|"Love it (Local)"| C["Cart"]
   Q -->|"Brand (display-only)"| V["View at retailer ↗"]

@@ -1,6 +1,6 @@
 # FEAT-010 - Checkout & payments
 
-> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** a single-COP **mock** checkout producing a per-supplier `PurchaseOrder` (forwarded manually) is implemented and **verified on a local stack (not deployed)**; the payment gateway is a mock/fake (ADR-003 vendor unchosen — no real money). Split settlement, guest checkout, and commission automation stay specification (full product).
+> **Status legend:** **VERIFIED** = stated in the PRD v0.7 or the one-week iOS pilot; **DRAFT / PROPOSED** = author's structuring, not confirmed; **TBD / PENDING** = reserved for a human decision (PRD §12), tracked as an ADR. **As built (2026-07-15):** a single-COP **mock** checkout producing a per-supplier `PurchaseOrder` (forwarded manually) is implemented and **verified on a local stack (not deployed)**; the payment gateway is a mock/fake (ADR-003 vendor unchosen — no real money; an accepted demo-scope limitation, ADR-029). Split settlement, guest checkout, and commission automation stay specification (full product).
 
 ## 1. Summary
 
@@ -79,7 +79,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 
 ### Frontend
 
-- On iOS (pilot, VERIFIED): a **checkout screen** and a **single payment** flow (FR-042), showing order total in local currency (COP in pilot) with per-item delivery/production estimates (FEAT-009). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
+- On iOS (pilot, VERIFIED) *(as built on the web app — ADR-024; `web-demo/src/app/checkout/page.tsx`: single COP capture on the mock gateway with the ADR-022 contact form)*: a **checkout screen** and a **single payment** flow (FR-042), showing order total in local currency (COP in pilot) with per-item delivery/production estimates (FEAT-009). Broader stack **Decided (pilot): native iOS (SwiftUI) app + one managed backend service + managed Postgres + object storage, single environment/region — see ADR-001**.
 - Full product adds a **guest-checkout** form (email/phone/shipping, FR-004).
 
 ### Backend
@@ -87,7 +87,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
 - **Payment processing** via a **PCI-compliant gateway** (NFR-009). **Decided (pilot):** a single PCI-compliant hosted checkout collecting one payment in COP with **no split settlement** — see ADR-003; in the full product the gateway must support **split settlement, multi-supplier payouts, multi-currency, guest checkout, and automatic commission retention** (NFR-010/011/012).
 - **Checkout revalidation** of price and availability before charging (FR-041, full product; coordinates with stock holds in FEAT-008).
 - **Order/PO generation** (full product): create an `Order` from the confirmed cart and **one `PurchaseOrder` per supplier** (FR-044); apply/retain **commission** (FR-045). **Merchant-of-record** model — **Decided (pilot): the Spazio operating entity collects the single payment and pays suppliers manually (revisit before scale) — see ADR-004**.
-- **Pilot substitute:** record the paid `Order` and hand it to an operator for **manual** forwarding to the supplier (FEAT-011/FR-061); automated split/PO not built.
+- **Pilot substitute:** record the paid `Order` and hand it to an operator for **manual** forwarding to the supplier (FEAT-011/FR-061); automated split settlement not built — but one `PurchaseOrder` **per supplier IS generated automatically at checkout** as built (`backend/src/routes/client/checkout.ts`, BR-25), with the operator forwarding each PO manually.
 
 ### Database
 
@@ -96,7 +96,7 @@ Business rules **live in the FR** (`docs_en/03_requirements.md`); they are not r
   - `Payment` — the single PCI-processed user payment record, feeding split settlement and commission retention.
   - `PurchaseOrder` — one per supplier (full product), generated from an `Order`.
   - `Commission` — the marketplace fee Spazio retains (**PRD default 10% adopted for the pilot — ADR-007**; reconciled manually in the pilot).
-- Field-level schema is **TBD**.
+- Field-level schema: `Order`/`PurchaseOrder`/`Payment` are **as built** in `backend/prisma/schema.prisma` and modeled in `07_data_model.md`; commission is recorded (`Order.commissionCop`) and reconciled manually (ADR-007).
 
 ### Security
 

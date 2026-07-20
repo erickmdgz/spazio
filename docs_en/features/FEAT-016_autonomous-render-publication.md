@@ -41,10 +41,10 @@ Non-functional (preserved — behavior must not regress):
 ## 5. Expected flow
 
 1. The user submits a render request (`POST /api/v1/renders`); the system answers with a pending render to poll (`queued`).
-2. The render worker matches real, available SKUs and generates the composite; the request moves `queued → processing → completed | failed` (generation states only — there is no review state).
-3. On generation success, the render is **published immediately**: `GET /api/v1/renders/{renderId}` returns `completed` with the image and its tagged items, with no operator action in between.
-4. On the same generation-success path, the system auto-populates the cart from the render's tagged products (FR-031) and emits the NFR-006 funnel events per the updated spec.
-5. On generation failure, the request ends `failed` and nothing is shown to the user (FR-015 / TC-029).
+2. The render worker composites **exactly the user's re-validated ≤3-product selection** (ADR-028/FEAT-018); with no selection it falls back to auto-matching real, available SKUs (FR-014/FR-015). The request moves `queued → processing → completed | failed` (generation states only — there is no review state).
+3. On generation success, the render is **published immediately**: `GET /api/v1/renders/{renderId}` returns `completed` with the image key — the bytes and tagged items are fetched via `/renders/:id/image` and `/renders/:id/items` — with no operator action in between.
+4. On the same generation-success path, the system auto-populates the cart from the render's tagged products (FR-031; `source=public` items excluded — FR-064/ADR-027, so a Brand/public selection yields an empty cart) and emits the NFR-006 funnel events per the updated spec.
+5. On generation failure, the request ends `failed` and **no render** is shown to the user (FR-015 / TC-029; the client does show a failure screen and returns the user to their selection — BUG-002/003).
 
 ## 6. Acceptance criteria
 

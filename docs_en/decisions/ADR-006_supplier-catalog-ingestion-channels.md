@@ -10,7 +10,7 @@ The PRD reserves the supported ingestion channels as a human decision (PRD §12,
 
 What the PRD states:
 
-- Suppliers should be able to self-ingest catalog data through software integration, Excel, API, or FTP (PRD §3 "Must have"; FR-023 / FR-055). These four channels are listed as the target set, but which to support (and in what order) is TBD.
+- Suppliers should be able to self-ingest catalog data through software integration, Excel, API, or FTP (PRD §3 "Must have"; PRD FR-23 / FR-055). These four channels are listed as the target set, but which to support (and in what order) is TBD.
 - Catalog entries must include a full required attribute set — photos, dimensions, price, colors, materials, stock, category, style attributes, lead time, warranty (BR-1; FR-057) — so any channel must carry these fields reliably.
 - Supplier data must synchronize regularly, or in real time for ready-made stock (BR-32; FR-060) — related but handled separately in ADR-012.
 - Supplier onboarding should scale by region (NFR-016).
@@ -27,7 +27,7 @@ Scope: one-week iOS pilot.
 
 1. **Manual operator ingestion only (pilot approach) as the interim state.**
    - Pros: Guarantees clean, complete, real, in-stock entries (BR-1, BR-2, BR-6) for a small catalog; zero ingestion build; matches the pilot.
-   - Cons: Does not scale by region (NFR-016); not a self-service channel (FR-023); only valid as an explicit interim step.
+   - Cons: Does not scale by region (NFR-016); not a self-service channel (PRD FR-23); only valid as an explicit interim step.
 
 2. **Excel / CSV upload (with validation against the required attribute set).**
    - Pros: Low barrier for local suppliers who already keep spreadsheets; one of the four PRD-listed channels; easy to validate BR-1 completeness on import.
@@ -42,7 +42,7 @@ Scope: one-week iOS pilot.
    - Cons: Batch-only; file format and security concerns; least modern option.
 
 5. **Prebuilt integrations with common e-commerce/inventory platforms ("software integration").**
-   - Pros: Directly matches the "software integration" channel in FR-023; lowest supplier effort if they already use such a platform; can enable real-time stock.
+   - Pros: Directly matches the "software integration" channel in PRD FR-23; lowest supplier effort if they already use such a platform; can enable real-time stock.
    - Cons: Depends on which platforms local suppliers actually use (unknown until suppliers are chosen — ties to ADR-016); build cost per integration.
 
 (These are not mutually exclusive; the decision is which channels to support and in what order.)

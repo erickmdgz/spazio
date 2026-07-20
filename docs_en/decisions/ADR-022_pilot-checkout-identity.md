@@ -21,7 +21,7 @@ There is a real tension between "no accounts and no full guest-checkout feature"
 
 Minimal contact capture at checkout: the user provides email + phone + shipping address (per PRD BR-26 data), stored with the order for operator fulfillment. NO login, NO password, NO account system, and NOT the full guest-checkout feature. This resolves the previously-open identity question and is consistent with accounts (FEAT-001) being out of the pilot, the guest-checkout feature being excluded, and ADR-019 minimum-data.
 
-Scope: one-week iOS pilot.
+Scope: one-week iOS pilot. **Update (ADR-024, 2026-07-14):** the one-week iOS pilot no longer governs; this identity model (minimal contact capture, no accounts) carries forward unchanged into the web product's checkout as built.
 
 ## Alternatives considered
 

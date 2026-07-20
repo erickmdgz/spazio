@@ -9,8 +9,10 @@ export interface RenderJob {
    * The user's curated product selection (ADR-028/FR-068): up to 3 productIds the
    * render must composite EXACTLY (after the worker re-validates them). Omitted for
    * the backward-compatible auto-match flow, where the worker falls back to
-   * matchProducts(). Carried on the job payload (no schema change) — each render /
-   * iteration is its own job with its own selection.
+   * matchProducts(). Carried on the job payload — each render / iteration is its
+   * own job with its own selection — and also snapshotted on
+   * RenderRequest.requestedProductIds at request creation (BUG-005), so a failed
+   * render keeps the attempted selection.
    */
   productIds?: string[];
 }

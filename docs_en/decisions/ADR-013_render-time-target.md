@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. **Update (ADR-025, 2026-07-14):** the operator render-review step (FR-027) referenced below is retired; renders are published immediately on generation success (ADR-025), so operator-review time no longer adds to the user-perceived render time. The ~2–5 minute soft target and the no-hard-SLA decision stand.
+Accepted. **Update (ADR-025, 2026-07-14):** the operator render-review step (FR-027) referenced below is retired; renders are published immediately on generation success (ADR-025), so operator-review time no longer adds to the user-perceived render time. The ~2–5 minute soft target and the no-hard-SLA decision stand. **Update (BUG-004, 2026-07-16):** a measured worst-case render — 3 reference products on the demo's M2 host — takes **~10.3 min**, beyond the ~2–5 min soft figure; because this ADR set a soft target with **no hard SLA**, nothing here changes. The backend's 15-min hard cap (BUG-004) is a hang backstop, not an SLA; the measurement itself is recorded in NFR-001 and `10_release_notes.md`.
 
 ## Context
 
